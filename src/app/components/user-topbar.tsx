@@ -1,3 +1,5 @@
+
+
 'use client';
 
 import React, { useState } from 'react';
@@ -5,18 +7,18 @@ import { Search, Bell, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import { useProfile } from '@/api/hooks/useProfile';
 import { useRouter } from 'next/navigation';
+// Assuming these are defined in your project
 import { LogoutModal } from './logoutModal';
 import { NotificationPanel } from './notificationModal';
 
 export const UserTopBar = () => {
   const [showDropdown, setShowDropdown] = useState(false);
-  const [showLogoutModal, setShowLogoutModal] = useState(false); // Add modal state
-  const [showNotifications, setShowNotifications] = useState(false); // Add notification state
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const { profile, error } = useProfile();
   const router = useRouter();
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
-  // Log errors for debugging
   React.useEffect(() => {
     if (error) {
       console.error('Profile loading error:', error);
@@ -27,7 +29,7 @@ export const UserTopBar = () => {
   }, [error, profile]);
 
   const handleLogoutClick = () => {
-    setShowLogoutModal(true); // Open modal instead of logging out immediately
+    setShowLogoutModal(true);
     setShowDropdown(false);
   };
 
@@ -41,7 +43,6 @@ export const UserTopBar = () => {
     setShowLogoutModal(false);
   };
 
-  // Close dropdown when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -65,186 +66,104 @@ export const UserTopBar = () => {
         .manrope { font-family: 'Manrope', sans-serif; }
       `}</style>
 
-      {/* Logout Modal */}
-      <LogoutModal 
+      <LogoutModal
         isOpen={showLogoutModal}
         onConfirm={handleConfirmLogout}
         onCancel={handleCancelLogout}
       />
 
-      {/* Notification Panel */}
-      <NotificationPanel 
+      <NotificationPanel
         isOpen={showNotifications}
         onClose={() => setShowNotifications(false)}
       />
 
-      {/* Positioned inside the white navigation bar at top right - Lower z-index */}
-      <div 
-        className="absolute flex items-center gap-3"
-        style={{
-          top: '124px',
-          left: '850px',
-          zIndex: 40,
-          pointerEvents: 'auto'
-        }}
-      >
-        {/* Search */}
-        <div 
-          className="bg-white flex items-center"
-          style={{
-            width: '285px',
-            height: '40px',
-            borderRadius: '40px',
-            border: '1px solid #E4D8F3',
-            paddingLeft: '16px',
-            paddingRight: '16px',
-            gap: '8px'
-          }}
-        >
-          <Search className="w-5 h-5 text-gray-400" />
-          <input 
-            type="text" 
-            placeholder="Search" 
-            className="manrope flex-1 outline-none bg-transparent text-sm"
-            style={{ color: '#6E6E6E' }}
-          />
-        </div>
-
-        {/* Notification */}
-        <button 
-          className="bg-[#FBFAFC] flex items-center justify-center hover:bg-gray-100"
-          style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '40px',
-            border: '1px solid #E4D8F3'
-          }}
-          onClick={() => setShowNotifications(!showNotifications)}
-        >
-          <Bell className="w-5 h-5 text-gray-600" />
-        </button>
-
-        {/* Avatar and Dropdown */}
-        <div className="relative" ref={dropdownRef} style={{ zIndex: 41 }}>
-          <button 
-            className="flex items-center cursor-pointer bg-transparent border-none p-0"
-            style={{
-              width: '68px',
-              height: '40px',
-              gap: '6px',
-              pointerEvents: 'auto'
-            }}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              console.log('Avatar clicked, current state:', showDropdown);
-              setShowDropdown(!showDropdown);
-              console.log('New state should be:', !showDropdown);
-            }}
-            type="button"
+      {/* Top navigation bar 
+          - Mobile (default): relative flow, full width, padding
+          - Desktop (md:): absolute positioning preserved 
+      */}
+      <div className="w-full bg-white px-4 py-3 md:absolute md:px-0 md:py-0 md:w-auto md:top-[124px] md:left-[850px] z-40">
+        <div className="flex items-center gap-3 justify-between md:justify-start">
+          {/* Search */}
+          <div
+            className="bg-white flex items-center flex-1 md:flex-none md:w-[285px] h-[40px] rounded-full border border-[#E4D8F3] px-4 gap-2"
           >
-            {/* Avatar Image */}
-            <div 
-              className="relative overflow-hidden flex items-center justify-center"
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '40px',
-                background: '#6D1E1E',
-                pointerEvents: 'none'
-              }}
-            >
-              <Image 
-                src="/Frame 1707479300.png" 
-                alt="User Avatar" 
-                width={40} 
-                height={40}
-                className="object-cover"
-                style={{ pointerEvents: 'none' }}
-              />
-            </div>
-
-            {/* Dropdown Icon */}
-            <ChevronDown 
-              className="text-gray-600"
-              style={{
-                width: '22px',
-                height: '22px',
-                pointerEvents: 'none'
-              }}
+            <Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="Search"
+              className="manrope flex-1 outline-none bg-transparent text-sm text-[#6E6E6E]"
             />
-          </button>
+          </div>
 
-          {/* Dropdown Menu */}
-          {showDropdown && (
-            <div 
-              className="absolute manrope"
-              style={{
-                top: '48px',
-                right: '0',
-                width: '200px',
-                background: '#F4EFFA',
-                borderRadius: '15px',
-                zIndex: 9999,
-                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
-                padding: '20px'
-              }}
-              onClick={(e) => e.stopPropagation()}
+          <div className="flex items-center gap-3">
+            {/* Notification */}
+            <button
+              className="bg-[#FBFAFC] flex items-center justify-center hover:bg-gray-100 w-[40px] h-[40px] rounded-full border border-[#E4D8F3]"
+              onClick={() => setShowNotifications(!showNotifications)}
             >
-              {/* Menu Items */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <button 
-                  className="w-full text-left transition-colors"
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    fontFamily: 'Manrope',
-                    fontWeight: 500,
-                    fontSize: '18px',
-                    color: '#1A1A1A',
-                    cursor: 'pointer',
-                    padding: 0
-                  }}
-                  onClick={() => {
-                    setShowDropdown(false);
-                    router.push('/user/profile');
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = '#5D2A8B';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = '#1A1A1A';
-                  }}
+              <Bell className="w-5 h-5 text-gray-600" />
+            </button>
+
+            {/* Avatar and Dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                className="flex items-center cursor-pointer bg-transparent border-none p-0 gap-1.5"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowDropdown(!showDropdown);
+                }}
+                type="button"
+              >
+                {/* Avatar Image */}
+                <div
+                  className="relative overflow-hidden flex items-center justify-center w-[40px] h-[40px] rounded-full bg-[#6D1E1E]"
                 >
-                  Profile
-                </button>
-                <button 
-                  className="w-full text-left transition-colors"
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    fontFamily: 'Manrope',
-                    fontWeight: 500,
-                    fontSize: '18px',
-                    color: '#1A1A1A',
-                    cursor: 'pointer',
-                    padding: 0
-                  }}
-                  onClick={handleLogoutClick} // Updated to open modal
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = '#5D2A8B';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = '#1A1A1A';
-                  }}
+                  <Image
+                    src="/Frame 1707479300.png"
+                    alt="User Avatar"
+                    width={40}
+                    height={40}
+                    className="object-cover"
+                  />
+                </div>
+
+                {/* Dropdown Icon - Hidden on mobile */}
+                <ChevronDown
+                  className="text-gray-600 hidden md:block w-[22px] h-[22px]"
+                />
+              </button>
+
+              {/* Dropdown Menu */}
+              {showDropdown && (
+                <div
+                  className="absolute manrope top-12 right-0 w-[200px] bg-[#F4EFFA] rounded-[15px] shadow-xl p-5 z-[9999]"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  Logout
-                </button>
-              </div>
+                  <div className="flex flex-col gap-5">
+                    <button
+                      className="w-full text-left bg-transparent border-none manrope font-medium text-lg text-[#1A1A1A] cursor-pointer p-0 hover:text-[#5D2A8B] transition-colors"
+                      onClick={() => {
+                        setShowDropdown(false);
+                        router.push('/user/profile');
+                      }}
+                    >
+                      Profile
+                    </button>
+                    <button
+                      className="w-full text-left bg-transparent border-none manrope font-medium text-lg text-[#1A1A1A] cursor-pointer p-0 hover:text-[#5D2A8B] transition-colors"
+                      onClick={handleLogoutClick}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </>
   );
 };
+

@@ -10,7 +10,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [showSidebar, setShowSidebar] = useState(true);
+  const [showSidebar, setShowSidebar] = useState(false); // Start with sidebar closed on mobile
 
   return (
     <div className="min-h-screen bg-[#F7F0FE] relative">
@@ -18,7 +18,7 @@ export default function RootLayout({
       <UserSidebar onShow={showSidebar} setShow={setShowSidebar} />
       
       
-      <div className="relative w-full">
+      <div className="relative w-full pt-0 md:pt-0">
         {children}
       </div>
     </div>

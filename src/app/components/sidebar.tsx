@@ -1,20 +1,15 @@
 
+
+
+
 "use client";
 
-import React, { useState, Dispatch, SetStateAction, ReactNode } from 'react';
+import React, { Dispatch, SetStateAction, ReactNode } from 'react';
 import { 
-  Home, 
-  Calendar, 
-  BookOpen, 
-  ClipboardCheck, 
-  Award, 
-  Users, 
-  Settings, 
-  UserCircle, 
+  
+
   Menu, 
-  X,
-  ChevronRight,
-  ChevronDown
+ 
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -47,10 +42,8 @@ const MenuBtn: React.FC<MenuBtnProps> = ({ icon, positioning = '', onClick, togg
 
 
 export const UserSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
-  // const [bodymeasurementDropdownOpen, setBodymeasurementDropdownOpen] = useState(false);
   const pathname = usePathname();
   
-
   const toggleSidebar = (): string => onShow ? "block" : "hidden";
   const toggleLeftPadding = (): string => onShow ? "pl-4 md:pl-12" : "";
 
@@ -81,22 +74,75 @@ export const UserSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
       <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
         .manrope { font-family: 'Manrope', sans-serif; }
+        
+        /* Mobile responsive styles */
+        @media (max-width: 768px) {
+          .sidebar-container {
+            width: 280px !important;
+            height: 100vh !important;
+            top: 0 !important;
+            left: 0 !important;
+            border-radius: 0 !important;
+          }
+          
+          .sidebar-logo-container {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            padding: 20px;
+          }
+          
+          .sidebar-nav-container {
+            position: relative !important;
+            padding: 0 20px;
+          }
+          
+          .sidebar-logout {
+            position: fixed !important;
+            bottom: 30px !important;
+            left: 38px !important;
+          }
+        }
+        
+        /* Overlay for mobile */
+        .sidebar-overlay {
+          display: none;
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 998;
+        }
+        
+        @media (max-width: 768px) {
+          .sidebar-overlay.active {
+            display: block;
+          }
+        }
       `}</style>
       
+      {/* Overlay for mobile - click to close sidebar */}
+      {onShow && (
+        <div 
+          className="sidebar-overlay active"
+          onClick={() => setShow(false)}
+        />
+      )}
+      
       <div 
-        className={`${toggleSidebar()} bg-[#FFFFFF] fixed overflow-y-auto z-10 shadow-sm`}
+        className={`${toggleSidebar()} sidebar-container bg-[#FFFFFF] fixed overflow-y-auto shadow-sm`}
         style={{
           width: '328px',
           height: '633px',
           top: '80px',
           left: '37px',
           borderRadius: '20px',
-          boxShadow: '0px 2px 8px 0px rgba(0, 0, 0, 0.1)'
+          boxShadow: '0px 2px 8px 0px rgba(0, 0, 0, 0.1)',
+          zIndex: 999
         }}
       >
         {/* Header with Logo and Close Button */}
         <div 
-          className="flex items-center"
+          className="sidebar-logo-container flex items-center"
           style={{
             width: '252px',
             height: '48px',
@@ -129,7 +175,7 @@ export const UserSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
           </button>
         </div>
 
-        <nav className="flex flex-col text-white" style={{ gap: '40px' }}>
+        <nav className="sidebar-nav-container flex flex-col text-white" style={{ gap: '40px' }}>
           <div className="cursor-pointer space-y-3">
             <Link href={`/user`}>
               <div 
@@ -321,7 +367,7 @@ export const UserSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
           </div>
 
           <div 
-            className="absolute"
+            className="sidebar-logout absolute"
             style={{
               width: '105.39px',
               height: '27px',
@@ -360,14 +406,12 @@ export const UserSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
             </button>
           </div>
         </nav>
-        
-        
       </div>
 
-   
-      {!onShow && (
+      {/* Menu Toggle Button */}
+     {!onShow && (
         <MenuBtn
-          positioning="absolute top-3.5 z-20"
+          positioning="fixed  left-4 z-[1000]"
           icon={<Menu className="h-6 w-6" />}
           onClick={() => setShow(!onShow)}
           toggleLeftPadding={toggleLeftPadding()}
@@ -377,194 +421,3 @@ export const UserSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
   );
 };
 
-
-
-// Admin Sidebar Component
-export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
-  const [courseDropdownOpen, setCourseDropdownOpen] = useState(false);
-  const [assessmentDropdownOpen, setAssessmentDropdownOpen] = useState(false);
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
-
-  const toggleSidebar = (): string => onShow ? "block" : "hidden";
-  const toggleLeftPadding = (): string => onShow ? "pl-4 md:pl-12" : "";
-
-  return (
-    <aside>
-      <div className={`${toggleSidebar()} bg-[#572E7F] fixed h-full w-64 space-y-6 overflow-y-auto border-r border-opacity-80 z-10`}>
-        {/* Header */}
-        <div className="flex w-full items-center justify-between px-4 py-6">
-          <div className="flex items-center space-x-2">
-            <div className="h-8 w-8 bg-white rounded-full flex items-center justify-center">
-              <span className="text-purple-700 font-bold">R</span>
-            </div>
-            <span className="text-white font-semibold">RAOATECH</span>
-          </div>
-          <MenuBtn
-            icon={<X className="h-6 w-6 text-white" />}
-            onClick={() => setShow(!onShow)}
-            toggleLeftPadding={toggleLeftPadding()}
-          />
-        </div>
-
-        {/* Navigation */}
-        <nav className="px-3 text-white space-y-2">
-          {/* Home */}
-          <div className="flex items-center space-x-3 py-2 px-4 hover:bg-purple-800 rounded cursor-pointer">
-            <Home className="w-5 h-5" />
-            <span>Home</span>
-          </div>
-
-          {/* Bookings */}
-          <div className="flex items-center space-x-3 py-2 px-4 hover:bg-purple-800 rounded cursor-pointer">
-            <Calendar className="w-5 h-5" />
-            <span>Bookings</span>
-          </div>
-
-          {/* Courses Dropdown */}
-          <div>
-            <div
-              className="flex items-center justify-between py-2 px-4 hover:bg-purple-800 rounded cursor-pointer"
-              onClick={() => setCourseDropdownOpen(!courseDropdownOpen)}
-            >
-              <div className="flex items-center space-x-3">
-                <BookOpen className="w-5 h-5" />
-                <span>Courses</span>
-              </div>
-              {courseDropdownOpen ? (
-                <ChevronDown className="w-5 h-5" />
-              ) : (
-                <ChevronRight className="w-5 h-5" />
-              )}
-            </div>
-            {courseDropdownOpen && (
-              <div className="ml-8 space-y-1 mt-1">
-                <div className="py-2 px-4 hover:bg-purple-700 rounded cursor-pointer text-sm">
-                  Course Report
-                </div>
-                <div className="py-2 px-4 hover:bg-purple-700 rounded cursor-pointer text-sm">
-                  Create Courses
-                </div>
-                <div className="py-2 px-4 hover:bg-purple-700 rounded cursor-pointer text-sm">
-                  Curriculum
-                </div>
-                <div className="py-2 px-4 hover:bg-purple-700 rounded cursor-pointer text-sm">
-                  Attendance
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Assessments Dropdown */}
-          <div>
-            <div
-              className="flex items-center justify-between py-2 px-4 hover:bg-purple-800 rounded cursor-pointer"
-              onClick={() => setAssessmentDropdownOpen(!assessmentDropdownOpen)}
-            >
-              <div className="flex items-center space-x-3">
-                <ClipboardCheck className="w-5 h-5" />
-                <span>Assessments</span>
-              </div>
-              {assessmentDropdownOpen ? (
-                <ChevronDown className="w-5 h-5" />
-              ) : (
-                <ChevronRight className="w-5 h-5" />
-              )}
-            </div>
-            {assessmentDropdownOpen && (
-              <div className="ml-8 space-y-1 mt-1">
-                <div className="py-2 px-4 hover:bg-purple-700 rounded cursor-pointer text-sm">
-                  Create Assessment
-                </div>
-                <div className="py-2 px-4 hover:bg-purple-700 rounded cursor-pointer text-sm">
-                  Question Bank
-                </div>
-                <div className="py-2 px-4 hover:bg-purple-700 rounded cursor-pointer text-sm">
-                  Theory Based
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Certificates */}
-          <div className="flex items-center space-x-3 py-2 px-4 hover:bg-purple-800 rounded cursor-pointer">
-            <Award className="w-5 h-5" />
-            <span>Certificates</span>
-          </div>
-
-          {/* Users Dropdown */}
-          <div>
-            <div
-              className="flex items-center justify-between py-2 px-4 hover:bg-purple-800 rounded cursor-pointer"
-              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-            >
-              <div className="flex items-center space-x-3">
-                <Users className="w-5 h-5" />
-                <span>Users</span>
-              </div>
-              {userDropdownOpen ? (
-                <ChevronDown className="w-5 h-5" />
-              ) : (
-                <ChevronRight className="w-5 h-5" />
-              )}
-            </div>
-            {userDropdownOpen && (
-              <div className="ml-8 space-y-1 mt-1">
-                <div className="py-2 px-4 hover:bg-purple-700 rounded cursor-pointer text-sm">
-                  All Users
-                </div>
-                <div className="py-2 px-4 hover:bg-purple-700 rounded cursor-pointer text-sm">
-                  Archived Users
-                </div>
-                <div className="py-2 px-4 hover:bg-purple-700 rounded cursor-pointer text-sm">
-                  Learner Report
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Settings Section */}
-          <div className="border-t border-purple-700 pt-4 mt-4">
-            <div
-              className="flex items-center justify-between py-2 px-4 hover:bg-purple-800 rounded cursor-pointer"
-              onClick={() => setSettingsDropdownOpen(!settingsDropdownOpen)}
-            >
-              <div className="flex items-center space-x-3">
-                <Settings className="w-5 h-5" />
-                <span>Settings</span>
-              </div>
-              {settingsDropdownOpen ? (
-                <ChevronDown className="w-5 h-5" />
-              ) : (
-                <ChevronRight className="w-5 h-5" />
-              )}
-            </div>
-            {settingsDropdownOpen && (
-              <div className="ml-8 space-y-1 mt-1">
-                <div className="py-2 px-4 hover:bg-purple-700 rounded cursor-pointer text-sm">
-                  Group Management
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Profile */}
-          <div className="flex items-center space-x-3 py-2 px-4 hover:bg-purple-800 rounded cursor-pointer">
-            <UserCircle className="w-5 h-5" />
-            <span>Profile</span>
-          </div>
-        </nav>
-      </div>
-
-      {/* Mobile menu button */}
-      {!onShow && (
-        <MenuBtn
-          positioning="absolute top-3.5 z-20"
-          icon={<Menu className="h-6 w-6" />}
-          onClick={() => setShow(!onShow)}
-          toggleLeftPadding={toggleLeftPadding()}
-        />
-      )}
-    </aside>
-  );
-};

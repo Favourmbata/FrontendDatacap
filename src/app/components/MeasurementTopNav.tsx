@@ -1,3 +1,6 @@
+
+
+
 'use client';
 
 import React from 'react';
@@ -30,62 +33,105 @@ export const MeasurementTopNav: React.FC<MeasurementTopNavProps> = ({
       <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
         .manrope { font-family: 'Manrope', sans-serif; }
+        
+        /* Mobile-first responsive design */
+        .measurement-card {
+          position: relative;
+          width: 100%;
+          padding: 16px;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          margin: 16px;
+          z-index: 20;
+        }
+        
+        @media (min-width: 768px) {
+          .measurement-card {
+            position: absolute;
+            width: 958px;
+            height: 129px;
+            top: 80px;
+            left: 401px;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin: 0;
+          }
+        }
+        
+        .measurement-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+        }
+        
+        @media (min-width: 640px) {
+          .measurement-grid {
+            display: flex;
+            gap: 16px;
+          }
+        }
+        
+        .measurement-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 8px;
+          border-radius: 8px;
+          transition: background-color 0.2s;
+        }
+        
+        .measurement-item:hover {
+          background-color: #f9fafb;
+        }
+        
+        @media (min-width: 640px) {
+          .measurement-item {
+            padding: 0;
+          }
+        }
       `}</style>
 
-      {/* User TopBar with Search, Notification, and Avatar */}
-      <UserTopBar />
+      {/* User TopBar - Hidden on mobile measurement creation */}
+      <div className="hidden md:block">
+        <UserTopBar />
+      </div>
 
-      <div 
-        className="absolute bg-white overflow-visible z-20 shadow-sm"
-        style={{
-          width: '958px',
-          height: '129px',
-          top: '80px',
-          left: '401px',
-          borderRadius: '20px',
-          padding: '24px',
-          position: 'relative'
-        }}
-      >
-
+      <div className="measurement-card">
         <div className="flex flex-col justify-center h-full">
           {/* Current Body Measurement Label */}
-          <div className="manrope text-sm text-gray-400 mb-3">{title}</div>
+          <div className="manrope text-xs md:text-sm text-gray-400 mb-2 md:mb-3">{title}</div>
           
-          {/* Measurement Tabs */}
-          <div className="flex gap-4 items-center">
-            <button className="manrope text-sm text-gray-600 hover:text-purple-700 flex flex-col items-center">
-              <span>{measurements.chest}</span>
-              <span>Chest</span>
+          {/* Measurement Grid */}
+          <div className="measurement-grid">
+            <button className="measurement-item manrope text-sm text-gray-600 hover:text-purple-700">
+              <span className="font-medium">{measurements.chest}</span>
+              <span className="text-xs md:text-sm">Chest</span>
             </button>
-            <button className="manrope text-sm text-gray-600 hover:text-purple-700 flex flex-col items-center">
-              <span>{measurements.waist}</span>
-              <span>Waist</span>
+            <button className="measurement-item manrope text-sm text-gray-600 hover:text-purple-700">
+              <span className="font-medium">{measurements.waist}</span>
+              <span className="text-xs md:text-sm">Waist</span>
             </button>
-            <button className="manrope text-sm text-gray-600 hover:text-purple-700 flex flex-col items-center">
-              <span>{measurements.hips}</span>
-              <span>Hips</span>
+            <button className="measurement-item manrope text-sm text-gray-600 hover:text-purple-700">
+              <span className="font-medium">{measurements.hips}</span>
+              <span className="text-xs md:text-sm">Hips</span>
             </button>
-            <button className="manrope text-sm text-gray-600 hover:text-purple-700 flex flex-col items-center">
-              <span>{measurements.legs}</span>
-              <span>Legs</span>
+            <button className="measurement-item manrope text-sm text-gray-600 hover:text-purple-700">
+              <span className="font-medium">{measurements.legs}</span>
+              <span className="text-xs md:text-sm">Legs</span>
             </button>
             <button 
-              className="manrope text-sm text-purple-700 font-medium flex flex-col items-center"
-              style={{
-                width: '29px',
-                height: '36px',
-                gap: '4px'
-              }}
+              className="measurement-item manrope text-sm text-purple-700 font-medium col-span-2 sm:col-span-1"
             >
               <Image 
                 src="/Copy Streamline Bootstrap.png" 
                 alt="Copy" 
                 width={16} 
                 height={16}
-                className="object-contain"
+                className="object-contain mb-1"
               />
-              <span>Copy</span>
+              <span className="text-xs md:text-sm">Copy</span>
             </button>
           </div>
         </div>
@@ -93,3 +139,4 @@ export const MeasurementTopNav: React.FC<MeasurementTopNavProps> = ({
     </>
   );
 };
+
