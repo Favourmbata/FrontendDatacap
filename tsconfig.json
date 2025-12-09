@@ -14,7 +14,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
     "plugins": [
       {
@@ -35,8 +35,10 @@
     ".next/types/**/*.ts",
     ".next/types/app/(main)/admin/assesments/edit-assessment/page.tsx",
     "src/app/(main)/admin/assesments/test",
-    "src/app/(main)/user/manual-based"
-, "src/app/(main)/user/body-measurement"  ],
+    "src/app/(main)/user/manual-based",
+    "src/app/(main)/user/body-measurement",
+    ".next/dev/types/**/*.ts"
+  ],
   "exclude": [
     "node_modules"
   ]

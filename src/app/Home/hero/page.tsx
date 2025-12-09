@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState } from "react"
@@ -6,30 +5,14 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 
 const HeroSection: React.FC = () => {
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const router = useRouter()
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, type?: string) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const imageDataUrl = event.target?.result as string
-        setUploadedImage(imageDataUrl)
-        router.push(`/upload-image?type=${type || 'yourself'}`)
-      }
-      reader.readAsDataURL(file)
-    }
+  const handleMeasurementChoice = (type: 'yourself' | 'object') => {
+    // Redirect to upload-image page with type parameter
+    router.push(`/upload-image?type=${type}`)
     setShowModal(false)
   }
-
-  const handleMeasurementChoice = (type: 'yourself' | 'object') => {
-    const input = document.getElementById(`image-upload-${type}`) as HTMLInputElement
-    input?.click()
-  }
-
-  const resetImage = () => setUploadedImage(null)
 
   return (
     <section 
@@ -41,16 +24,16 @@ const HeroSection: React.FC = () => {
         position: "relative",
       }}
     >
-      {/* Modal - Single instance */}
+      {/* Desktop Modal - Only shows on desktop screens */}
       {showModal && (
-        <>
+        <div className="hidden md:block">
           {/* Overlay for closing modal */}
           <div 
             className="fixed inset-0 z-40"
             onClick={() => setShowModal(false)}
           />
           
-          {/* Modal Content */}
+          {/* Modal Content - Desktop positioning */}
           <div 
             className="absolute z-50"
             style={{
@@ -120,24 +103,92 @@ const HeroSection: React.FC = () => {
             >
               Measure an Object
             </button>
-
-            {/* Hidden file inputs */}
-            <input
-              id="image-upload-yourself"
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleImageUpload(e, 'yourself')}
-              className="hidden"
-            />
-            <input
-              id="image-upload-object"
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleImageUpload(e, 'object')}
-              className="hidden"
-            />
           </div>
-        </>
+        </div>
+      )}
+
+      {/* Mobile Modal - Only shows on mobile screens */}
+      {showModal && (
+        <div className="md:hidden">
+          {/* Overlay for closing modal */}
+          <div 
+            className="fixed inset-0 z-40"
+            onClick={() => setShowModal(false)}
+          />
+          
+          {/* Modal Content - Mobile positioning */}
+          <div 
+            className="fixed z-50"
+            style={{
+              width: "214px",
+              height: "98px",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              borderRadius: "10px",
+              border: "1px solid #5D2A8B",
+              paddingTop: "12px",
+              paddingRight: "20px",
+              paddingBottom: "12px",
+              paddingLeft: "20px",
+              gap: "6px",
+              boxShadow: "0px 4px 4px 0px #5D2A8B1A",
+              background: "#FFFFFF",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {/* Measure Yourself */}
+            <button
+              onClick={() => handleMeasurementChoice('yourself')}
+              style={{
+                fontFamily: "Manrope",
+                fontWeight: 400,
+                fontSize: "20px",
+                lineHeight: "100%",
+                letterSpacing: "0%",
+                textDecoration: "underline",
+                textDecorationStyle: "solid",
+                textUnderlineOffset: "15%",
+                color: "#1A1A1A",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                textAlign: "left",
+                padding: 0,
+                width: "159px",
+                height: "27px",
+              }}
+            >
+              Measure Yourself
+            </button>
+
+            {/* Measure an Object */}
+            <button
+              onClick={() => handleMeasurementChoice('object')}
+              style={{
+                fontFamily: "Manrope",
+                fontWeight: 400,
+                fontSize: "20px",
+                lineHeight: "100%",
+                letterSpacing: "0%",
+                textDecoration: "underline",
+                textDecorationStyle: "solid",
+                textUnderlineOffset: "15%",
+                color: "#1A1A1A",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                textAlign: "left",
+                padding: 0,
+                width: "174px",
+                height: "27px",
+              }}
+            >
+              Measure an Object
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Desktop Hero */}
@@ -261,117 +312,103 @@ const HeroSection: React.FC = () => {
               border: "1px dashed #EB83FF",
             }}
           >
-            {uploadedImage ? (
-              <div className="w-full h-full rounded-2xl overflow-hidden relative">
-                <div className="w-full h-full relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={uploadedImage} alt="preview" className="w-full h-full object-cover" />
-                </div>
-                <button
-                  onClick={resetImage}
-                  className="absolute top-3 right-3 bg-white/90 hover:bg-white text-sm text-gray-700 px-4 py-2 rounded-full shadow-md transition-all"
-                >
-                  Remove
-                </button>
+            <>
+              {/* Left Image */}
+              <div 
+                className="absolute"
+                style={{
+                  width: "167px",
+                  height: "251px",
+                  top: "25px",
+                  left: "-2px",
+                }}
+              >
+                <Image
+                  src="/gbarkz-vqKnuG8GaQc-unsplash-removebg-preview 1.png"
+                  alt="silhouette"
+                  width={167}
+                  height={251}
+                  className="object-contain"
+                />
               </div>
-            ) : (
-              <>
-                {/* Left Image */}
-                <div 
-                  className="absolute"
-                  style={{
-                    width: "167px",
-                    height: "251px",
-                    top: "25px",
-                    left: "-2px",
-                  }}
-                >
-                  <Image
-                    src="/gbarkz-vqKnuG8GaQc-unsplash-removebg-preview 1.png"
-                    alt="silhouette"
-                    width={167}
-                    height={251}
-                    className="object-contain"
-                  />
-                </div>
 
-                {/* Right Image */}
-                <div 
-                  className="absolute"
-                  style={{
-                    width: "200.49px",
-                    height: "300.74px",
-                    top: "1px",
-                    left: "242px",
-                  }}
-                >
-                  <Image
-                    src="/recha-oktaviani-t__61ap00Mc-unsplash-removebg-preview 1.png"
-                    alt="object"
-                    width={200}
-                    height={301}
-                    className="object-contain"
-                  />
-                </div>
+              {/* Right Image */}
+              <div 
+                className="absolute"
+                style={{
+                  width: "200.49px",
+                  height: "300.74px",
+                  top: "1px",
+                  left: "242px",
+                }}
+              >
+                <Image
+                  src="/recha-oktaviani-t__61ap00Mc-unsplash-removebg-preview 1.png"
+                  alt="object"
+                  width={200}
+                  height={301}
+                  className="object-contain"
+                />
+              </div>
 
-                {/* Upload Button and Text */}
-                <div 
-                  className="absolute"
-                  style={{
-                    width: "173px",
-                    height: "91.48px",
-                    top: "222px",
-                    left: "124px",
-                    gap: "12px",
-                  }}
-                >
-                  {/* Upload Button */}
-                  <label className="cursor-pointer inline-block">
-                    <div
-                      role="button"
-                      aria-label="Upload Image"
-                      onClick={() => setShowModal(true)}
-                      className="flex items-center justify-center bg-[#5D2A8B] text-white transition-all duration-300 ease-in-out"
+              {/* Upload Button and Text */}
+              <div 
+                className="absolute"
+                style={{
+                  width: "173px",
+                  height: "91.48px",
+                  top: "222px",
+                  left: "124px",
+                  gap: "12px",
+                }}
+              >
+                {/* Upload Button */}
+                <label className="cursor-pointer inline-block">
+                  <div
+                    role="button"
+                    aria-label="Upload Image"
+                    onClick={() => setShowModal(true)}
+                    className="flex items-center justify-center bg-[#5D2A8B] text-white transition-all duration-300 ease-in-out"
+                    style={{
+                      width: "173px",
+                      height: "41.48px",
+                      borderRadius: "20px",
+                      padding: "7.24px 13.57px",
+                      gap: "10.86px",
+                      border: "2px solid transparent",
+                    }}
+                    onMouseEnter={(e) => {
+                      const el = e.currentTarget as HTMLDivElement
+                      el.style.transform = "scale(1.06)"
+                      el.style.boxShadow = "0 14px 36px rgba(93,42,139,0.3)"
+                      el.style.border = "2px solid #C8A2E0"
+                    }}
+                    onMouseLeave={(e) => {
+                      const el = e.currentTarget as HTMLDivElement
+                      el.style.transform = "scale(1)"
+                      el.style.boxShadow = "none"
+                      el.style.border = "2px solid transparent"
+                    }}
+                    onMouseDown={(e) => {
+                      const el = e.currentTarget as HTMLDivElement
+                      el.style.transform = "scale(0.98)"
+                    }}
+                    onMouseUp={(e) => {
+                      const el = e.currentTarget as HTMLDivElement
+                      el.style.transform = "scale(1.06)"
+                    }}
+                  >
+                    <span
                       style={{
-                        width: "173px",
-                        height: "41.48px",
-                        borderRadius: "20px",
-                        padding: "7.24px 13.57px",
-                        gap: "10.86px",
-                        border: "2px solid transparent",
-                      }}
-                      onMouseEnter={(e) => {
-                        const el = e.currentTarget as HTMLDivElement
-                        el.style.transform = "scale(1.06)"
-                        el.style.boxShadow = "0 14px 36px rgba(93,42,139,0.3)"
-                        el.style.border = "2px solid #C8A2E0"
-                      }}
-                      onMouseLeave={(e) => {
-                        const el = e.currentTarget as HTMLDivElement
-                        el.style.transform = "scale(1)"
-                        el.style.boxShadow = "none"
-                        el.style.border = "2px solid transparent"
-                      }}
-                      onMouseDown={(e) => {
-                        const el = e.currentTarget as HTMLDivElement
-                        el.style.transform = "scale(0.98)"
-                      }}
-                      onMouseUp={(e) => {
-                        const el = e.currentTarget as HTMLDivElement
-                        el.style.transform = "scale(1.06)"
+                        fontFamily: "Manrope",
+                        fontWeight: 600,
+                        fontSize: "14px",
+                        lineHeight: "100%",
                       }}
                     >
-                      <span
-                        style={{
-                          fontFamily: "Manrope",
-                          fontWeight: 600,
-                          fontSize: "14px",
-                          lineHeight: "100%",
-                        }}
-                      >
-                        Capture Image
-                      </span>
-                     <svg
+                      Capture Image
+                    </span>
+                   <svg
   className="w-4 h-4 inline-block"
   fill="none"
   stroke="currentColor"
@@ -383,30 +420,29 @@ const HeroSection: React.FC = () => {
 
 
 
-                    </div>
-                  </label>
+                  </div>
+                </label>
 
 {/*                  
-                  <p 
-                    className="text-center"
-                    style={{
-                      fontFamily: "Manrope",
-                      fontWeight: 300,
-                      fontSize: "14px",
-                      lineHeight: "100%",
-                      letterSpacing: "0%",
-                      textAlign: "center",
-                      color: "#6E6E6EB2",
-                      width: "160px",
-                      height: "38px",
-                      margin: "12px auto 0",
-                    }}
-                  >
-                    or paste your file <span style={{ textDecoration: "underline" }}>here</span>
-                  </p> */}
-                </div>
-              </>
-            )}
+                <p 
+                  className="text-center"
+                  style={{
+                    fontFamily: "Manrope",
+                    fontWeight: 300,
+                    fontSize: "14px",
+                    lineHeight: "100%",
+                    letterSpacing: "0%",
+                    textAlign: "center",
+                    color: "#6E6E6EB2",
+                    width: "160px",
+                    height: "38px",
+                    margin: "12px auto 0",
+                  }}
+                >
+                  or paste your file <span style={{ textDecoration: "underline" }}>here</span>
+                </p> */}
+              </div>
+            </>
           </div>
         </div>
 
@@ -548,94 +584,79 @@ const HeroSection: React.FC = () => {
               border: "1px dashed #EB83FF",
             }}
           >
-            {uploadedImage ? (
-              <div className="w-full h-full rounded-2xl overflow-hidden relative">
-                <div className="w-full h-full relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={uploadedImage} alt="preview" className="w-full h-full object-cover" />
-                </div>
-                <button
-                  onClick={resetImage}
-                  className="absolute top-2 right-2 bg-white/90 hover:bg-white text-xs text-gray-700 px-3 py-1 rounded-full shadow-md transition-all"
-                >
-                  Remove
-                </button>
+            <>
+              {/* Left Image */}
+              <div 
+                className="absolute"
+                style={{
+                  width: "100px",
+                  height: "150px",
+                  top: "15px",
+                  left: "-2px",
+                }}
+              >
+                <Image
+                  src="/gbarkz-vqKnuG8GaQc-unsplash-removebg-preview 1.png"
+                  alt="silhouette"
+                  width={100}
+                  height={150}
+                  className="object-contain"
+                />
               </div>
-            ) : (
-              <>
-                {/* Left Image */}
-                <div 
-                  className="absolute"
-                  style={{
-                    width: "100px",
-                    height: "150px",
-                    top: "15px",
-                    left: "-2px",
-                  }}
-                >
-                  <Image
-                    src="/gbarkz-vqKnuG8GaQc-unsplash-removebg-preview 1.png"
-                    alt="silhouette"
-                    width={100}
-                    height={150}
-                    className="object-contain"
-                  />
-                </div>
 
-                {/* Right Image */}
-                <div 
-                  className="absolute"
-                  style={{
-                    width: "120px",
-                    height: "180px",
-                    top: "1px",
-                    right: "-2px",
-                  }}
-                >
-                  <Image
-                    src="/recha-oktaviani-t__61ap00Mc-unsplash-removebg-preview 1.png"
-                    alt="object"
-                    width={120}
-                    height={180}
-                    className="object-contain"
-                  />
-                </div>
+              {/* Right Image */}
+              <div 
+                className="absolute"
+                style={{
+                  width: "120px",
+                  height: "180px",
+                  top: "1px",
+                  right: "-2px",
+                }}
+              >
+                <Image
+                  src="/recha-oktaviani-t__61ap00Mc-unsplash-removebg-preview 1.png"
+                  alt="object"
+                  width={120}
+                  height={180}
+                  className="object-contain"
+                />
+              </div>
 
-                {/* Upload Button */}
-                <div 
-                  className="absolute"
-                  style={{
-                    bottom: "15px",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                  }}
-                >
-                  <label className="cursor-pointer inline-block">
-                    <div
-                      role="button"
-                      aria-label="Upload Image"
-                      onClick={() => setShowModal(true)}
-                      className="flex items-center justify-center bg-[#5D2A8B] text-white transition-all duration-300 ease-in-out"
-                      style={{
-                        width: "130px",
-                        height: "36px",
-                        borderRadius: "18px",
-                        padding: "6px 12px",
-                        border: "2px solid transparent",
-                        fontFamily: "Manrope",
-                        fontWeight: 600,
-                        fontSize: "12px",
-                        lineHeight: "100%",
-                        gap: "6px",
-                      }}
-                    >
-                      <span>Capture Image</span>
-                      <span style={{ fontSize: "14px" }}>›</span>
-                    </div>
-                  </label>
-                </div>
-              </>
-            )}
+              {/* Upload Button */}
+              <div 
+                className="absolute"
+                style={{
+                  bottom: "15px",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                }}
+              >
+                <label className="cursor-pointer inline-block">
+                  <div
+                    role="button"
+                    aria-label="Upload Image"
+                    onClick={() => setShowModal(true)}
+                    className="flex items-center justify-center bg-[#5D2A8B] text-white transition-all duration-300 ease-in-out"
+                    style={{
+                      width: "130px",
+                      height: "36px",
+                      borderRadius: "18px",
+                      padding: "6px 12px",
+                      border: "2px solid transparent",
+                      fontFamily: "Manrope",
+                      fontWeight: 600,
+                      fontSize: "12px",
+                      lineHeight: "100%",
+                      gap: "6px",
+                    }}
+                  >
+                    <span>Capture Image</span>
+                    <span style={{ fontSize: "14px" }}>›</span>
+                  </div>
+                </label>
+              </div>
+            </>
           </div>
         </div>
 
@@ -653,6 +674,54 @@ const HeroSection: React.FC = () => {
           }}
         >
           &quot;Images are processed securely and deleted after 3 hours. No training on user data.&quot;
+        </div>
+        
+        {/* Mobile Measurement Options - Centered at bottom */}
+        <div 
+          className="flex justify-center gap-4 mt-6"
+          style={{
+            width: "311px",
+            margin: "20px auto 0",
+          }}
+        >
+          <button
+            onClick={() => handleMeasurementChoice('yourself')}
+            style={{
+              fontFamily: "Manrope",
+              fontWeight: 400,
+              fontSize: "14px",
+              lineHeight: "100%",
+              textDecoration: "underline",
+              textDecorationStyle: "solid",
+              textUnderlineOffset: "15%",
+              color: "#1A1A1A",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: "8px 12px",
+            }}
+          >
+            Measure Yourself
+          </button>
+          <button
+            onClick={() => handleMeasurementChoice('object')}
+            style={{
+              fontFamily: "Manrope",
+              fontWeight: 400,
+              fontSize: "14px",
+              lineHeight: "100%",
+              textDecoration: "underline",
+              textDecorationStyle: "solid",
+              textUnderlineOffset: "15%",
+              color: "#1A1A1A",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: "8px 12px",
+            }}
+          >
+            Measure an Object
+          </button>
         </div>
       </div>
     </section>

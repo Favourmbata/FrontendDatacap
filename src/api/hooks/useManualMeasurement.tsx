@@ -73,3 +73,36 @@ export const useSaveManualMeasurement = () => {
     },
   });
 };
+
+// Hook for updating a measurement
+export const useUpdateManualMeasurement = () => {
+  const { client } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...data }: any) => {
+      const response = await client.put(`/api/manual-measurements/${id}`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manual-measurements'] });
+      queryClient.invalidateQueries({ queryKey: ['manual-measurement'] });
+    },
+  });
+};
+
+// Hook for deleting a measurement
+export const useDeleteManualMeasurement = () => {
+  const { client } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await client.delete(`/api/manual-measurements/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manual-measurements'] });
+    },
+  });
+};
