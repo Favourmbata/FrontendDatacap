@@ -119,3 +119,27 @@ export const useMeasurementTypes = () => {
     },
   });
 };
+
+export const useSectionOptions = () => {
+  const { client } = useAuth();
+
+  return useQuery({
+    queryKey: ['section-options'],
+    queryFn: async () => {
+      try {
+        const response = await client.get('/api/manual-measurements/options/sections');
+        // CORRECTED: Use 'sections' instead of 'options'
+        return response.data.data?.sections || [];
+      } catch (error) {
+        console.warn('Failed to fetch section options, using defaults:', error);
+        return [
+          "Head Section",
+          "Chest Section", 
+          "Abdomen Section",
+          "Waist Section",
+          "Thigh Section"
+        ];
+      }
+    },
+  });
+};

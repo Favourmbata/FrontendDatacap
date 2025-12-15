@@ -1,14 +1,12 @@
-
 "use client";
-import { useSaveManualMeasurement } from "@/api/hooks/useManualMeasurement";
+import { useSaveManualMeasurement, useSectionOptions } from "@/api/hooks/useManualMeasurement";
 import { useProfile } from "@/api/hooks/useProfile";
 import {
   Field,
   FieldArray,
   Formik,
 } from "formik";
-import React, { useEffect } from "react";
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 import * as Yup from "yup";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, ArrowLeft, X, Upload } from "lucide-react";
@@ -26,6 +24,7 @@ interface BodySection {
 }
 
 interface SelfMeasurementFormValues {
+  // Removed formId from here
   firstName: string;
   lastName: string;
   measurementType: string;
@@ -33,14 +32,15 @@ interface SelfMeasurementFormValues {
   bodySections: BodySection[];
 }
 
-// Generate Form ID
-const generateFormId = () => {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 11);
-  return `CUR001-${timestamp.toString().slice(-6)}-${random.slice(0, 3).toUpperCase()}`;
-};
+// Remove the generateFormId function entirely
+// const generateFormId = () => {
+//   const timestamp = Date.now();
+//   const random = Math.random().toString(36).substring(2, 11);
+//   return `CUR001-${timestamp.toString().slice(-6)}-${random.slice(0, 3).toUpperCase()}`;
+// };
 
 const validationSchema = Yup.object().shape({
+  // Removed formId from validation
   firstName: Yup.string().required("First name is required"),
   lastName: Yup.string().required("Last name is required"),
   measurementType: Yup.string().required("Measurement type is required"),
@@ -63,19 +63,14 @@ const validationSchema = Yup.object().shape({
 });
 
 const initialValues: SelfMeasurementFormValues = {
+  // Removed formId
   firstName: "",
   lastName: "",
   measurementType: "Manual",
   subject: "Self",
   bodySections: [
     {
-      sectionName: "Head Section",
-      measurements: [
-        { bodyPartName: "", size: "" },
-      ],
-    },
-    {
-      sectionName: "Chest Section",
+      sectionName: "",
       measurements: [
         { bodyPartName: "", size: "" },
       ],
@@ -88,10 +83,12 @@ export default function SelfMeasurementForm() {
   const { profile } = useProfile();
   const [isCreating, setIsCreating] = useState(false);
   const [step, setStep] = useState(1);
-  const [formId] = useState(generateFormId());
+  // Removed formId state
   const [frontImage, setFrontImage] = useState<File | null>(null);
   const [sideImage, setSideImage] = useState<File | null>(null);
+  const [customSection, setCustomSection] = useState("");
   const saveMeasurementMutation = useSaveManualMeasurement();
+  const { data: sectionOptions = [], isLoading: isLoadingSections } = useSectionOptions();
 
   const AutoFillUserInfo = ({ values, setFieldValue }: { 
     values: SelfMeasurementFormValues; 
@@ -111,6 +108,7 @@ export default function SelfMeasurementForm() {
     setIsCreating(true);
     try {
       const payload = {
+        // Do NOT include formId in the payload - server will generate it
         measurementType: values.measurementType,
         subject: values.subject,
         firstName: values.firstName,
@@ -143,6 +141,16 @@ export default function SelfMeasurementForm() {
       });
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const addCustomSection = (push: (section: BodySection) => void) => {
+    if (customSection.trim()) {
+      push({
+        sectionName: customSection.trim(),
+        measurements: [{ bodyPartName: "", size: "" }]
+      });
+      setCustomSection("");
     }
   };
 
@@ -201,15 +209,15 @@ export default function SelfMeasurementForm() {
 
       {/* Responsive Modal/Container */}
       <div className="modal-container">
-        <div className="bg-white rounded-none md:rounded-[20px] md:shadow-2xl w-full max-w-4xl max-h-screen md:max-h-[90vh] overflow-hidden">
+        <div className="bg-white pt-8 px-4 rounded-none md:rounded-[20px] md:shadow-2xl w-full max-w-4xl md:ml-[350px] max-h-screen md:max-h-[90vh] overflow-hidden">
           <Formik
             initialValues={initialValues}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
             enableReinitialize
           >
-            {({ values, errors, touched, setFieldValue }) => (
-              <form onSubmit={(e) => { e.preventDefault(); handleSubmit(values); }} className="flex flex-col h-screen md:h-full md:max-h-[90vh]">
+            {({ values, errors, touched, setFieldValue, handleSubmit: formikHandleSubmit }) => (
+              <form onSubmit={formikHandleSubmit} className="flex flex-col h-screen md:h-full md:max-h-[90vh]">
                 <AutoFillUserInfo values={values} setFieldValue={setFieldValue} />
 
                 {/* Modal Header */}
@@ -243,12 +251,7 @@ export default function SelfMeasurementForm() {
                   {/* Step 1: Initial Setup */}
                   {step === 1 && (
                     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
-                      {/* Form ID Display - Hidden on mobile */}
-                      <div className="hidden md:flex justify-end">
-                        <div className="manrope text-sm text-gray-500">
-                          Form ID: <span className="font-medium text-gray-700">{formId}</span>
-                        </div>
-                      </div>
+                      {/* Form ID section removed - server will generate it */}
 
                       {/* Measurement Type and Subject */}
                       <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-4">
@@ -392,7 +395,7 @@ export default function SelfMeasurementForm() {
                     </div>
                   )}
 
-                  {/* Step 2: Measurements */}
+                  {/* Step 2: Measurements with Dropdown Sections */}
                   {step === 2 && (
                     <div className="p-4 md:p-6 space-y-6 md:space-y-8">
                       <FieldArray name="bodySections">
@@ -400,19 +403,44 @@ export default function SelfMeasurementForm() {
                           <>
                             {values.bodySections.map((section, sectionIndex) => (
                               <div key={sectionIndex} className="space-y-4 p-3 md:p-4 border border-gray-200 rounded-lg">
-                                {/* Section Header */}
-                                <div className="flex items-center justify-between">
-                                  <h3 className="manrope text-sm font-semibold text-gray-700 tracking-wide">
-                                    {section.sectionName}
-                                  </h3>
-                                  {sectionIndex > 1 && (
-                                    <button
-                                      type="button"
-                                      onClick={() => removeSection(sectionIndex)}
-                                      className="text-red-500 hover:text-red-700 text-sm"
+                                {/* Section Header with Dropdown */}
+                                <div className="space-y-3">
+                                  <label className="manrope block text-sm font-medium text-gray-700">
+                                    Section Name
+                                  </label>
+                                  <div className="flex gap-2">
+                                    <Field
+                                      as="select"
+                                      name={`bodySections.${sectionIndex}.sectionName`}
+                                      className="manrope w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                                      disabled={isLoadingSections}
                                     >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
+                                      <option value="">Select a section</option>
+                                      {sectionOptions.map((option: string, idx: number) => (
+                                        <option key={idx} value={option}>
+                                          {option}
+                                        </option>
+                                      ))}
+                                    </Field>
+                                    {values.bodySections.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => removeSection(sectionIndex)}
+                                        className="p-2 text-red-500 hover:text-red-700 flex-shrink-0"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                  {errors.bodySections?.[sectionIndex] && 
+                                   typeof errors.bodySections[sectionIndex] === 'object' && 
+                                   'sectionName' in (errors.bodySections[sectionIndex] as any) &&
+                                   touched.bodySections?.[sectionIndex] && 
+                                   typeof touched.bodySections[sectionIndex] === 'object' && 
+                                   'sectionName' in (touched.bodySections[sectionIndex] as any) && (
+                                    <p className="manrope text-red-500 text-xs mt-1">
+                                      {(errors.bodySections[sectionIndex] as any).sectionName}
+                                    </p>
                                   )}
                                 </div>
 
@@ -438,12 +466,30 @@ export default function SelfMeasurementForm() {
                                                 <button
                                                   type="button"
                                                   onClick={() => removeMeasurement(measurementIndex)}
-                                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 hover:text-red-700"
+                                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 hover:text-red-700 p-1"
                                                 >
                                                   <Trash2 className="w-4 h-4" />
                                                 </button>
                                               )}
                                             </div>
+                                            {errors.bodySections?.[sectionIndex] && 
+                                             typeof errors.bodySections[sectionIndex] === 'object' && 
+                                             'measurements' in (errors.bodySections[sectionIndex] as any) &&
+                                             Array.isArray((errors.bodySections[sectionIndex] as any).measurements) &&
+                                             (errors.bodySections[sectionIndex] as any).measurements[measurementIndex] &&
+                                             typeof (errors.bodySections[sectionIndex] as any).measurements[measurementIndex] === 'object' &&
+                                             'bodyPartName' in (errors.bodySections[sectionIndex] as any).measurements[measurementIndex] &&
+                                             touched.bodySections?.[sectionIndex] && 
+                                             typeof touched.bodySections[sectionIndex] === 'object' && 
+                                             'measurements' in (touched.bodySections[sectionIndex] as any) &&
+                                             Array.isArray((touched.bodySections[sectionIndex] as any).measurements) &&
+                                             (touched.bodySections[sectionIndex] as any).measurements[measurementIndex] &&
+                                             typeof (touched.bodySections[sectionIndex] as any).measurements[measurementIndex] === 'object' &&
+                                             'bodyPartName' in (touched.bodySections[sectionIndex] as any).measurements[measurementIndex] && (
+                                              <p className="manrope text-red-500 text-xs mt-1">
+                                                {((errors.bodySections[sectionIndex] as any).measurements[measurementIndex] as any).bodyPartName}
+                                              </p>
+                                            )}
                                           </div>
 
                                           {/* Size */}
@@ -457,6 +503,24 @@ export default function SelfMeasurementForm() {
                                               placeholder="e.g., 45"
                                               className="manrope w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
                                             />
+                                            {errors.bodySections?.[sectionIndex] && 
+                                             typeof errors.bodySections[sectionIndex] === 'object' && 
+                                             'measurements' in (errors.bodySections[sectionIndex] as any) &&
+                                             Array.isArray((errors.bodySections[sectionIndex] as any).measurements) &&
+                                             (errors.bodySections[sectionIndex] as any).measurements[measurementIndex] &&
+                                             typeof (errors.bodySections[sectionIndex] as any).measurements[measurementIndex] === 'object' &&
+                                             'size' in (errors.bodySections[sectionIndex] as any).measurements[measurementIndex] &&
+                                             touched.bodySections?.[sectionIndex] && 
+                                             typeof touched.bodySections[sectionIndex] === 'object' && 
+                                             'measurements' in (touched.bodySections[sectionIndex] as any) &&
+                                             Array.isArray((touched.bodySections[sectionIndex] as any).measurements) &&
+                                             (touched.bodySections[sectionIndex] as any).measurements[measurementIndex] &&
+                                             typeof (touched.bodySections[sectionIndex] as any).measurements[measurementIndex] === 'object' &&
+                                             'size' in (touched.bodySections[sectionIndex] as any).measurements[measurementIndex] && (
+                                              <p className="manrope text-red-500 text-xs mt-1">
+                                                {((errors.bodySections[sectionIndex] as any).measurements[measurementIndex] as any).size}
+                                              </p>
+                                            )}
                                           </div>
                                         </div>
                                       ))}
@@ -476,20 +540,47 @@ export default function SelfMeasurementForm() {
                               </div>
                             ))}
 
-                            {/* Add New Section Button */}
-                            <button
-                              type="button"
-                              onClick={() =>
-                                pushSection({
-                                  sectionName: `Section ${values.bodySections.length + 1}`,
-                                  measurements: [{ bodyPartName: "", size: "" }],
-                                })
-                              }
-                              className="manrope w-full md:w-auto text-[#5D2A8B] text-sm font-medium flex items-center justify-center gap-1 hover:text-purple-700 border border-[#5D2A8B] rounded-lg px-4 py-2"
-                            >
-                              <Plus className="w-4 h-4" />
-                              Add New Section
-                            </button>
+                            {/* Add Custom Section */}
+                            <div className="space-y-4">
+                              <div className="space-y-3">
+                                <label className="manrope block text-sm font-medium text-gray-700">
+                                  Add Custom Section
+                                </label>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={customSection}
+                                    onChange={(e) => setCustomSection(e.target.value)}
+                                    placeholder="Enter custom section name"
+                                    className="manrope flex-grow px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => addCustomSection(pushSection)}
+                                    className="manrope flex items-center gap-2 bg-[#5D2A8B] text-white px-4 py-2.5 rounded-lg hover:bg-purple-700 transition-colors text-sm flex-shrink-0"
+                                    disabled={!customSection.trim()}
+                                  >
+                                    <Plus className="w-4 h-4" />
+                                    Add
+                                  </button>
+                                </div>
+                              </div>
+                              
+                              {/* Add New Section Button */}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  pushSection({
+                                    sectionName: "",
+                                    measurements: [{ bodyPartName: "", size: "" }],
+                                  })
+                                }
+                                className="manrope w-full md:w-auto text-[#5D2A8B] text-sm font-medium flex items-center justify-center gap-1 hover:text-purple-700 border border-[#5D2A8B] rounded-lg px-4 py-2"
+                              >
+                                <Plus className="w-4 h-4" />
+                                Add New Section
+                              </button>
+                            </div>
                           </>
                         )}
                       </FieldArray>

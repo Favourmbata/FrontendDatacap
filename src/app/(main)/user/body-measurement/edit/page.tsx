@@ -3,8 +3,15 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MeasurementTopNav } from '@/app/components/MeasurementTopNav';
-import { useManualMeasurement, useUpdateManualMeasurement } from '@/api/hooks/useManualMeasurement';
+import { useManualMeasurement, useUpdateManualMeasurement, MeasurementSection, MeasurementData } from '@/api/hooks/useManualMeasurement';
 import { ArrowLeft, Save } from 'lucide-react';
+
+interface MeasurementDataSummary {
+  chest: string;
+  waist: string;
+  hips: string;
+  legs: string;
+}
 
 // Separate component for the main content that uses useSearchParams
 const EditMeasurementContent = () => {
@@ -23,6 +30,52 @@ const EditMeasurementContent = () => {
   });
   
   const [sections, setSections] = useState<any[]>([]);
+
+  const getSummaryMeasurements = () => {
+    if (!measurement) {
+      return [
+        { label: 'Chest', value: '--' },
+        { label: 'Waist', value: '--' },
+        { label: 'Hips', value: '--' },
+        { label: 'Legs', value: '--' }
+      ];
+    }
+
+    const summary: any[] = [];
+
+    measurement.sections?.forEach((section: MeasurementSection) => {
+      section.measurements?.forEach((m: MeasurementData) => {
+        const partName = m.bodyPartName?.toLowerCase() || section.sectionName?.toLowerCase() || 'Unknown';
+        const value = `${m.size} cm`;
+        
+        // Check for common body parts and add them to summary
+        if (partName?.includes('chest')) {
+          summary.push({ label: 'Chest', value });
+        } else if (partName?.includes('waist')) {
+          summary.push({ label: 'Waist', value });
+        } else if (partName?.includes('hip')) {
+          summary.push({ label: 'Hips', value });
+        } else if (partName?.includes('leg') || partName?.includes('thigh')) {
+          summary.push({ label: 'Legs', value });
+        } else {
+          // For other body parts, use the actual name
+          const displayName = m.bodyPartName || section.sectionName || 'Measurement';
+          summary.push({ label: displayName, value });
+        }
+      });
+    });
+
+    // Ensure we always have at least 4 measurements by filling with defaults if needed
+    const requiredMeasurements = ['Chest', 'Waist', 'Hips', 'Legs'];
+    requiredMeasurements.forEach(required => {
+      if (!summary.some(item => item.label === required)) {
+        summary.push({ label: required, value: '--' });
+      }
+    });
+
+    // Limit to 4 items for display
+    return summary.slice(0, 4);
+  };
 
   // Load measurement data when it's available
   useEffect(() => {
@@ -72,7 +125,10 @@ const EditMeasurementContent = () => {
   if (error || !measurement) {
     return (
       <div className="min-h-screen bg-white p-4">
-        <MeasurementTopNav />
+        <MeasurementTopNav 
+          title="Current body measurement"
+          measurements={getSummaryMeasurements()}
+        />
         <div className="max-w-4xl mx-auto mt-8">
           <div className="bg-white rounded-lg shadow-sm p-6 text-center">
             <p className="text-red-500">Failed to load measurement data</p>
@@ -95,7 +151,10 @@ const EditMeasurementContent = () => {
         .manrope { font-family: 'Manrope', sans-serif; }
       `}</style>
 
-      <MeasurementTopNav />
+      <MeasurementTopNav 
+        title="Current body measurement"
+        measurements={getSummaryMeasurements()}
+      />
 
       <div 
         className="absolute"
@@ -246,8 +305,7 @@ const EditMeasurementContent = () => {
   );
 };
 
-// Main component wrapped in Suspense
-const EditMeasurementPage = () => {
+export default function EditMeasurementPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -257,6 +315,4 @@ const EditMeasurementPage = () => {
       <EditMeasurementContent />
     </Suspense>
   );
-};
-
-export default EditMeasurementPage;
+}

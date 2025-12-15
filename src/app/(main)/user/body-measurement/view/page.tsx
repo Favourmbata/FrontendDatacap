@@ -13,6 +13,52 @@ function MeasurementDetailContent() {
   
   const { data: measurement, isLoading, error } = useManualMeasurement(id);
 
+  const getSummaryMeasurements = () => {
+    if (!measurement) {
+      return [
+        { label: 'Chest', value: '--' },
+        { label: 'Waist', value: '--' },
+        { label: 'Hips', value: '--' },
+        { label: 'Legs', value: '--' }
+      ];
+    }
+
+    const summary: any[] = [];
+
+    measurement.sections?.forEach((section: MeasurementSection) => {
+      section.measurements?.forEach((m: MeasurementData) => {
+        const partName = m.bodyPartName?.toLowerCase() || section.sectionName?.toLowerCase() || 'Unknown';
+        const value = `${m.size} cm`;
+        
+        // Check for common body parts and add them to summary
+        if (partName?.includes('chest')) {
+          summary.push({ label: 'Chest', value });
+        } else if (partName?.includes('waist')) {
+          summary.push({ label: 'Waist', value });
+        } else if (partName?.includes('hip')) {
+          summary.push({ label: 'Hips', value });
+        } else if (partName?.includes('leg') || partName?.includes('thigh')) {
+          summary.push({ label: 'Legs', value });
+        } else {
+          // For other body parts, use the actual name
+          const displayName = m.bodyPartName || section.sectionName || 'Measurement';
+          summary.push({ label: displayName, value });
+        }
+      });
+    });
+
+    // Ensure we always have at least 4 measurements by filling with defaults if needed
+    const requiredMeasurements = ['Chest', 'Waist', 'Hips', 'Legs'];
+    requiredMeasurements.forEach(required => {
+      if (!summary.some(item => item.label === required)) {
+        summary.push({ label: required, value: '--' });
+      }
+    });
+
+    // Limit to 4 items for display
+    return summary.slice(0, 4);
+  };
+
   return (
     <div className="min-h-screen bg-white p-0">
       <style jsx>{`
@@ -20,7 +66,10 @@ function MeasurementDetailContent() {
         .manrope { font-family: 'Manrope', sans-serif; }
       `}</style>
 
-      <MeasurementTopNav />
+      <MeasurementTopNav 
+        title="Current body measurement"
+        measurements={getSummaryMeasurements()}
+      />
 
       <div 
         className="absolute"

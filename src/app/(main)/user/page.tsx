@@ -5,12 +5,86 @@ import Image from 'next/image';
 import ActionModal from '@/app/components/ActionModal';
 import { MeasurementTopNav } from '@/app/components/MeasurementTopNav';
 import { useProfile } from '@/api/hooks/useProfile';
+import { useManualMeasurements } from '@/api/hooks/useManualMeasurement';
+import { useRouter } from 'next/navigation';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const Page = () => {
+  const router = useRouter();
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [dropdownOpen, setDropdownOpen] = useState<number | null>(null);
   const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
+  const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
   const { profile } = useProfile();
+  const { data: measurementsData, isLoading, error } = useManualMeasurements();
+
+  const handleCreateNew = (type: string) => {
+    switch(type) {
+      case 'body':
+        router.push('/user/body-measurement/create');
+        break;
+      case 'object':
+        router.push('/user/object-dimension/create');
+        break;
+      case 'questionnaire':
+        router.push('/user/questionaire/create');
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleCopyMeasurements = () => {
+    // TODO: Implement copy functionality
+    console.log('Copy measurements clicked');
+  };
+
+  const handleExport = (format: 'excel' | 'pdf') => {
+    // Use all measurements for export, not just filtered ones
+    const allMeasurements = measurements.map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      type: item.type,
+      measurements: item.measurements
+    }));
+
+    if (format === 'excel') {
+      // Export to Excel
+      const worksheet = XLSX.utils.json_to_sheet(allMeasurements.map((item: any) => ({
+        Name: item.name,
+        Type: item.type,
+        Measurements: item.measurements.join(', ')
+      })));
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Measurements');
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(data, 'measurements.xlsx');
+    } else {
+      // Export to PDF
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(18);
+      doc.text('Measurements Report', 14, 22);
+      
+      // Add table
+      (doc as any).autoTable({
+        head: [['Name', 'Type', 'Measurements']],
+        body: allMeasurements.map((item: any) => [
+          item.name,
+          item.type,
+          item.measurements.join(', ')
+        ]),
+        startY: 30,
+      });
+      
+      doc.save('measurements.pdf');
+    }
+  };
 
   const toggleRowSelection = (rowIndex: number) => {
     setSelectedRows(prev => 
@@ -20,12 +94,13 @@ const Page = () => {
     );
   };
 
-  const toggleDropdown = (rowIndex: number, event: React.MouseEvent) => {
+  const toggleDropdown = (rowIndex: number, measurementId: string, event: React.MouseEvent) => {
     const rect = (event.target as HTMLElement).getBoundingClientRect();
     setModalPosition({
       top: rect.bottom + 5,
       left: rect.left - 100 // Position modal to the left of the button
     });
+    setSelectedMeasurementId(measurementId);
     setDropdownOpen(dropdownOpen === rowIndex ? null : rowIndex);
   };
 
@@ -34,15 +109,22 @@ const Page = () => {
   };
 
   const handleViewMeasurement = () => {
-    console.log('View Measurement clicked');
+    if (selectedMeasurementId) {
+      router.push(`/user/body-measurement/view?id=${selectedMeasurementId}`);
+    }
   };
 
   const handleEditMeasurement = () => {
-    console.log('Edit Measurement clicked');
+    if (selectedMeasurementId) {
+      router.push(`/user/body-measurement/edit?id=${selectedMeasurementId}`);
+    }
   };
 
   const handleDelete = () => {
-    console.log('Delete clicked');
+    if (selectedMeasurementId) {
+      console.log('Delete clicked for ID:', selectedMeasurementId);
+      // TODO: Implement delete functionality
+    }
   };
 
   // Close dropdown when clicking outside
@@ -52,14 +134,107 @@ const Page = () => {
     }
   };
 
-  const measurements = [
-    { name: 'Emmanuel', type: 'Body', color: '#5D2A8B', measurements: [35, 35, 35, 35] },
-    { name: 'Tobi Wale', type: 'Body', color: '#5D2A8B', measurements: [21, 21, 21, 21] },
-    { name: 'Ada Uzo', type: 'Body', color: '#5D2A8B', measurements: [34, 34, 34, 34] },
-    { name: 'Dispatch', type: 'Object', color: '#F59E0B', measurements: [20, 20, 20, 20] },
-    { name: 'My Box', type: 'Object', color: '#F59E0B', measurements: [10, 10, 10, 10] },
-    { name: 'Favour Alo', type: 'Body', color: '#5D2A8B', measurements: [54, 54, 54, 54] }
-  ];
+  // Transform the fetched data to match the existing structure
+  const measurements = measurementsData?.map((item: any, index: number) => {
+    // Determine the type based on measurementType
+    let type = item.measurementType || 'Manual'; // Default to Manual
+    let color = '#5D2A8B'; // Default purple for Manual
+    
+    // Set color based on type
+    if (type === 'Object') {
+      color = '#F59E0B'; // Yellow for Object
+    } else if (type === 'Questionnaire') {
+      color = '#EF4444'; // Red for Questionnaire
+    } else if (type === 'AI') {
+      color = '#3B82F6'; // Blue for AI
+    }
+    
+    return {
+      id: item.id,
+      name: `${item.firstName} ${item.lastName}`,
+      type: type,
+      color: color,
+      measurements: item.sections.flatMap((section: any) => 
+        section.measurements.map((m: any) => m.size)
+      ).slice(0, 4), // Take only first 4 measurements to match UI
+      sections: item.sections, // Keep the sections data for table headers
+      createdAt: item.createdAt
+    };
+  }) || [];
+
+  // Get unique section names for table headers
+  const getUniqueSectionNames = () => {
+    const sectionNames = new Set<string>();
+    
+    measurementsData?.forEach((item: any) => {
+      item.sections?.forEach((section: any) => {
+        sectionNames.add(section.sectionName);
+      });
+    });
+    
+    return Array.from(sectionNames);
+  };
+
+  // Get measurements for a specific section (only sizes)
+  const getMeasurementsForSection = (item: any, sectionName: string) => {
+    const section = item.sections?.find((s: any) => s.sectionName === sectionName);
+    if (section && section.measurements && section.measurements.length > 0) {
+      // Return only the sizes, not the body part names
+      return section.measurements.map((m: any) => `${m.size}`).join(', ');
+    }
+    return '--';
+  };
+
+  // Get the latest measurement for the top nav
+  const latestMeasurement = measurementsData && measurementsData.length > 0 ? measurementsData[0] : null;
+
+  // Extract measurements for the MeasurementTopNav component
+  const getSummaryMeasurements = () => {
+    if (!latestMeasurement) {
+      return [
+        { label: 'Chest', value: '--' },
+        { label: 'Waist', value: '--' },
+        { label: 'Hips', value: '--' },
+        { label: 'Legs', value: '--' }
+      ];
+    }
+
+    const summary: any[] = [];
+
+    // Process all sections and their measurements
+    latestMeasurement.sections?.forEach((section: any) => {
+      section.measurements?.forEach((m: any) => {
+        const partName = m.bodyPartName?.toLowerCase() || section.sectionName?.toLowerCase() || 'Unknown';
+        const value = `${m.size} cm`;
+        
+        // Check for common body parts and add them to summary
+        if (partName?.includes('chest')) {
+          summary.push({ label: 'Chest', value });
+        } else if (partName?.includes('waist')) {
+          summary.push({ label: 'Waist', value });
+        } else if (partName?.includes('hip')) {
+          summary.push({ label: 'Hips', value });
+        } else if (partName?.includes('leg') || partName?.includes('thigh')) {
+          summary.push({ label: 'Legs', value });
+        } else {
+          // For other body parts, use the actual name
+          const displayName = m.bodyPartName || section.sectionName || 'Measurement';
+          summary.push({ label: displayName, value });
+        }
+      });
+    });
+
+    // Ensure we always have at least 4 measurements by filling with defaults if needed
+    const requiredMeasurements = ['Chest', 'Waist', 'Hips', 'Legs'];
+    requiredMeasurements.forEach(required => {
+      if (!summary.some(item => item.label === required)) {
+        summary.push({ label: required, value: '--' });
+      }
+    });
+
+    // Limit to 4 items for display
+    return summary.slice(0, 4);
+  };
 
   return (
     <div className="min-h-screen bg-white" onClick={handleOutsideClick}>
@@ -114,7 +289,10 @@ const Page = () => {
               <span className="manrope text-sm font-medium text-[#1A1A1A]">--</span>
             </div>
           </div>
-          <button className="flex items-center gap-1 text-[#5D2A8B]">
+          <button 
+            className="flex items-center gap-1 text-[#5D2A8B]"
+            onClick={handleCopyMeasurements}
+          >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M13.3333 8.66667V13.3333C13.3333 13.6869 13.1929 14.0261 12.9428 14.2761C12.6928 14.5262 12.3536 14.6667 12 14.6667H2.66667C2.31304 14.6667 1.97391 14.5262 1.72386 14.2761C1.47381 14.0261 1.33333 13.6869 1.33333 13.3333V4C1.33333 3.64638 1.47381 3.30724 1.72386 3.05719C1.97391 2.80714 2.31304 2.66667 2.66667 2.66667H7.33333" stroke="#5D2A8B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M11.3333 1.33333H14.6666V4.66667" stroke="#5D2A8B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -126,8 +304,11 @@ const Page = () => {
       </div>
 
       {/* Top Navigation - Desktop Only */}
-      <div className="hidden md:block">
-        <MeasurementTopNav />
+      <div className="hidden md:block mb-6">
+        <MeasurementTopNav 
+          title="Current body measurement"
+          measurements={getSummaryMeasurements()}
+        />
       </div>
 
       {/* Overview Section - Responsive */}
@@ -143,7 +324,7 @@ const Page = () => {
                 Total Body Measurement
               </span>
               <span className="manrope text-2xl font-medium leading-tight text-[#1A1A1A]">
-                08
+                {measurements.filter((m: any) => m.type === 'Manual' || m.type === 'AI').length}
               </span>
             </div>
 
@@ -159,7 +340,11 @@ const Page = () => {
             </div>
 
             {/* Create New Button */}
-            <button className="manrope absolute bottom-4 right-4 px-3 py-1.5 rounded-[20px] text-xs" style={{ background: '#FFFFFF80', color: '#5D2A8B' }}>
+            <button 
+              className="manrope absolute bottom-4 right-4 px-3 py-1.5 rounded-[20px] text-xs" 
+              style={{ background: '#FFFFFF80', color: '#5D2A8B' }}
+              onClick={() => handleCreateNew('body')}
+            >
               Create New
             </button>
           </div>
@@ -171,7 +356,7 @@ const Page = () => {
                 Total Object Measurement
               </span>
               <span className="manrope text-2xl font-medium leading-tight text-[#1A1A1A]">
-                --
+                {measurements.filter((m: any) => m.type === 'Object').length}
               </span>
             </div>
 
@@ -187,7 +372,11 @@ const Page = () => {
             </div>
 
             {/* Create New Button */}
-            <button className="manrope absolute bottom-4 right-4 px-3 py-1.5 rounded-[20px] text-xs" style={{ background: '#FFFFFF80', color: '#5D2A8B' }}>
+            <button 
+              className="manrope absolute bottom-4 right-4 px-3 py-1.5 rounded-[20px] text-xs" 
+              style={{ background: '#FFFFFF80', color: '#5D2A8B' }}
+              onClick={() => handleCreateNew('object')}
+            >
               Create New
             </button>
           </div>
@@ -199,7 +388,7 @@ const Page = () => {
                 Total Questionnaire
               </span>
               <span className="manrope text-2xl font-medium leading-tight text-[#1A1A1A]">
-                08
+                {measurements.filter((m: any) => m.type === 'Questionnaire').length}
               </span>
             </div>
 
@@ -215,7 +404,11 @@ const Page = () => {
             </div>
 
             {/* Create New Button */}
-            <button className="manrope absolute bottom-4 right-4 px-3 py-1.5 rounded-[20px] text-xs" style={{ background: '#FFFFFF80', color: '#5D2A8B' }}>
+            <button 
+              className="manrope absolute bottom-4 right-4 px-3 py-1.5 rounded-[20px] text-xs" 
+              style={{ background: '#FFFFFF80', color: '#5D2A8B' }}
+              onClick={() => handleCreateNew('questionnaire')}
+            >
               Create New
             </button>
           </div>
@@ -223,7 +416,7 @@ const Page = () => {
       </div>
 
       {/* Total Summary Section - Responsive */}
-      <div className="mx-4 mt-6 mb-20 md:mb-6 bg-white shadow-sm rounded-[20px] p-4 md:p-6 md:absolute md:w-[958px] md:top-[596px] md:left-[401px] md:mx-0">
+      <div className="mx-4  mb-20 md:mb-6 bg-white shadow-sm rounded-[20px] p-4 md:p-6 md:absolute md:w-[958px] md:top-[596px] md:left-[401px] md:mx-0">
         {/* Total Summary and Export Container */}
         <div className="flex items-center justify-between mb-4 md:mb-6">
           {/* Total Summary Text */}
@@ -231,174 +424,122 @@ const Page = () => {
             Total Summary
           </h2>
 
-          {/* Export Button */}
-          <button className="manrope flex items-center justify-center gap-2 h-10 px-4 rounded-full border border-[#E4D8F3] bg-white">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M17.5 12.5V15.8333C17.5 16.2754 17.3244 16.6993 17.0118 17.0118C16.6993 17.3244 16.2754 17.5 15.8333 17.5H4.16667C3.72464 17.5 3.30072 17.3244 2.98816 17.0118C2.67559 16.6993 2.5 16.2754 2.5 15.8333V12.5" stroke="#6E6E6EB2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M5.83333 8.33333L10 12.5L14.1667 8.33333" stroke="#6E6E6EB2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M10 12.5V2.5" stroke="#6E6E6EB2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span className="manrope text-sm md:text-base font-medium text-[#6E6E6EB2]">
-              Export
-            </span>
-          </button>
+          {/* Export Options */}
+          <div className="relative">
+            <div className="flex gap-2">
+              <button 
+                className="manrope flex items-center justify-center gap-2 h-10 px-4 rounded-full border border-[#E4D8F3] bg-white"
+                onClick={() => handleExport('excel')}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M17.5 12.5V15.8333C17.5 16.2754 17.3244 16.6993 17.0118 17.0118C16.6993 17.3244 16.2754 17.5 15.8333 17.5H4.16667C3.72464 17.5 3.30072 17.3244 2.98816 17.0118C2.67559 16.6993 2.5 16.2754 2.5 15.8333V12.5" stroke="#6E6E6EB2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M5.83333 8.33333L10 12.5L14.1667 8.33333" stroke="#6E6E6EB2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M10 12.5V2.5" stroke="#6E6E6EB2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span className="manrope text-sm md:text-base font-medium text-[#6E6E6EB2]">
+                  Excel
+                </span>
+              </button>
+              {/* <button 
+                className="manrope flex items-center justify-center gap-2 h-10 px-4 rounded-full border border-[#E4D8F3] bg-white"
+                onClick={() => handleExport('pdf')}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M17.5 12.5V15.8333C17.5 16.2754 17.3244 16.6993 17.0118 17.0118C16.6993 17.3244 16.2754 17.5 15.8333 17.5H4.16667C3.72464 17.5 3.30072 17.3244 2.98816 17.0118C2.67559 16.6993 2.5 16.2754 2.5 15.8333V12.5" stroke="#6E6E6EB2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M5.83333 8.33333L10 12.5L14.1667 8.33333" stroke="#6E6E6EB2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M10 12.5V2.5" stroke="#6E6E6EB2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span className="manrope text-sm md:text-base font-medium text-[#6E6E6EB2]">
+                  PDF
+                </span>
+              </button> */}
+            </div>
+          </div>
         </div>
 
         {/* Mobile Table Layout - Hidden on Desktop - With Scroll */}
-        <div className="md:hidden overflow-x-auto max-h-[400px] overflow-y-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[#E4D8F3]">
-                <th className="manrope text-left text-xs font-medium text-[#6E6E6EB2] py-3 px-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5"></div>
-                    Name
-                  </div>
-                </th>
-                <th className="manrope text-left text-xs font-medium text-[#6E6E6EB2] py-3 px-2">
-                  Measurement<br/>Type
-                </th>
-                <th className="manrope text-right text-xs font-medium text-[#6E6E6EB2] py-3 px-2">
-                  <div className="flex items-center justify-end gap-1">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="8" cy="8" r="7" stroke="#6E6E6E" strokeWidth="1"/>
-                      <circle cx="8" cy="5" r="0.5" fill="#6E6E6E"/>
-                      <circle cx="8" cy="8" r="0.5" fill="#6E6E6E"/>
-                      <circle cx="8" cy="11" r="0.5" fill="#6E6E6E"/>
-                    </svg>
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {measurements.map((row, index) => (
-                <tr 
-                  key={index}
-                  className="border-b border-[#E4D8F3]"
-                  style={{
-                    backgroundColor: selectedRows.includes(index) ? '#F4EFFA' : 'white'
-                  }}
-                >
-                  {/* Checkbox and Name */}
-                  <td className="py-3 px-2">
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="cursor-pointer w-5 h-5 rounded border flex items-center justify-center flex-shrink-0"
-                        style={{
-                          borderColor: '#6E6E6E33',
-                          background: selectedRows.includes(index) ? '#5D2A8B' : 'white'
-                        }}
-                        onClick={() => toggleRowSelection(index)}
-                      >
-                        {selectedRows.includes(index) && (
-                          <svg width="12" height="9" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M1 5L5 9L13 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        )}
-                      </div>
-                      <span className="manrope text-sm text-[#1A1A1A]">{row.name}</span>
-                    </div>
-                  </td>
-                  
-                  {/* Type */}
-                  <td className="py-3 px-2">
-                    <span className="manrope text-sm font-medium" style={{ color: row.color }}>
+        <div className="md:hidden">
+          <div className="space-y-4">
+            {measurements.map((row: any, index: number) => (
+              <div key={row.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="manrope font-semibold text-gray-900">
+                      {row.name}
+                    </h3>
+                    <p className="manrope text-sm text-gray-500 mt-1">
                       {row.type}
-                    </span>
-                  </td>
-                  
-                  {/* Measurement Value */}
-                  <td className="py-3 px-2 text-right">
-                    <span className="manrope text-sm text-[#1A1A1A]">{row.measurements[0]}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {getUniqueSectionNames().slice(0, 4).map((sectionName, secIndex) => (
+                    <div key={secIndex} className="flex justify-between items-center">
+                      <span className="manrope text-sm text-gray-500">{sectionName}:</span>
+                      <span className="manrope text-sm font-medium text-gray-900">
+                        {getMeasurementsForSection(row, sectionName)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleDropdown(index, row.id, e);
+                    }}
+                    className="manrope text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    ...
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Desktop Table Layout - Hidden on Mobile */}
-        <div className="hidden md:block overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto ">
           <table className="w-full">
             <thead>
-              <tr>
-                <th className="w-[60px] h-[54px] px-2.5 py-4 border-b border-[#E4D8F3]">
-                  {/* Checkbox header */}
-                </th>
-                <th className="manrope text-left w-[132px] h-[54px] px-2.5 py-4 border-b border-[#E4D8F3] font-medium text-sm text-[#6E6E6EB2]">
-                  Name
-                </th>
-                <th className="manrope text-left w-[131px] h-[54px] px-2.5 py-4 border-b border-[#E4D8F3] font-medium text-sm text-[#6E6E6EB2]">
-                  Measurement Type
-                </th>
-                <th className="manrope text-left w-[132px] h-[54px] px-2.5 py-4 border-b border-[#E4D8F3] font-medium text-sm text-[#6E6E6EB2]">
-                  Chest/ length (cm)
-                </th>
-                <th className="manrope text-left w-[132px] h-[54px] px-2.5 py-4 border-b border-[#E4D8F3] font-medium text-sm text-[#6E6E6EB2]">
-                  Waist/ width (cm)
-                </th>
-                <th className="manrope text-left w-[131px] h-[54px] px-2.5 py-4 border-b border-[#E4D8F3] font-medium text-sm text-[#6E6E6EB2]">
-                  Hips/ Height (cm)
-                </th>
-                <th className="manrope text-left w-[131px] h-[54px] px-2.5 py-4 border-b border-[#E4D8F3] font-medium text-sm text-[#6E6E6EB2]">
-                  legs (cm)
-                </th>
-                <th className="w-[131px] h-[54px] px-2.5 py-4 border-b border-[#E4D8F3]">
-                  ...
-                </th>
+              <tr className="bg-gray-50">
+                <th className="manrope text-left px-6 py-4 text-sm font-medium text-gray-500">Name</th>
+                <th className="manrope text-left px-6 py-4 text-sm font-medium text-gray-500">Measurement Type</th>
+                {/* Dynamic section headers */}
+                {getUniqueSectionNames().slice(0, 4).map((sectionName, index) => (
+                  <th key={index} className="manrope text-left px-6 py-4 text-sm font-medium text-gray-500">
+                    {sectionName}
+                  </th>
+                ))}
+                <th className="manrope text-left px-6 py-4 text-sm font-medium text-gray-500">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {measurements.map((row, index) => (
-                <tr 
-                  key={index}
-                  style={{
-                    backgroundColor: selectedRows.includes(index) ? '#F4EFFA' : 'transparent'
-                  }}
-                >
-                  {/* Checkbox */}
-                  <td className="px-2.5 py-4 border-b border-[#E4D8F3] relative">
-                    <div 
-                      className="relative cursor-pointer w-[25px] h-[25px] ml-4 mt-2.5 rounded border flex items-center justify-center"
-                      style={{
-                        borderColor: '#6E6E6E33',
-                        background: selectedRows.includes(index) ? '#5D2A8B' : 'white'
-                      }}
-                      onClick={() => toggleRowSelection(index)}
-                    >
-                      {selectedRows.includes(index) && (
-                        <svg width="14" height="10" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M1 5L5 9L13 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      )}
+            <tbody className="divide-y divide-gray-200">
+              {measurements.map((row: any, index: number) => (
+                <tr key={row.id} className="hover:bg-gray-50">
+                  <td className="manrope px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">
+                      {row.name}
                     </div>
                   </td>
-                  
-                  {/* Name */}
-                  <td className="manrope px-2.5 py-4 border-b border-[#E4D8F3] text-sm text-[#1A1A1A]">
-                    {row.name}
-                  </td>
-                  
-                  {/* Type */}
-                  <td className="manrope px-2.5 py-4 border-b border-[#E4D8F3] text-sm" style={{ color: row.color }}>
+                  <td className="manrope px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {row.type}
                   </td>
-                  
-                  {/* Measurements */}
-                  {row.measurements.map((measurement, i) => (
-                    <td key={i} className="manrope px-2.5 py-4 border-b border-[#E4D8F3] text-sm text-[#1A1A1A]">
-                      {measurement}
+                  {/* Dynamic section measurements */}
+                  {getUniqueSectionNames().slice(0, 4).map((sectionName, secIndex) => (
+                    <td key={secIndex} className="manrope px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {getMeasurementsForSection(row, sectionName)}
                     </td>
                   ))}
-                  
-                  {/* Actions */}
-                  <td className="px-2.5 py-4 border-b border-[#E4D8F3] text-center">
+                  <td className="manrope px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
-                        toggleDropdown(index, e);
+                        toggleDropdown(index, row.id, e);
                       }}
-                      className="cursor-pointer"
+                      className="text-gray-500 hover:text-gray-700"
                     >
                       ...
                     </button>

@@ -4,9 +4,18 @@ import React, { useState } from 'react';
 import { useProfile } from '@/api/hooks/useProfile';
 import Image from 'next/image';
 import { MessageModal } from '@/app/components/MessageModal';
+import { ChevronLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { MeasurementTopNav } from '@/app/components/MeasurementTopNav';
 
 const ProfilePage = () => {
+  const router = useRouter();
   const { profile, loading, error } = useProfile();
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+  });
   const [modalState, setModalState] = useState({
     isOpen: false,
     title: '',
@@ -14,11 +23,32 @@ const ProfilePage = () => {
     type: 'info' as 'info' | 'success' | 'warning' | 'error'
   });
 
-  const handleEditProfile = () => {
+  // Initialize form data when profile loads
+  React.useEffect(() => {
+    if (profile) {
+      setFormData({
+        fullName: profile.firstName && profile.lastName 
+          ? `${profile.firstName} ${profile.lastName}`
+          : '',
+        email: profile.email || '',
+        phoneNumber: profile.phoneNumber || profile.phoneNumber || '',
+      });
+    }
+  }, [profile]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSaveProfile = () => {
     setModalState({
       isOpen: true,
       title: 'Feature Coming Soon',
-      message: 'Edit profile feature is currently under development. Please check back later.',
+      message: 'Save profile feature is currently under development. Please check back later.',
       type: 'info'
     });
   };
@@ -32,6 +62,12 @@ const ProfilePage = () => {
       <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
         .manrope { font-family: 'Manrope', sans-serif; }
+
+         @media (min-width: 768px) {
+          .desktop-topnav {
+            display: block;
+          }
+        }
       `}</style>
 
       {/* Message Modal */}
@@ -42,45 +78,73 @@ const ProfilePage = () => {
         message={modalState.message}
         type={modalState.type}
       />
+      
+      <div className="desktop-topnav">
+        <MeasurementTopNav />
+      </div>
 
-      {/* Profile Content */}
+      {/* Main Profile Container */}
       <div 
-        className="absolute"
+        className="absolute bg-white"
         style={{
           width: '958px',
-          top: '120px',
-          left: '401px'
+          height: '1005px',
+          top: '227px',
+          left: '401px',
+          background:"#FFFFFF",
+          borderRadius: '20px',
+          opacity: 1
         }}
       >
-        <h2 className="manrope text-2xl font-semibold text-gray-800 mb-8">My Profile</h2>
-
-        {/* Profile Card */}
-        <div 
-          className="bg-white shadow-sm"
+        {/* View Profile Header */}
+        <button 
+          onClick={() => router.back()}
+          className="absolute flex items-center manrope text-gray-700 hover:text-gray-900"
           style={{
-            borderRadius: '20px',
-            padding: '40px',
-            border: '1px solid #E4D8F3'
+            width: '161px',
+            height: '30px',
+            top: '52px',
+            left: '25px',
+            gap: '14px',
+            opacity: 1
           }}
         >
-          {loading ? (
-            <div className="text-center py-8">
-              <p className="manrope text-gray-500">Loading profile...</p>
-            </div>
-          ) : error ? (
-            <div className="text-center py-8">
-              <p className="manrope text-red-500">Failed to load profile</p>
-              <p className="manrope text-sm text-gray-500 mt-2">{error}</p>
-            </div>
-          ) : profile ? (
-            <div className="flex flex-col gap-8">
+          <ChevronLeft size={20} />
+          <span className="text-base font-medium">View Profile</span>
+        </button>
+
+        {loading ? (
+          <div className="text-center py-8">
+            <p className="manrope text-gray-500">Loading profile...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <p className="manrope text-red-500">Failed to load profile</p>
+            <p className="manrope text-sm text-gray-500 mt-2">{error}</p>
+          </div>
+        ) : (
+          /* Inner User Details Container */
+          <div 
+            className="absolute bg-white"
+            style={{
+              width: '811px',
+              height: '819px',
+              top: '135px',
+              left: '49px',
+              borderRadius: '20px',
+              opacity: 1,
+              boxShadow: '0px 2px 8px 0px #5D2A8B1A',
+              padding: '48px'
+            }}
+          >
+            <div className="space-y-6">
               {/* Avatar Section */}
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4">
                 <div 
                   className="relative overflow-hidden flex items-center justify-center"
                   style={{
-                    width: '100px',
-                    height: '100px',
+                    width: '60px',
+                    height: '60px',
                     borderRadius: '50%',
                     background: '#6D1E1E'
                   }}
@@ -88,76 +152,104 @@ const ProfilePage = () => {
                   <Image 
                     src="/Frame 1707479300.png" 
                     alt="User Avatar" 
-                    width={100} 
-                    height={100}
+                    width={60} 
+                    height={60}
                     className="object-cover"
                   />
                 </div>
-                <div>
-                  <h3 className="manrope text-xl font-semibold text-gray-800">
-                    {profile.firstName && profile.lastName 
-                      ? `${profile.firstName} ${profile.lastName}`
-                      : 'User'}
-                  </h3>
-                  <p className="manrope text-sm text-gray-500 mt-1">{profile.email}</p>
-                </div>
-              </div>
-
-              {/* Profile Information */}
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="manrope text-sm font-medium text-gray-600">Email</label>
-                  <p className="manrope text-base text-gray-800 mt-2">{profile.email}</p>
-                </div>
-                
-                <div>
-                  <label className="manrope text-sm font-medium text-gray-600">User ID</label>
-                  <p className="manrope text-base text-gray-800 mt-2 break-all">{profile.userId || profile.id || 'N/A'}</p>
-                </div>
-
-                {profile.role && (
-                  <div>
-                    <label className="manrope text-sm font-medium text-gray-600">Role</label>
-                    <p className="manrope text-base text-gray-800 mt-2 capitalize">{profile.role}</p>
-                  </div>
-                )}
-
-                {profile.createdAt && (
-                  <div>
-                    <label className="manrope text-sm font-medium text-gray-600">Member Since</label>
-                    <p className="manrope text-base text-gray-800 mt-2">
-                      {new Date(profile.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Edit Button */}
-              <div className="flex justify-end mt-4">
                 <button 
-                  className="manrope"
+                  className="manrope text-sm font-medium"
+                  style={{ color: '#6E6E6EB2' }}
+
+                >
+                  Upload new picture
+                </button>
+              </div>
+
+              {/* Form Fields */}
+              <div className="space-y-5">
+                {/* Full Name */}
+                <div>
+                  <label className="manrope block text-sm font-medium text-gray-700 mb-2">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    name="fullName"
+                    value={formData.fullName}
+                    onChange={handleInputChange}
+                    placeholder="Full Name"
+                    className="manrope w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+
+                {/* Email Address */}
+                <div>
+                  <label className="manrope block text-sm font-medium text-gray-700 mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="Email Address"
+                    className="manrope w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+
+                {/* Phone No */}
+                <div>
+                  <label className="manrope block text-sm font-medium text-gray-700 mb-2">
+                    Phone No.
+                  </label>
+                  <input
+                    type="tel"
+                    name="phoneNumber"
+                    value={formData.phoneNumber}
+                    onChange={handleInputChange}
+                    placeholder="Phone No."
+                    className="manrope w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Save Profile Button */}
+              <div className="flex justify-end pt-4">
+                <button 
+                  className="manrope text-white font-medium transition-colors hover:opacity-90"
+                  onClick={handleSaveProfile}
                   style={{
                     background: '#5D2A8B',
-                    color: 'white',
-                    padding: '12px 32px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    fontSize: '16px',
-                    fontWeight: 500,
-                    cursor: 'pointer'
+                    width: '109px',
+                    height: '38px',
+                    borderRadius: '20px',
+                    opacity: 1,
+                    paddingTop: '8px',
+                    paddingRight: '10px',
+                    paddingBottom: '8px',
+                    paddingLeft: '10px',
+                    fontSize: '14px'
                   }}
-                  onClick={handleEditProfile}
                 >
-                  Edit Profile
+                  edit Profile
                 </button>
               </div>
             </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="manrope text-gray-500">No profile data available</p>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
