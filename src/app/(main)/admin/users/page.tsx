@@ -180,13 +180,13 @@ const UsersManagementPage = () => {
         }
       `}</style>
 
-      {/* Main Container with proper spacing */}
+    
       <div className="ml-0 md:ml-[350px] p-4 md:p-8 bg-gray-50 min-h-screen transition-all duration-300">
          
 
        
 
-        {/* Action Bar */}
+     
         <div className=" p-6 mb-8 border border-gray-200">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1">
