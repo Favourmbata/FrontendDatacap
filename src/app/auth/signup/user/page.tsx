@@ -508,7 +508,7 @@ export default function SignupPage() {
           </div>
 
           {/* Email Input */}
-          <div className="mb-3">
+          <div className="mb-3  rounded-full">
             <label className="manrope text-sm font-medium text-[#374151] mb-2 block">
               Email Address
             </label>

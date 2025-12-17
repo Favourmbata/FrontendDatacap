@@ -1,5 +1,6 @@
 "use client";
 
+
 import { AdminSidebar } from "@/app/components/AdminSidebar";
 import { useState } from "react";
 
@@ -11,9 +12,9 @@ export default function RootLayout({
   const [showSidebar, setShowSidebar] = useState(false); // Start with sidebar closed on mobile
 
   return (
-    <div className="min-h-screen bg-[#F7F0FE] relative">
+    <div className="min-h-screen relative">
       
-      <AdminSidebar onShow={showSidebar} setShow={setShowSidebar} />
+      <AdminSidebar onShow={showSidebar} setShow={setShowSidebar}  />
       
       
       <div className="relative w-full pt-0 md:pt-0">

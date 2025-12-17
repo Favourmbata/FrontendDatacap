@@ -86,35 +86,30 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
       name: 'Dashboard', 
       route: '/admin', 
       icon: <Image src="/Dashboard Circle Streamline Core Remix - Free.png" alt="Dashboard" width={24} height={24} className="object-contain" />,
-      top: '169px'
     },
     { 
       id: 'body-measurement', 
       name: 'Body Measurement', 
       route: '/admin/body-measurement', 
       icon: <Image src="/Body Streamline Ionic Filled.png" alt="Body Measurement" width={24} height={24} className="object-contain" />,
-      top: '250px'
     },
     { 
       id: 'object-dimension', 
       name: 'Object Dimension', 
       route: '/admin/object-dimension', 
       icon: <Image src="/Object Scan Streamline Tabler Line.png" alt="Object Dimension" width={24} height={24} className="object-contain" />,
-      top: '331px'
     },
     { 
       id: 'questionaire', 
       name: 'Questionnaire', 
       route: '/admin/questionaire', 
       icon: <Image src="/List Dropdown Streamline Carbon.png" alt="Questionnaire" width={24} height={24} className="object-contain" />,
-      top: '412px'
     },
     { 
       id: 'users', 
       name: 'User Management', 
       route: '/admin/users', 
-      icon: <User className="w-6 h-6  text-[#dcdcdc]" />, // Using Lucide User icon
-      top: '493px'
+      icon: <User className="w-6 h-6 text-[#dcdcdc]" />,
     },
   ];
 
@@ -143,6 +138,16 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
           .sidebar-nav-container {
             position: relative !important;
             padding: 0 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+          
+          .menu-item-container {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+            margin-top: 100px !important;
           }
           
           .sidebar-logout {
@@ -185,9 +190,9 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
         style={{
           width: '328px',
           height: '100vh',
-          top: '0', // Changed from '80px' to '0' to prevent overlap
-          left: '0', // Changed from '37px' to '0'
-          borderRadius: '0 20px 20px 0', // Only round right corners
+          top: '0',
+          left: '0',
+          borderRadius: '0 20px 20px 0',
           boxShadow: '0px 2px 8px 0px rgba(0, 0, 0, 0.1)',
           zIndex: 999
         }}
@@ -212,7 +217,6 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
               height={48}
               className="object-contain"
             />
-           
           </div>
           
           <button
@@ -230,46 +234,40 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
           </button>
         </div>
 
-        <nav className="sidebar-nav-container flex flex-col text-white" style={{ gap: '40px' }}>
-          <div className="cursor-pointer">
+        <nav className="sidebar-nav-container" style={{ marginTop: '120px' }}>
+          <div className="menu-item-container flex flex-col" style={{ gap: '12px' }}>
             {/* Admin Menu Items */}
             {adminMenuItems.map((item) => (
               <Link href={item.route} key={item.id}>
                 <div 
-                  className="manrope flex items-center rounded-lg cursor-pointer absolute"
+                  className={`manrope flex items-center rounded-lg cursor-pointer hover:bg-gray-50 transition-all duration-200 ${
+                    isActive(item.route) ? 'bg-[#5D2A8B]' : ''
+                  }`}
                   style={{
-                    ...getActiveStyles(item.route),
-                    top: item.top,
-                    left: '15px',
-                    ...(isActive(item.route) ? {} : {
-                      width: '275px',
-                      height: '71px'
-                    })
+                    width: '275px',
+                    height: '71px',
+                    padding: '0 23px',
+                    marginLeft: '15px'
                   }}
                 >
                   <div 
-                    className="flex items-center"
+                    className="flex items-center w-full"
                     style={{
-                      width: '200px',
-                      height: '27px',
-                      position: 'absolute',
-                      top: '22px',
-                      left: '23px',
                       gap: '12px'
                     }}
                   >
-                    <div className="w-6 h-6 flex items-center justify-center">
+                    <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
                       {item.icon}
                     </div>
                     <span 
-                      className="manrope"
+                      className="manrope whitespace-nowrap overflow-hidden text-ellipsis"
                       style={{
                         fontWeight: 500,
                         fontSize: '20px',
                         lineHeight: '100%',
                         color: getTextColor(item.route),
-                        width: 'auto',
-                        height: '27px'
+                        flex: 1,
+                        minWidth: 0 // This ensures text truncation works
                       }}
                     >
                       {item.name}
@@ -282,13 +280,11 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
 
           {/* Logout Module */}
           <div 
-            className="sidebar-logout absolute"
+            className="sidebar-logout"
             style={{
-              width: '105.39px',
-              height: '27px',
-              top: '574px', // Adjusted position
+              position: 'absolute',
+              bottom: '40px',
               left: '38px',
-              gap: '12px',
               display: 'flex',
               alignItems: 'center'
             }}
@@ -303,12 +299,10 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
               }}
               onClick={handleLogoutClick}
             >
-              <LogOut className="w-6 h-6 text-[#FF6161]" /> {/* Using Lucide LogOut icon */}
+              <LogOut className="w-6 h-6 text-[#FF6161]" />
               <span 
                 className="manrope"
                 style={{
-                  width: '67px',
-                  height: '27px',
                   fontWeight: 500,
                   fontSize: '20px',
                   lineHeight: '100%',
