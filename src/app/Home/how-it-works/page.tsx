@@ -1,3 +1,5 @@
+
+
 // "use client";
 
 // import React from "react";
@@ -6,15 +8,16 @@
 // const Page = () => {
 //   return (
 //     <section className="py-20 bg-white" style={{ marginBottom: "200px" }}>
-//       <div 
-//         className="mx-auto px-4 md:px-20"
+//       {/* Desktop Version */}
+//       <div
+//         className="mx-auto px-4 md:px-20 hidden md:block"
 //         style={{
 //           maxWidth: "1440px",
 //           width: "100%",
 //         }}
 //       >
 //         {/* Header */}
-//         <div 
+//         <div
 //           className="text-center mb-16"
 //           style={{
 //             width: "439px",
@@ -55,7 +58,7 @@
 //         </div>
 
 //         {/* Cards Container */}
-//         <div 
+//         <div
 //           className="flex flex-col lg:flex-row items-end justify-center relative gap-5 lg:gap-[21px]"
 //           style={{
 //             maxWidth: "1281px",
@@ -67,7 +70,7 @@
 //           <div
 //             className="rounded-[20px] border-2 border-dashed border-[#E0D0F0] relative w-full lg:w-[413px]"
 //             style={{
-//               background: "#FFFFFF66", // #FFFFFF with 40% opacity
+//               background: "#f4effa", // background color for Step 1
 //               height: "492px",
 //             }}
 //           >
@@ -84,14 +87,13 @@
 //             {/* Step Badge */}
 //             <div className="px-10 pt-6">
 //               <span
-//                 className="inline-block px-3 py-1.5 rounded-[10px] text-sm text-white text-center"
+//                 className="inline-block px-3 py-1.5 rounded-[10px] text-sm text-[#6E6E6E] text-center"
 //                 style={{
 //                   fontFamily: "Manrope",
 //                   fontWeight: 400,
 //                   fontSize: "14px",
 //                   lineHeight: "100%",
-//                   letterSpacing: "0%",
-//                   background: "#6E6E6E",
+//                   background: "#FFFFFF",
 //                   width: "66px",
 //                   height: "31px",
 //                   display: "inline-flex",
@@ -115,29 +117,28 @@
 //             </div>
 
 //             {/* Content */}
-//             <div className="px-10 pb-10 mt-4">
+//             <div className="px-10 pb-10 mt-4 text-[#1A1A1A]">
 //               <h3
-//                 className="text-[#1A1A1A] mb-4"
+//                 className="mb-4"
 //                 style={{
 //                   fontFamily: "Manrope",
 //                   fontWeight: 600,
 //                   fontSize: "26px",
 //                   lineHeight: "100%",
-//                   letterSpacing: "0%",
 //                 }}
 //               >
-//                 Upload an image
+//                 Take an Image
 //               </h3>
 //               <p
-//                 className="text-[#6E6E6EB2]"
 //                 style={{
 //                   fontFamily: "Manrope",
 //                   fontWeight: 300,
 //                   fontSize: "16px",
 //                   lineHeight: "140%",
+//                   color:"#6E6E6EB2",
 //                 }}
 //               >
-//                 You upload any clear image of a person or object.
+//                 Open your camera to take a clear image of a person or object.
 //               </p>
 //             </div>
 //           </div>
@@ -159,8 +160,6 @@
 //                   fontSize: "14px",
 //                   lineHeight: "100%",
 //                   background: "#FFFFFF66",
-                
-
 //                 }}
 //               >
 //                 Step 2
@@ -168,7 +167,10 @@
 //             </div>
 
 //             {/* Image with overlay circles */}
-//             <div className="flex justify-center items-center mt-8 relative" style={{ height: "350px" }}>
+//             <div
+//               className="flex justify-center items-center mt-8 relative"
+//               style={{ height: "350px" }}
+//             >
 //               {/* Overlay circles */}
 //               <div className="absolute inset-0 flex items-center justify-center">
 //                 <Image
@@ -192,13 +194,12 @@
 //             {/* Content */}
 //             <div className="px-10 pb-10">
 //               <h3
-//                 className="text-white mb-4"
+//                 className="text-[#FFFFFF] mb-4"
 //                 style={{
 //                   fontFamily: "Manrope",
 //                   fontWeight: 600,
 //                   fontSize: "26px",
 //                   lineHeight: "100%",
-//                   letterSpacing: "0%",
 //                 }}
 //               >
 //                 AI analysis
@@ -209,7 +210,6 @@
 //                   fontWeight: 300,
 //                   fontSize: "20.31px",
 //                   lineHeight: "100%",
-//                   letterSpacing: "0%",
 //                   color: "rgba(255, 255, 255, 0.6)",
 //                   width: "330px",
 //                 }}
@@ -223,31 +223,25 @@
 //           <div
 //             className="rounded-[20px] border-2 border-dashed border-[#E0D0F0] relative w-full lg:w-[413px]"
 //             style={{
-//               background: "rgba(255, 255, 255, 0.7)", // #FFFFFF with 40% opacity
+//               background: "#f4effa", // background color for Step 3
 //               height: "492px",
 //             }}
 //           >
 //             {/* Decorative icon */}
 //             <div className="absolute top-6 right-6">
-//               <Image
-//                 src="/5 Dots.png"
-//                 alt="decor"
-//                 width={24}
-//                 height={24}
-//               />
+//               <Image src="/5 Dots.png" alt="decor" width={24} height={24} />
 //             </div>
 
 //             {/* Step Badge */}
 //             <div className="px-10 pt-6">
 //               <span
-//                 className="inline-block rounded-[10px] text-sm text-white text-center"
+//                 className="inline-block rounded-[10px] text-sm text-[#6E6E6E] text-center"
 //                 style={{
 //                   fontFamily: "Manrope",
 //                   fontWeight: 400,
 //                   fontSize: "14px",
 //                   lineHeight: "100%",
-//                   letterSpacing: "0%",
-//                   background: "#6E6E6E",
+//                   background: "#ffffff",
 //                   padding: "6px 12px",
 //                   display: "inline-flex",
 //                   alignItems: "center",
@@ -274,26 +268,25 @@
 //             </div>
 
 //             {/* Content */}
-//             <div className="px-10 pb-10 mt-4">
+//             <div className="px-10 pb-10 mt-4 text-[#1A1A1A]">
 //               <h3
-//                 className="text-[#1A1A1A] mb-4"
+//                 className="mb-4"
 //                 style={{
 //                   fontFamily: "Manrope",
 //                   fontWeight: 600,
 //                   fontSize: "26px",
 //                   lineHeight: "100%",
-//                   letterSpacing: "0%",
 //                 }}
 //               >
 //                 View Measurements Instantly
 //               </h3>
 //               <p
-//                 className="text-[#6E6E6EB2]"
 //                 style={{
 //                   fontFamily: "Manrope",
 //                   fontWeight: 300,
 //                   fontSize: "16px",
 //                   lineHeight: "140%",
+//                   color: "#6E6E6EB2",
 //                 }}
 //               >
 //                 Get exact height, width, and fit details
@@ -303,6 +296,8 @@
 //         </div>
 //       </div>
 
+//       {/* Mobile Version */}
+      
 //       {/* Animation */}
 //       <style jsx>{`
 //         @keyframes slide {
@@ -327,6 +322,7 @@
 
 // export default Page;
 
+
 "use client";
 
 import React from "react";
@@ -334,7 +330,7 @@ import Image from "next/image";
 
 const Page = () => {
   return (
-    <section className="py-20 bg-white" style={{ marginBottom: "200px" }}>
+    <section className="bg-white pt-5 md:pt-20 pb-10 md:pb-20 mb-[40px] md:mb-[200px]">
       {/* Desktop Version */}
       <div
         className="mx-auto px-4 md:px-20 hidden md:block"
@@ -624,7 +620,7 @@ const Page = () => {
       </div>
 
       {/* Mobile Version */}
-      <div className="md:hidden" style={{ width: "390px", margin: "0 auto" }}>
+      <div className="md:hidden" style={{ width: "100%", maxWidth: "390px", margin: "0 auto", paddingTop: "28px" }}>
         {/* Header */}
         <div
           style={{
@@ -660,19 +656,20 @@ const Page = () => {
 
         {/* Horizontal Scroll Container */}
         <div
+          className="scroll-container"
           style={{
-            width: "459px",
+            width: "390px",
             height: "639px",
-            position: "relative",
-            left: "13px",
             overflowX: "auto",
             overflowY: "hidden",
             display: "flex",
             gap: "20px",
-            paddingBottom: "20px",
+            padding: "0 13px 20px 13px",
+            scrollbarWidth: "none", // For Firefox
+            msOverflowStyle: "none", // For IE/Edge
           }}
         >
-          {/* Card 1 - Upload an image */}
+          {/* Card 1 - Take an Image */}
           <div
             className="rounded-[15px] border-2 border-dashed border-[#E0D0F0] relative flex-shrink-0"
             style={{
@@ -720,7 +717,7 @@ const Page = () => {
             </div>
 
             {/* Content */}
-            <div className="px-6 pb-6 mt-2 text-[#1A1A1A] " style={{width:"320px", height: "104px", top: "320px", gap:"18px"}}>
+            <div className="px-6 pb-6 mt-2 text-[#1A1A1A]" style={{width:"320px", height: "104px", gap:"18px"}}>
               <h3
                 className="mt-6"
                 style={{
@@ -746,20 +743,12 @@ const Page = () => {
             </div>
           </div>
 
-          {/* Card 2 - AI analysis */}
-          {/* <div
+          {/* Card 2 - AI analysis (Featured/Taller) */}
+          <div
             className="bg-[#5D2A8B] rounded-[15px] relative flex-shrink-0"
             style={{
               width: "364px",
               height: "550px",
-            }}
-          > */}
-             <div
-            className="rounded-[20px] border-2 border-dashed border-[#E0D0F0] relative"
-            style={{
-              background: "#f4effa",
-              width: "413px",
-              height: "492px",
             }}
           >
             {/* Step Badge */}
@@ -782,7 +771,7 @@ const Page = () => {
             {/* Image with overlay circles */}
             <div
               className="flex justify-center items-center mt-6 relative"
-              style={{ height: "300px" }}
+              style={{ height: "350px" }}
             >
               {/* Overlay circles */}
               <div className="absolute inset-0 flex items-center justify-center">
@@ -902,7 +891,7 @@ const Page = () => {
         </div>
       </div>
 
-      {/* Animation */}
+      {/* Animation and scrollbar styles */}
       <style jsx>{`
         @keyframes slide {
           0% {
@@ -918,6 +907,11 @@ const Page = () => {
 
         .animate-slide {
           animation: slide 4s ease-in-out infinite;
+        }
+
+        /* Hide scrollbar for Chrome/Safari */
+        .scroll-container::-webkit-scrollbar {
+          display: none;
         }
       `}</style>
     </section>

@@ -4,8 +4,15 @@ import React, { Dispatch, SetStateAction, ReactNode, useState } from 'react';
 import { 
   Menu,
   User,
+  Users,
+  Shield,
   LogOut,
-  Shield
+  Settings,
+  Home,
+  FileText,
+  CreditCard,
+  Medal,
+  Pen
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -35,7 +42,7 @@ const MenuBtn: React.FC<MenuBtnProps> = ({ icon, positioning = '', onClick, togg
   </button>
 );
 
-export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
+export const SuperAdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
   const pathname = usePathname();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   
@@ -44,8 +51,8 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
 
   // Helper function to check if a route is active
   const isActive = (route: string): boolean => {
-    if (route === '/admin' && pathname === '/admin') return true;
-    if (route !== '/admin' && pathname.startsWith(route)) return true;
+    if (route === '/super-admin' && pathname === '/super-admin') return true;
+    if (route !== '/super-admin' && pathname.startsWith(route)) return true;
     return false;
   };
 
@@ -64,11 +71,6 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
     return isActive(route) ? '#FFFFFF' : '#6E6E6EB2';
   };
 
-  // Helper function to get icon filter for active state
-  const getIconFilter = (route: string) => {
-    return isActive(route) ? 'brightness(0) invert(1)' : 'none';
-  };
-
   // Logout handler functions
   const handleLogoutClick = () => {
     setShowLogoutModal(true);
@@ -85,43 +87,39 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
     setShowLogoutModal(false);
   };
 
-  // Admin menu items with their positions
-  const adminMenuItems = [
+  // Super Admin menu items with their positions
+  const superAdminMenuItems = [
     { 
       id: 'dashboard', 
       name: 'Dashboard', 
-      route: '/admin', 
-      icon: <Image src="/Dashboard Circle Streamline Core Remix - Free.png" alt="Dashboard" width={24} height={24} className="object-contain" />,
-    },
-    { 
-      id: 'body-measurement', 
-      name: 'Body Measurement', 
-      route: '/admin/body-measurement', 
-      icon: <Image src="/Body Streamline Ionic Filled.png" alt="Body Measurement" width={24} height={24} className="object-contain" />,
-    },
-    { 
-      id: 'object-dimension', 
-      name: 'Object Dimension', 
-      route: '/admin/object-dimension', 
-      icon: <Image src="/Object Scan Streamline Tabler Line.png" alt="Object Dimension" width={24} height={24} className="object-contain" />,
-    },
-    { 
-      id: 'questionaire', 
-      name: 'Questionnaire', 
-      route: '/admin/questionaire', 
-      icon: <Image src="/List Dropdown Streamline Carbon.png" alt="Questionnaire" width={24} height={24} className="object-contain" />,
-    },
-    { 
-      id: 'users', 
-      name: 'User Management', 
-      route: '/admin/users', 
-      icon: <User className="w-6 h-6" />,
+      route: '/super-admin', 
+      icon: <Home className="w-6 h-6 text-[#dcdcdc]" />,
     },
     { 
       id: 'role-management', 
       name: 'Role Management', 
-      route: '/admin/role-management', 
-      icon: <Shield className="w-6 h-6" />,
+      route: '/super-admin/role-management', 
+      icon: <Shield className="w-6 h-6 text-[#dcdcdc]" />,
+    },
+    { 
+      id: 'user-management', 
+      name: 'User Management', 
+      route: '/super-admin/users', 
+      icon: <User className="w-6 h-6 text-[#dcdcdc]" />,
+    },
+    { 
+      id: 'organisation', 
+      name: 'Organisation', 
+      route: '/super-admin/organisation', 
+      icon: <Users className="w-6 h-6 text-[#dcdcdc]" />,
+    },
+  
+   
+    { 
+      id: 'payments', 
+      name: 'Payments', 
+      route: '/super-admin/payments', 
+      icon: <CreditCard className="w-6 h-6 text-[#dcdcdc]" />,
     },
   ];
 
@@ -248,8 +246,8 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
 
         <nav className="sidebar-nav-container" style={{ marginTop: '120px' }}>
           <div className="menu-item-container flex flex-col" style={{ gap: '12px' }}>
-            {/* Admin Menu Items */}
-            {adminMenuItems.map((item: { id: string; route: string; icon: React.ReactNode; name: string; }) => (
+            {/* Super Admin Menu Items */}
+            {superAdminMenuItems.map((item) => (
               <Link href={item.route} key={item.id}>
                 <div 
                   className={`manrope flex items-center rounded-lg cursor-pointer hover:bg-gray-50 transition-all duration-200 ${
@@ -268,7 +266,7 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
                       gap: '12px'
                     }}
                   >
-                    <div className="w-6 h-6 flex items-center justify-center flex-shrink-0" style={{ filter: getIconFilter(item.route) }}>
+                    <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
                       {item.icon}
                     </div>
                     <span 

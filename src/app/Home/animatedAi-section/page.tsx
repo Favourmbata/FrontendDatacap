@@ -374,14 +374,15 @@ const AnimatedAISection = () => {
               />
             </div>
             
-            {/* Features List - Mobile Only */}
-            <div className="lg:hidden w-full mobile-features-list">
-              <div className="flex items-center justify-center gap-3 bg-[#E4D8F380] rounded-lg px-4 py-3 mobile-feature-item">
-                <p className="font-manrope font-normal text-[#6E6E6EB2] text-sm">
-                  Image upload → AI analysis → Accurate measurements
-                </p>
-              </div>
-            </div>
+            
+           
+<div className="lg:hidden w-full mobile-features-list">
+  <div className="flex items-center justify-center gap-3 bg-[#E4D8F380] rounded-lg mobile-feature-item">
+    <p className="font-manrope font-normal text-[#6E6E6EB2] text-sm whitespace-nowrap">
+      Image upload → AI analysis → Accurate measurements
+    </p>
+  </div>
+</div>
           </div>
         </div>
       </section>
