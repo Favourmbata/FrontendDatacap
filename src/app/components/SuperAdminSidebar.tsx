@@ -113,8 +113,12 @@ export const SuperAdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) =
       route: '/super-admin/organisation', 
       icon: <Users className="w-6 h-6 text-[#dcdcdc]" />,
     },
-  
-   
+    { 
+      id: 'subscription', 
+      name: 'Subscription', 
+      route: '/super-admin/subscription', 
+      icon: <CreditCard className="w-6 h-6 text-[#dcdcdc]" />,
+    },
     { 
       id: 'payments', 
       name: 'Payments', 
