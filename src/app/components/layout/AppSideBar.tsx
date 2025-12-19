@@ -7,8 +7,10 @@ import {
   Medal,
   Pen,
   Settings,
+  Shield,
   User,
   Users,
+  FileText,
 } from "lucide-react";
 import Image from "next/image";
 import {
@@ -28,6 +30,7 @@ export type NavItem = {
   subItems?: NavItem[]; 
 };
 
+// Define navigation items for different user roles
 const userNavItems: NavItem[] = [
   {
     name: "Dashboard",
@@ -74,6 +77,32 @@ const adminNavItems: NavItem[] = [
   { name: "Payments", href: "/", icon: <CreditCard /> },
 ];
 
+const superAdminNavItems: NavItem[] = [
+  {
+    name: "Dashboard",
+    href: "/super-admin",
+    icon: <Home />,
+  },
+  {
+    name: "Role Management",
+    href: "/super-admin/role-management",
+    icon: <Shield />,
+  },
+  {
+    name: "User Management",
+    href: "/super-admin/users",
+    icon: <Users />,
+  },
+  {
+    name: "Organisation",
+    href: "/super-admin/organisation",
+    icon: <FileText />,
+  },
+  { name: "Assessment", href: "/super-admin/assessment", icon: <Pen /> },
+  { name: "Certificates", href: "/super-admin/certificates", icon: <Medal /> },
+  { name: "Payments", href: "/super-admin/payments", icon: <CreditCard /> },
+];
+
 // const superAdminNavItems: NavItem[] = [...adminNavItems];
 
 const navFooterItems: NavItem[] = [
@@ -86,6 +115,8 @@ const navFooterItems: NavItem[] = [
 ];
 
 const AppSidebar = () => {
+  // For now, we'll use adminNavItems as default
+  // In a real app, this would be determined by user role
   const navItems = adminNavItems;
   const { open } = useSidebar();
 

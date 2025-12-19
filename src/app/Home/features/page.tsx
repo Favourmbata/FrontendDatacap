@@ -26,7 +26,7 @@ const Features = () => {
   ];
 
   return (
-    <section className="py-20 bg-white flex flex-col items-center" style={{ marginBottom: "200px" }}>
+    <section className="py-20 bg-white flex flex-col items-center  mb-[200ppx]">
       {/* Desktop Header Section */}
       <div 
         className="text-center mb-12 hidden md:block"
@@ -97,7 +97,7 @@ const Features = () => {
             fontFamily: "Manrope",
             fontWeight: 400,
             fontSize: "14px",
-            lineHeight: "110%",
+            lineHeight: "130%",
             letterSpacing: "0%",
             textAlign: "center",
           }}
@@ -265,7 +265,7 @@ const Features = () => {
           margin: "0 auto",
           gap: "20px",
           backgroundColor: "#F4EFFA",
-          padding: "20px",
+          padding: "28px",
         }}
       >
         {features.map((feature, idx) => (
@@ -286,6 +286,7 @@ const Features = () => {
               style={{
                 width: "40px",
                 height: "40px",
+                marginTop:"20px"
               }}
             >
               <Image
@@ -298,9 +299,9 @@ const Features = () => {
             </div>
 
             {/* Text */}
-            <div style={{ flex: 1 }}>
+                <div style={{ flex: 1 }}>
               <h3 
-                className="text-[#1A1A1A] mb-3"
+                className="text-[#1A1A1A]"
                 style={{
                   fontFamily: "Manrope",
                   fontWeight: 600,
@@ -308,9 +309,18 @@ const Features = () => {
                   lineHeight: "120%",
                   letterSpacing: "0%",
                   margin: 0,
+                  whiteSpace: "normal",
+                  wordBreak: "break-word",
+                  overflowWrap: "break-word",
                 }}
               >
-                {feature.title}
+                {feature.title === "Cross-platform support" ? (
+                  <>
+                    Cross-platform<br />support
+                  </>
+                ) : (
+                  feature.title
+                )}
               </h3>
               <p 
                 className="text-[#6E6E6EB2]"
@@ -321,6 +331,7 @@ const Features = () => {
                   lineHeight: "140%",
                   letterSpacing: "0%",
                   margin: 0,
+                  marginTop: "14px",
                 }}
               >
                 {feature.description}
