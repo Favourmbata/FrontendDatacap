@@ -5,27 +5,16 @@ import { Plus, MoreVertical } from 'lucide-react';
 import { SuperAdminActionModal } from '@/app/components/SuperAdminActionModal';
 import DeleteConfirmationModal from '@/app/components/DeleteConfirmationModal';
 import { useRouter } from 'next/navigation';
-import SubscriptionService from '@/services/subscriptionService';
-
-interface SubscriptionPackageData {
-  id: string;
-  name: string;
-  description: string;
-  maxUsers: number;
-  promoCode: string;
-  startDate: string;
-  endDate: string;
-  services: number;
-  pricePerMonth: number;
-  pricePerQuarter: number;
-  pricePerYear: number;
-}
+import SubscriptionService, { SubscriptionPackage } from '@/services/subscriptionService';
 
 const SubscriptionPage = () => {
   const router = useRouter();
   const actionButtonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
-  
-  const [packages, setPackages] = useState<SubscriptionPackageData[]>([]);
+
+  const [packages, setPackages] = useState<SubscriptionPackage[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
     packageId: string | null;
@@ -48,15 +37,28 @@ const SubscriptionPage = () => {
 
   useEffect(() => {
     // Load packages from service
-    setPackages(SubscriptionService.getAllPackages());
+    loadPackages();
   }, []);
+
+  const loadPackages = async () => {
+    try {
+      setLoading(true);
+      const result = await SubscriptionService.getSubscriptionPackages();
+      setPackages(result.packages);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load subscription packages');
+      console.error('Error loading packages:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCreatePackage = () => {
     router.push('/super-admin/subscription/create');
   };
 
   // Handle action button click
-  const handleActionClick = (pkg: SubscriptionPackageData, e: React.MouseEvent) => {
+  const handleActionClick = (pkg: SubscriptionPackage, e: React.MouseEvent) => {
     e.stopPropagation();
     const button = actionButtonRefs.current[pkg.id];
     if (button) {
@@ -100,7 +102,7 @@ const SubscriptionPage = () => {
         setDeleteModal({
           isOpen: true,
           packageId: actionModal.packageId,
-          packageName: pkgToDelete.name
+          packageName: pkgToDelete.packageName
         });
       }
     }
@@ -114,11 +116,16 @@ const SubscriptionPage = () => {
     closeActionModal();
   };
 
-  const confirmDeletePackage = () => {
+  const confirmDeletePackage = async () => {
     if (deleteModal.packageId) {
-      const success = SubscriptionService.deletePackage(deleteModal.packageId);
-      if (success) {
-        setPackages(SubscriptionService.getAllPackages());
+      try {
+        const success = await SubscriptionService.deleteSubscriptionPackage(deleteModal.packageId);
+        if (success) {
+          await loadPackages(); // Refresh the list
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to delete subscription package');
+        console.error('Error deleting package:', err);
       }
     }
     setDeleteModal({ isOpen: false, packageId: null, packageName: '' });
@@ -127,6 +134,55 @@ const SubscriptionPage = () => {
   const cancelDeletePackage = () => {
     setDeleteModal({ isOpen: false, packageId: null, packageName: '' });
   };
+
+  if (loading) {
+    return (
+      <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen flex items-center justify-center">
+        <style jsx>{`
+          @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
+          .manrope { font-family: 'Manrope', sans-serif; }
+        `}</style>
+        <p>Loading subscription packages...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
+        <style jsx>{`
+          @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
+          .manrope { font-family: 'Manrope', sans-serif; }
+        `}</style>
+        
+        <div className="mb-6">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800 mb-2">Subscription Management</h1>
+              <p className="text-gray-600">Manage subscription packages for organizations</p>
+            </div>
+            <button 
+              onClick={handleCreatePackage}
+              className="px-4 py-2 bg-[#5D2A8B] hover:bg-[#4a216e] text-white rounded-lg transition-colors flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              Create Package
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+          Error: {error}
+          <button 
+            onClick={loadPackages}
+            className="ml-4 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
@@ -159,58 +215,72 @@ const SubscriptionPage = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Package Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Max Users</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Promo Code</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Validity Period</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monthly Price</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quarterly Price</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Yearly Price</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Services</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prices</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subscriber Count</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {packages.map((pkg) => (
-                <tr key={pkg.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{pkg.name}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-500 max-w-xs truncate">{pkg.description}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{pkg.maxUsers}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{pkg.promoCode}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{pkg.startDate} to {pkg.endDate}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{pkg.services}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">
-                      <div>${pkg.pricePerMonth}/mo</div>
-                      <div>${pkg.pricePerQuarter}/quarter <span className="text-xs text-gray-500">(5% off)</span></div>
-                      <div>${pkg.pricePerYear}/year <span className="text-xs text-gray-500">(10% off)</span></div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        ref={(el) => {
-                          actionButtonRefs.current[pkg.id] = el;
-                        }}
-                        onClick={(e) => handleActionClick(pkg, e)}
-                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-                        title="More actions"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                    </div>
+              {packages.length > 0 ? (
+                packages.map((pkg) => (
+                  <tr key={pkg.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{pkg.packageName}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-500 max-w-xs truncate">{pkg.description}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">₦{pkg.monthlyPrice}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">₦{pkg.quarterlyPrice}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">₦{pkg.yearlyPrice}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{pkg.services}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        pkg.status === 'active' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {pkg.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{pkg.subscriberCount}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          ref={(el) => {
+                            actionButtonRefs.current[pkg.id] = el;
+                          }}
+                          onClick={(e) => handleActionClick(pkg, e)}
+                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                          title="More actions"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
+                    No subscription packages found. Create a new package to get started.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -224,7 +294,7 @@ const SubscriptionPage = () => {
           onEdit={handleEditPackage}
           onDelete={handleDeletePackage}
           onView={handleViewPackage}
-          itemName={packages.find(p => p.id === actionModal.packageId)?.name || 'Package'}
+          itemName={packages.find(p => p.id === actionModal.packageId)?.packageName || 'Package'}
           position={actionModal.position}
         />
       )}
@@ -240,7 +310,6 @@ const SubscriptionPage = () => {
     </div>
   );
 };
-
 
 
 export default SubscriptionPage;

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import React, { createContext, useContext, useState } from "react";
+import { UserService } from './services/UserService';
 
 export interface User {
   id: string;
@@ -65,33 +66,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Restore token and user data from localStorage on initial load
   React.useEffect(() => {
-    try {
-      const storedToken = localStorage.getItem("token");
-      const storedUser = localStorage.getItem("user");
+    const restoreAuth = async () => {
+      try {
+        const storedToken = localStorage.getItem("token");
 
-      // Guard against the string "undefined" or "null"
-      if (storedToken && storedToken !== "undefined" && storedToken !== "null") {
-        setToken(storedToken);
-      }
+        // Guard against the string "undefined" or "null"
+        if (storedToken && storedToken !== "undefined" && storedToken !== "null") {
+          setToken(storedToken);
 
-      if (storedUser && storedUser !== "undefined" && storedUser !== "null") {
-        try {
-          const parsed = JSON.parse(storedUser);
-          // optional: validate shape before setUser(parsed)
-          setUser(parsed);
-        } catch (parseErr) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn("Could not parse stored user, clearing invalid value.", parseErr);
+          // Try to fetch user profile from API if we have a token
+          try {
+            const userService = new UserService();
+            const profileData = await userService.getUserProfile();
+            // Type assertion to ensure correct type
+            setUser(profileData as User);
+          } catch (err) {
+            // If API call fails, try to load from localStorage
+            const storedUser = localStorage.getItem("user");
+            if (storedUser && storedUser !== "undefined" && storedUser !== "null") {
+              try {
+                const parsed = JSON.parse(storedUser);
+                // optional: validate shape before setUser(parsed)
+                setUser(parsed);
+              } catch (parseErr) {
+                if (process.env.NODE_ENV === 'development') {
+                  console.warn("Could not parse stored user, clearing invalid value.", parseErr);
+                }
+                // clear corrupt value so we don't try to parse it again
+                localStorage.removeItem("user");
+              }
+            }
           }
-          // clear corrupt value so we don't try to parse it again
-          localStorage.removeItem("user");
+        }
+      } catch (err) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error("Error reading auth from localStorage", err);
         }
       }
-    } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error("Error reading auth from localStorage", err);
-      }
-    }
+    };
+
+    restoreAuth();
   }, []);
 
   return (

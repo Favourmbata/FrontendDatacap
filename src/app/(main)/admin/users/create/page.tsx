@@ -1,23 +1,50 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Mail, Phone, Building2, MapPin, Calendar } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Building2, MapPin, Calendar, CheckSquare } from 'lucide-react';
+import { AdminUserService, CreateUserPayload, CreateUserResponse } from '@/services/AdminUserService';
+import { toast } from '@/app/components/hooks/use-toast';
 
 const CreateUserForm = () => {
   const router = useRouter();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    middlename: '',
     emailAddress: '',
     phoneNumber: '',
-    userID: '',
+    userID: '', // This will be used as password if provided
     existingUsersID: '',
     organisationsCustomUsersID: ''
   });
+  const [loading, setLoading] = useState(false);
+  const [permissions, setPermissions] = useState<any[]>([]);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [permissionsLoading, setPermissionsLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      setPermissionsLoading(true);
+      try {
+        const adminUserService = new AdminUserService();
+        const response = await adminUserService.getAvailablePermissions();
+        setPermissions(response.data.permissions || []);
+      } catch (error) {
+        console.error('Error fetching permissions:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load permissions',
+          variant: 'destructive'
+        });
+      } finally {
+        setPermissionsLoading(false);
+      }
+    };
+
+    fetchPermissions();
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -25,11 +52,144 @@ const CreateUserForm = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handlePermissionChange = (permissionKey: string) => {
+    setSelectedPermissions(prev =>
+      prev.includes(permissionKey)
+        ? prev.filter(p => p !== permissionKey)
+        : [...prev, permissionKey]
+    );
+  };
+
+  const generatePassword = () => {
+    // Generate a random password with letters, numbers, and special characters
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()";
+    let password = "";
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    // Ensure the password has at least one uppercase, lowercase, number, and special character
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecial = /[!@#$%^&*()]/.test(password);
+    
+    if (!hasUpper) {
+      password = password.slice(0, -1) + "A";
+    }
+    if (!hasLower) {
+      password = password.slice(0, -1) + "a";
+    }
+    if (!hasNumber) {
+      password = password.slice(0, -1) + "1";
+    }
+    if (!hasSpecial) {
+      password = password.slice(0, -1) + "!";
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      userID: password
+    }));
+  };
+
+  const generateCustomUserId = async () => {
+    setLoading(true);
+    try {
+      const adminUserService = new AdminUserService();
+      // This function is now just for UI consistency, as custom ID is auto-generated after user creation
+      toast({
+        title: 'Note',
+        description: 'Custom User ID will be auto-generated after user creation',
+        variant: 'default'
+      });
+    } catch (error: any) {
+      console.error('Error generating custom user ID:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to generate custom user ID',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
-    // Handle form submission logic here
-    router.push('/admin/users');
+    setLoading(true);
+    
+    try {
+      const adminUserService = new AdminUserService();
+      
+      // Prepare the payload for the API
+      const payload: CreateUserPayload = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.emailAddress,
+        phoneNumber: formData.phoneNumber || undefined,
+        password: formData.userID || undefined, // Use userID as password if provided
+        existingUserId: formData.existingUsersID || undefined
+      };
+      
+      // Call the API to create the user
+      const response: CreateUserResponse = await adminUserService.createAdminUser(payload);
+      
+      // If permissions were selected, assign them to the user
+      if (selectedPermissions.length > 0 && response?.data?.user?.id) {
+        try {
+          await adminUserService.assignUserPermissions(response.data.user.id, { permissions: selectedPermissions });
+        } catch (permissionError) {
+          console.error('Error assigning permissions:', permissionError);
+          toast({
+            title: 'Warning',
+            description: 'User created successfully, but failed to assign permissions',
+            variant: 'destructive'
+          });
+        }
+      }
+      
+      // Generate custom user ID after user creation
+      if (response?.data?.user?.id) {
+        try {
+          const customIdResponse = await adminUserService.generateCustomUserId(response.data.user.id);
+          // Update the form data with the generated custom ID
+          setFormData(prev => ({
+            ...prev,
+            organisationsCustomUsersID: customIdResponse.data.customUserId
+          }));
+          
+          toast({
+            title: 'Success',
+            description: `Custom User ID generated: ${customIdResponse.data.customUserId}`,
+            variant: 'default'
+          });
+        } catch (customIdError) {
+          console.error('Error generating custom user ID:', customIdError);
+          toast({
+            title: 'Warning',
+            description: 'User created successfully, but failed to generate custom user ID',
+            variant: 'destructive'
+          });
+        }
+      }
+      
+      toast({ 
+        title: 'Success', 
+        description: 'User created successfully',
+        variant: 'default'
+      });
+      
+      router.push('/admin/users');
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to create user',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -93,19 +253,7 @@ const CreateUserForm = () => {
                   />
                 </div>
 
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Middle Name
-                  </label>
-                  <input
-                    type="text"
-                    name="middlename"
-                    value={formData.middlename}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                    placeholder="Enter middle name (optional)"
-                  />
-                </div>
+               
               </div>
             </div>
 
@@ -147,30 +295,108 @@ const CreateUserForm = () => {
               </div>
             </div>
 
+            {/* Permissions Assignment */}
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <CheckSquare className="w-5 h-5" />
+                Assign Permissions
+              </h2>
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                {permissionsLoading ? (
+                  <div className="text-center py-8 text-gray-600">Loading permissions...</div>
+                ) : permissions.length === 0 ? (
+                  <div className="text-center py-8 text-gray-600">No permissions available</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                            <input
+                              type="checkbox"
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedPermissions(permissions.map(p => p.key));
+                                } else {
+                                  setSelectedPermissions([]);
+                                }
+                              }}
+                              checked={selectedPermissions.length === permissions.length && permissions.length > 0}
+                              className="h-4 w-4 text-[#5D2A8B] rounded focus:ring-[#5D2A8B] border-gray-300"
+                            />
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Name
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Description
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Permission
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {permissions.map((permission) => (
+                          <tr 
+                            key={permission.key}
+                            className={`cursor-pointer ${selectedPermissions.includes(permission.key) ? 'bg-purple-50' : 'hover:bg-gray-50'}`}
+                            onClick={() => handlePermissionChange(permission.key)}
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <input
+                                type="checkbox"
+                                checked={selectedPermissions.includes(permission.key)}
+                                onChange={() => {}}
+                                className="h-4 w-4 text-[#5D2A8B] rounded focus:ring-[#5D2A8B] border-gray-300"
+                              />
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {permission.name}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600">
+                              {permission.description}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-500 font-mono">
+                              {permission.key}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* User IDs Section */}
             <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Building2 className="w-5 h-5" />
+               
                 User Identification
               </h2>
-              <div className="space-y-4 bg-[#5D2A8B] border border-[#5D2A8B] rounded-lg p-6">
-                {/* <p className="text-sm text-blue-800 mb-4">
-                  Note: ID of existing user is necessary if the user already exists in the system. 
-                  This new user's ID could be system-generated or custom.
-                </p>
-                 */}
+              <div className="space-y-4  border border-[#5D2A8B] rounded-lg p-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    User ID (Custom) <span className="text-gray-500">(Optional)</span>
+                    Password <span className="text-gray-500">(Optional)</span>
                   </label>
-                  <input
-                    type="text"
-                    name="userID"
-                    value={formData.userID}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-white"
-                    placeholder="Enter custom user ID or leave blank for system-generated"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      name="userID"
+                      value={formData.userID}
+                      onChange={handleChange}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-white"
+                      placeholder="Enter password or leave blank for auto-generation"
+                    />
+                    <button
+                      type="button"
+                      onClick={generatePassword}
+                      className="px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 font-medium whitespace-nowrap"
+                    >
+                      Generate
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -187,19 +413,7 @@ const CreateUserForm = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Organisation's Custom User's ID <span className="text-gray-500">(Optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="organisationsCustomUsersID"
-                    value={formData.organisationsCustomUsersID}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-white"
-                    placeholder="Enter organisation's custom user ID"
-                  />
-                </div>
+                
               </div>
             </div>
 
@@ -207,9 +421,10 @@ const CreateUserForm = () => {
             <div className="flex gap-4 pt-6 border-t border-gray-200">
               <button
                 type="submit"
-                className="flex-1 md:flex-none px-8 py-3 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#5D2A8B] transition-colors duration-200 font-medium"
+                disabled={loading}
+                className={`flex-1 md:flex-none px-8 py-3 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#5D2A8B] transition-colors duration-200 font-medium ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                Submit
+                {loading ? 'Creating...' : 'Submit'}
               </button>
               <button
                 type="button"

@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Ruler } from "lucide-react";
-import { ObjectDimension } from "../../../../../../types";
+import { ObjectDimension } from "@/types";
 
 
 // Mock data

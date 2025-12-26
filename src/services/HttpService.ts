@@ -23,7 +23,20 @@ export class HttpService {
 
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        // If response is not JSON, try to get text or use status text
+        const errorText = await response.text().catch(() => `HTTP error! status: ${response.status}`);
+        throw new Error(errorText || `HTTP error! status: ${response.status}`);
+      }
+      
+      // Handle specific authentication errors
+      if (response.status === 401) {
+        throw new Error(errorData.message || 'Authentication required. Please log in again.');
+      }
+      
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
     return response.json();

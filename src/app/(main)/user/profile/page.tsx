@@ -7,15 +7,22 @@ import { MessageModal } from '@/app/components/MessageModal';
 import { ChevronLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { MeasurementTopNav } from '@/app/components/MeasurementTopNav';
+import { ProfileService, UserProfile } from '@/services/ProfileService';
 
 const ProfilePage = () => {
   const router = useRouter();
-  const { profile, loading, error } = useProfile();
+  const { profile, loading: profileLoading, error } = useProfile();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     phoneNumber: '',
   });
+  const [errors, setErrors] = useState({
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+  });
+  const [isSaving, setIsSaving] = useState(false);
   const [modalState, setModalState] = useState({
     isOpen: false,
     title: '',
@@ -44,13 +51,108 @@ const ProfilePage = () => {
     }));
   };
 
-  const handleSaveProfile = () => {
-    setModalState({
-      isOpen: true,
-      title: 'Feature Coming Soon',
-      message: 'Save profile feature is currently under development. Please check back later.',
-      type: 'info'
-    });
+  const validateForm = () => {
+    const newErrors: any = {};
+    
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = 'Full name is required';
+    }
+    
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    
+    if (formData.phoneNumber && formData.phoneNumber.trim()) {
+      // Validate Nigerian phone number format
+      if (!/^(\+?234|0)?[789][01]\d{8}$/.test(formData.phoneNumber.replace(/\s/g, ''))) {
+        newErrors.phoneNumber = 'Please enter a valid Nigerian phone number';
+      }
+    }
+    
+    // Check if phone number is different from the current one and if it's a duplicate
+    if (formData.phoneNumber && formData.phoneNumber !== profile?.phoneNumber) {
+      // We'll handle duplicate check in the error handling after API call
+    }
+    
+    return newErrors;
+  };
+  
+  const handleSaveProfile = async () => {
+    // Validate the form before saving
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      const profileService = new ProfileService();
+      
+      // Prepare the update data - only send changed fields
+      const updateData: Partial<UserProfile> = {};
+      if (formData.fullName !== (profile?.firstName && profile?.lastName 
+        ? `${profile.firstName} ${profile.lastName}`
+        : '')) {
+        const [firstName, ...lastNameParts] = formData.fullName.split(' ');
+        const lastName = lastNameParts.join(' ');
+        updateData.firstName = firstName;
+        updateData.lastName = lastName || firstName; // Use firstName as lastName if no last name provided
+      }
+      
+      if (formData.email !== profile?.email) {
+        updateData.email = formData.email;
+      }
+      
+      if (formData.phoneNumber !== profile?.phoneNumber) {
+        updateData.phoneNumber = formData.phoneNumber;
+      }
+      
+      // Only update if there are changes
+      if (Object.keys(updateData).length > 0) {
+        await profileService.updateProfile(updateData);
+        
+        setModalState({
+          isOpen: true,
+          title: 'Success',
+          message: 'Profile updated successfully!',
+          type: 'success'
+        });
+      } else {
+        setModalState({
+          isOpen: true,
+          title: 'No Changes',
+          message: 'No changes were made to your profile.',
+          type: 'info'
+        });
+      }
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      
+      // Check if it's a duplicate phone number error
+      const errorMessage = error?.response?.data?.message || error?.message || 'An error occurred while updating profile';
+      
+      if (errorMessage.toLowerCase().includes('phone') && 
+          (errorMessage.toLowerCase().includes('duplicate') || 
+           errorMessage.toLowerCase().includes('already exists') ||
+           errorMessage.toLowerCase().includes('taken'))) {
+        setErrors({
+          ...errors,
+          phoneNumber: 'This phone number is already in use. Please use a different phone number.'
+        });
+      } else {
+        setModalState({
+          isOpen: true,
+          title: 'Error',
+          message: errorMessage,
+          type: 'error'
+        });
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const closeModal = () => {
@@ -113,7 +215,7 @@ const ProfilePage = () => {
           <span className="text-base font-medium">View Profile</span>
         </button>
 
-        {loading ? (
+        {profileLoading ? (
           <div className="text-center py-8">
             <p className="manrope text-gray-500">Loading profile...</p>
           </div>
@@ -217,13 +319,18 @@ const ProfilePage = () => {
                     value={formData.phoneNumber}
                     onChange={handleInputChange}
                     placeholder="Phone No."
-                    className="manrope w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent"
+                    className={`manrope w-full px-4 py-3 border ${errors.phoneNumber ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:border-transparent`}
                     style={{ 
-                      borderColor: '#E5E7EB',
+                      borderColor: errors.phoneNumber ? '#EF4444' : '#E5E7EB',
                       fontSize: '14px'
                     }}
                   />
                 </div>
+                {errors.phoneNumber && (
+                  <p className="manrope text-sm text-red-500 mt-1" style={{ fontSize: '12px' }}>
+                    {errors.phoneNumber}
+                  </p>
+                )}
               </div>
 
               {/* Save Profile Button */}
@@ -244,7 +351,7 @@ const ProfilePage = () => {
                     fontSize: '14px'
                   }}
                 >
-                  edit Profile
+                  {isSaving ? 'Saving...' : 'Edit Profile'}
                 </button>
               </div>
             </div>

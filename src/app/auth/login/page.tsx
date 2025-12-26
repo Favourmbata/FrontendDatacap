@@ -1,6 +1,3 @@
-
-
-
 "use client"
 
 import { useState } from "react"
@@ -12,6 +9,7 @@ import { useAuth } from "@/api/hooks/useAuth"
 import { useAuthContext } from "@/AuthContext"
 import Link from "next/link"
 import { toast } from "@/app/components/hooks/use-toast"
+import { routes } from "@/services/apiRoutes"
 
 interface FormValues {
   email: string
@@ -54,7 +52,7 @@ export default function LoginPage() {
       
       console.log('🚀 Sending LOGIN request to backend:', payload)
       
-      const { data } = await client.post("/api/auth/login", payload)
+      const { data } = await client.post(routes.login(), payload)
       return data
     },
     onSuccess: (response) => {
@@ -344,7 +342,7 @@ export default function LoginPage() {
           {/* Email Input */}
           <div className="mb-4">
             <label className="manrope text-sm font-medium text-[#374151] mb-2 block">
-              Full Name
+              Email
             </label>
             <div className={`mobile-input-container ${errors.email ? 'error' : ''}`}>
               <input

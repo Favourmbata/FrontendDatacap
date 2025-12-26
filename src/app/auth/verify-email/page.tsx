@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/api/hooks/useAuth";
+import { routes } from "@/services/apiRoutes";
 import { toast } from "@/app/components/hooks/use-toast";
 import Link from "next/link";
 import Image from "next/image";
@@ -69,7 +70,7 @@ function VerifyEmailContent() {
       
       console.log('🚀 Sending VERIFY EMAIL OTP request to backend:', payload);
       
-      const { data } = await client.post("/api/auth/verify-otp", payload);
+      const { data } = await client.post(routes.verifyOtp(), payload);
       return data;
     },
     onSuccess: (response) => {
@@ -110,7 +111,7 @@ function VerifyEmailContent() {
     mutationFn: async (email: string) => {
       const payload = { email };
       
-      const { data } = await client.post("/api/auth/resend-otp", payload);
+      const { data } = await client.post(routes.resendOtp(), payload);
       return data;
     },
     onSuccess: () => {

@@ -6,6 +6,7 @@ import { Eye, EyeOff } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useMutation } from "@tanstack/react-query"
 import { useAuth } from "@/api/hooks/useAuth"
+import { routes } from "@/services/apiRoutes"
 import { useAuthContext } from "@/AuthContext"
 import { toast } from "@/app/components/hooks/use-toast"
 import Link from "next/link"
@@ -50,7 +51,7 @@ export default function LoginForm() {
         email: values.email,
         password: values.password,
       }
-      const { data } = await client.post("/api/auth/login", payload)
+      const { data } = await client.post(routes.login(), payload)
       return data
     },
     onSuccess: (response) => {
@@ -64,7 +65,7 @@ export default function LoginForm() {
         
         // Redirect based on user role
         const userRole = data.user.role?.toLowerCase();
-        if (userRole === 'organisation' || userRole === 'organization' || userRole === 'admin') {
+        if (userRole === 'ORGANIZATION' || userRole === 'ORGANIZATION' || userRole === 'ADMIN') {
           router.replace("/admin");
         } else {
           router.replace("/user");

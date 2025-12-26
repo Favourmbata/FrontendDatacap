@@ -2,18 +2,19 @@ import { HttpService } from './HttpService';
 import { routes } from './apiRoutes';
 
 export interface UserProfile {
-  id: string;
+  id?: string;
   userId?: string;
-  email: string;
-  fullName: string;
   firstName?: string;
   lastName?: string;
-  phoneNumber: string | null;
-  role: string;
-  isAdmin: boolean;
-  isVerified: boolean;
-  createdAt: string;
-  updatedAt: string;
+  fullName?: string;
+  email?: string;
+  phoneNumber?: string;
+  role?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  organizationId?: string;
+  organizationName?: string;
 }
 
 export class ProfileService {
@@ -26,14 +27,8 @@ export class ProfileService {
   // Get user profile
   async getProfile(): Promise<UserProfile> {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await this.httpService.getData<any>('/api/user/profile');
-      const data: any = response.data;
+      const response = await this.httpService.getData<any>(routes.getUserProfile());
+      const data: any = response.data || response;
       
       // Handle different response structures
       let profileData: any = data.user || data.data?.user || data.data || data;
@@ -66,7 +61,24 @@ export class ProfileService {
       }
       
       return profileData as UserProfile;
-    } catch (error) {
+    } catch (error: any) {
+      // Log the error for debugging
+      console.error('Profile API error:', error);
+      
+      // If it's a 404 error, return a default profile object instead of throwing
+      if (error.message && (error.message.includes('404') || error.message.includes('Route not found'))) {
+        console.warn('Profile endpoint not found, returning default profile');
+        return {
+          firstName: 'User',
+          lastName: '',
+          email: '',
+          phoneNumber: '',
+          role: 'user',
+          fullName: 'User'
+        } as UserProfile;
+      }
+      
+      // For other errors, re-throw
       throw error;
     }
   }
@@ -76,5 +88,3 @@ export class ProfileService {
     return this.httpService.patchData(data, routes.updateUserProfile());
   }
 }
-
-export default ProfileService;

@@ -16,10 +16,13 @@ import {
   XCircle,
   MoreVertical,
   Eye,
-  Phone
+  Phone,
+  Lock,
+  UserCheck
 } from 'lucide-react';
 import UserActionModal from '@/app/components/userActionModal';
 import { useRouter } from 'next/navigation';
+import { AdminUserService, AdminUser } from '@/services/AdminUserService';
 
 interface User {
   id: string;
@@ -32,78 +35,13 @@ interface User {
   role: string;
   createdAt: string;
   isVerified: boolean;
-  status: 'active' | 'inactive' | 'pending';
+  status: 'pending' | 'active' | 'disabled' | 'archived';
+  organizationId: string;
 }
 
 const UsersManagementPage = () => {
   const router = useRouter();
-  const [users, setUsers] = useState<User[]>([
-    { 
-      id: 'USR-001', 
-      customerUserId: '0020000201',
-      email: 'john.doe@example.com', 
-      fullName: 'John Doe', 
-      firstName: 'John',
-      lastName: 'Doe',
-      phoneNumber: '+1234567890',
-      role: 'user', 
-      createdAt: '2023-01-15T10:30:00Z', 
-      isVerified: true, 
-      status: 'active' 
-    },
-    { 
-      id: 'USR-002', 
-      customerUserId: '0020000202',
-      email: 'jane.smith@example.com', 
-      fullName: 'Jane Smith', 
-      firstName: 'Jane',
-      lastName: 'Smith',
-      phoneNumber: '+1234567891',
-      role: 'admin', 
-      createdAt: '2023-02-20T14:45:00Z', 
-      isVerified: true, 
-      status: 'active' 
-    },
-    { 
-      id: 'USR-003', 
-      customerUserId: '0020000203',
-      email: 'robert.johnson@example.com', 
-      fullName: 'Robert Johnson', 
-      firstName: 'Robert',
-      lastName: 'Johnson',
-      phoneNumber: '+1234567892',
-      role: 'user', 
-      createdAt: '2023-03-10T09:15:00Z', 
-      isVerified: false, 
-      status: 'pending' 
-    },
-    { 
-      id: 'USR-004', 
-      customerUserId: '0020000204',
-      email: 'sarah.wilson@example.com', 
-      fullName: 'Sarah Wilson', 
-      firstName: 'Sarah',
-      lastName: 'Wilson',
-      role: 'organisation', 
-      createdAt: '2023-04-05T16:20:00Z', 
-      isVerified: true, 
-      status: 'active' 
-    },
-    { 
-      id: 'USR-005', 
-      customerUserId: '0020000205',
-      email: 'mike.brown@example.com', 
-      fullName: 'Mike Brown', 
-      firstName: 'Mike',
-      lastName: 'Brown',
-      phoneNumber: '+1234567894',
-      role: 'user', 
-      createdAt: '2023-05-12T11:30:00Z', 
-      isVerified: false, 
-      status: 'inactive' 
-    },
-  ]);
-  
+  const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [actionModal, setActionModal] = useState<{
@@ -115,9 +53,56 @@ const UsersManagementPage = () => {
     userId: null,
     position: { top: 0, left: 0 }
   });
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'active' | 'disabled' | 'archived'>('pending');
 
   // Refs for action buttons
   const actionButtonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+
+  // Fetch users from API
+  useEffect(() => {
+    fetchUsers();
+  }, [currentPage, statusFilter]);
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const adminUserService = new AdminUserService();
+      const response = await adminUserService.getUsersByStatus(statusFilter, currentPage, 10);
+      
+      // Transform API response to match existing User interface
+      const transformedUsers: User[] = response.data.users.map(user => ({
+        id: user.id,
+        email: user.email,
+        fullName: `${user.firstName} ${user.lastName}`,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phoneNumber: user.phoneNumber,
+        customerUserId: user.customUserId,
+        role: user.role,
+        createdAt: user.createdAt,
+        isVerified: user.isVerified,
+        status: user.status,
+        organizationId: user.organizationId || user.id
+      }));
+      
+      setUsers(transformedUsers);
+      setTotalPages(response.data.pagination.totalPages);
+      setTotalUsers(response.data.total);
+    } catch (error: any) {
+      console.error('Error fetching users:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to fetch users',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Initialize and filter users
   useEffect(() => {
@@ -164,6 +149,7 @@ const UsersManagementPage = () => {
       'Full Name': user.fullName,
       'Email': user.email,
       'Phone Number': user.phoneNumber || 'N/A',
+      'Status': user.status,
       'Created At': new Date(user.createdAt).toLocaleDateString(),
     })));
     const workbook = XLSX.utils.book_new();
@@ -181,7 +167,7 @@ const UsersManagementPage = () => {
   // Handle export to CSV
   const handleExportCSV = () => {
     const csvContent = [
-      ['User ID', 'Customer User ID', 'First Name', 'Last Name', 'Email', 'Phone Number', 'Created At'],
+      ['User ID', 'Customer User ID', 'First Name', 'Last Name', 'Email', 'Phone Number', 'Status', 'Created At'],
       ...users.map(user => [
         user.id,
         user.customerUserId,
@@ -189,6 +175,7 @@ const UsersManagementPage = () => {
         user.lastName,
         user.email,
         user.phoneNumber || 'N/A',
+        user.status,
         new Date(user.createdAt).toLocaleDateString(),
       ])
     ].map(row => row.join(',')).join('\n');
@@ -199,7 +186,7 @@ const UsersManagementPage = () => {
       title: 'Export Successful', 
       description: 'Users data exported to CSV',
       variant: 'default'
-    });
+      });
   };
 
   // Handle action button click
@@ -257,6 +244,161 @@ const UsersManagementPage = () => {
     handleDeleteUser(userId);
   };
 
+  // Handle page change
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
+  // Handle status change
+  const handleStatusChange = async (userId: string, newStatus: 'pending' | 'active' | 'disabled' | 'archived') => {
+    try {
+      const adminUserService = new AdminUserService();
+      await adminUserService.updateAdminUserStatus(userId, { status: newStatus });
+      
+      // Update the user status in the local state
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === userId ? { ...user, status: newStatus } : user
+        )
+      );
+      
+      toast({ 
+        title: 'Success', 
+        description: 'User status updated successfully',
+        variant: 'default'
+      });
+      
+      closeActionModal();
+    } catch (error: any) {
+      console.error('Error updating user status:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to update user status',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // Handle password change
+  const handleChangePassword = (userId: string) => {
+    router.push(`/admin/users/change-password/${userId}`);
+  };
+
+  // Handle generate custom ID
+  const handleGenerateCustomId = async (userId: string) => {
+    try {
+      const adminUserService = new AdminUserService();
+      const response = await adminUserService.generateCustomUserId(userId);
+      
+      // Update the user's customUserId in the local state
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === userId ? { ...user, customerUserId: response.data.customUserId } : user
+        )
+      );
+      
+      toast({ 
+        title: 'Success', 
+        description: response.data.message || 'Custom ID generated successfully',
+        variant: 'default'
+      });
+      
+      closeActionModal();
+    } catch (error: any) {
+      console.error('Error generating custom ID:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to generate custom ID',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // Status badge component
+  const StatusBadge = ({ status }: { status: 'pending' | 'active' | 'disabled' | 'archived' }) => {
+    const statusStyles = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      active: 'bg-green-100 text-green-800',
+      disabled: 'bg-red-100 text-red-800',
+      archived: 'bg-gray-100 text-gray-800'
+    };
+    
+    const statusLabels = {
+      pending: 'Pending',
+      active: 'Active',
+      disabled: 'Disabled',
+      archived: 'Archived'
+    };
+    
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyles[status]}`}>
+        {statusLabels[status]}
+      </span>
+    );
+  };
+
+  // Status dropdown component
+  const StatusDropdown = ({ userId, currentStatus }: { userId: string, currentStatus: 'pending' | 'active' | 'disabled' | 'archived' }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const statusOptions = [
+      { value: 'pending', label: 'Pending', color: 'yellow' },
+      { value: 'active', label: 'Active', color: 'green' },
+      { value: 'disabled', label: 'Disabled', color: 'red' },
+      { value: 'archived', label: 'Archived', color: 'gray' }
+    ];
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    useEffect(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, []);
+
+    const handleStatusSelect = async (newStatus: 'pending' | 'active' | 'disabled' | 'archived') => {
+      await handleStatusChange(userId, newStatus);
+      setIsOpen(false);
+    };
+
+    return (
+      <div className="relative" ref={dropdownRef}>
+        <button
+          className="flex items-center gap-1 px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200 text-xs"
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          <StatusBadge status={currentStatus} />
+        </button>
+        
+        {isOpen && (
+          <div className="absolute z-10 mt-1 w-32 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+            <div className="py-1">
+              {statusOptions.map((option) => (
+                <button
+                  key={option.value}
+                  className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                    currentStatus === option.value ? 'bg-gray-100 font-medium' : ''
+                  }`}
+                  onClick={() => handleStatusSelect(option.value as 'pending' | 'active' | 'disabled' | 'archived')}
+                >
+                  <StatusBadge status={option.value as any} />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="manrope">
       <style jsx>{`
@@ -296,7 +438,7 @@ const UsersManagementPage = () => {
       <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
         {/* Search and Filter Section */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-6">Users Management</h1>
+          <h1 className="text-2xl font-bold text-gray-800 mb-6">User Management</h1>
           <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
             <div className="flex-1">
               <div className="relative max-w-md">
@@ -329,118 +471,165 @@ const UsersManagementPage = () => {
               </button>
             </div>
           </div>
+          
+          {/* Status Filter */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              className={`px-4 py-2 rounded-lg ${statusFilter === 'active' ? 'bg-[#5D2A8B] text-white' : 'bg-gray-200 text-gray-700'}`}
+              onClick={() => router.push('/admin/users/active')}
+            >
+              Active
+            </button>
+            <button
+              className={`px-4 py-2 rounded-lg ${statusFilter === 'archived' ? 'bg-[#5D2A8B] text-white' : 'bg-gray-200 text-gray-700'}`}
+              onClick={() => setStatusFilter('archived')}
+            >
+              Archived
+            </button>
+          </div>
         </div>
 
         {/* Users Table with Scroll */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
-          <div className="table-container">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50 sticky top-0 z-10">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    First Name
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Last Name
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Phone Number
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer User ID
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    User ID
-                  </th>
-                  <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
-                      <div className="flex flex-col items-center justify-center text-gray-500">
-                      
-                        <p className="text-lg font-medium">No users found</p>
-                        <p className="text-sm mt-1">Try adjusting your search</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-150">
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-semibold text-gray-900">{user.firstName}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-semibold text-gray-900">{user.lastName}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">{user.email}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          {user.phoneNumber ? (
-                            <>
-                             
-                              <span className="text-sm text-gray-900">{user.phoneNumber}</span>
-                            </>
-                          ) : (
-                            <span className="text-sm text-gray-400">Not provided</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">{user.customerUserId}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-500">{user.id}</div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                         
-                          <button
-                            ref={(el) => {
-                              actionButtonRefs.current[user.id] = el;
-                            }}
-                            onClick={(e) => handleActionClick(user.id, e)}
-                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-                            title="More actions"
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          
-          {/* Pagination */}
-          {filteredUsers.length > 0 && (
-            <div className="px-6 py-4 border-t border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-700">
-                  Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredUsers.length}</span> of{' '}
-                  <span className="font-medium">{filteredUsers.length}</span> results
-                </div>
-                <div className="flex gap-2">
-                  <button className="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                    Previous
-                  </button>
-                  <button className="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                    Next
-                  </button>
-                </div>
-              </div>
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#5D2A8B]"></div>
             </div>
+          ) : (
+            <>
+              <div className="table-container">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50 sticky top-0 z-10">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        First Name
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Last Name
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Email
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Phone Number
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Customer User ID
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        User ID
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-6 py-12 text-center">
+                          <div className="flex flex-col items-center justify-center text-gray-500">
+                           
+                            <p className="text-lg font-medium">No users found</p>
+                            <p className="text-sm mt-1">Try adjusting your search or filter</p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredUsers.map((user) => (
+                        <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-150">
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-semibold text-gray-900">{user.firstName}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-semibold text-gray-900">{user.lastName}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm text-gray-900">{user.email}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              {user.phoneNumber ? (
+                                <>
+                                 
+                                  <span className="text-sm text-gray-900">{user.phoneNumber}</span>
+                                </>
+                              ) : (
+                                <span className="text-sm text-gray-400">Not provided</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-gray-900">{user.customerUserId}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm text-gray-500">{user.id}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <StatusDropdown userId={user.id} currentStatus={user.status} />
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {/* Change Password Button */}
+                              <button
+                                onClick={() => handleChangePassword(user.id)}
+                                className="flex items-center gap-1 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200"
+                                title="Change Password"
+                              >
+                                
+                                <span>Change Password</span>
+                              </button>
+                              
+                              <button
+                                ref={(el) => {
+                                  actionButtonRefs.current[user.id] = el;
+                                }}
+                                onClick={(e) => handleActionClick(user.id, e)}
+                                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                                title="More actions"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Pagination */}
+              {filteredUsers.length > 0 && (
+                <div className="px-6 py-4 border-t border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-700">
+                      Showing page <span className="font-medium">{currentPage}</span> of{' '}
+                      <span className="font-medium">{totalPages}</span> (Total: {totalUsers} users)
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </button>
+                      <button 
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -455,6 +644,9 @@ const UsersManagementPage = () => {
           onPendingUser={() => handlePendingUser(actionModal.userId!)}
           onOneTimeCode={() => handleOneTimeCode(actionModal.userId!)}
           onDelete={() => handleDelete(actionModal.userId!)}
+          onChangePassword={() => handleChangePassword(actionModal.userId!)}
+          onGenerateCustomId={() => handleGenerateCustomId(actionModal.userId!)}
+          onStatusChange={(newStatus: 'pending' | 'active' | 'disabled' | 'archived') => handleStatusChange(actionModal.userId!, newStatus)}
           position={actionModal.position}
         />
       )}

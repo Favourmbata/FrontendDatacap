@@ -5,7 +5,8 @@ import {
   Menu,
   User,
   LogOut,
-  Shield
+  Shield,
+  ChevronDown
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -24,6 +25,20 @@ interface MenuBtnProps {
   toggleLeftPadding?: string;
 }
 
+interface SubMenuItem {
+  id: string;
+  name: string;
+  route: string;
+}
+
+interface MenuItem {
+  id: string;
+  name: string;
+  route?: string;
+  icon: React.ReactNode;
+  subItems?: SubMenuItem[];
+}
+
 const MenuBtn: React.FC<MenuBtnProps> = ({ icon, positioning = '', onClick, toggleLeftPadding = '' }) => (
   <button
     type="button"
@@ -38,6 +53,7 @@ const MenuBtn: React.FC<MenuBtnProps> = ({ icon, positioning = '', onClick, togg
 export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
   const pathname = usePathname();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
   
   const toggleSidebar = (): string => onShow ? "block" : "hidden";
   const toggleLeftPadding = (): string => onShow ? "pl-4 md:pl-12" : "";
@@ -69,6 +85,17 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
     return isActive(route) ? 'brightness(0) invert(1)' : 'none';
   };
 
+  // Toggle submenu
+  const toggleSubmenu = (menuId: string) => {
+    setExpandedMenu(expandedMenu === menuId ? null : menuId);
+  };
+
+  // Check if any submenu item is active
+  const isSubmenuActive = (subItems?: SubMenuItem[]): boolean => {
+    if (!subItems) return false;
+    return subItems.some(item => isActive(item.route));
+  };
+
   // Logout handler functions
   const handleLogoutClick = () => {
     setShowLogoutModal(true);
@@ -86,7 +113,7 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
   };
 
   // Admin menu items with their positions
-  const adminMenuItems = [
+  const adminMenuItems: MenuItem[] = [
     { 
       id: 'dashboard', 
       name: 'Dashboard', 
@@ -120,8 +147,24 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
     { 
       id: 'users', 
       name: 'User Management', 
-      route: '/admin/users', 
       icon: <User className="w-6 h-6" />,
+      subItems: [
+        {
+          id: 'users-list',
+          name: 'Users',
+          route: '/admin/users'
+        },
+        {
+          id: 'pending-users',
+          name: 'Pending Users',
+          route: '/admin/users/pending'
+        },
+        {
+          id: 'one-time-codes',
+          name: 'One-Time Codes',
+          route: '/admin/users/one-time-codes'
+        }
+      ]
     },
     { 
       id: 'role-management', 
@@ -187,6 +230,27 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
           .sidebar-overlay.active {
             display: block;
           }
+        }
+        
+        /* Submenu positioning */
+        .submenu-up {
+          position: absolute;
+          top: 100%;
+          left: 30px;
+          z-index: 10;
+          min-width: 200px;
+          background: #ffffff;
+          border-radius: 8px;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          padding: 8px 0;
+          margin-top: 5px;
+        }
+        
+        .submenu-down {
+          position: relative;
+          top: 0;
+          left: 0;
+          transform: none;
         }
       `}</style>
       
@@ -255,44 +319,135 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
         <nav className="sidebar-nav-container" style={{ marginTop: '120px' }}>
           <div className="menu-item-container flex flex-col" style={{ gap: '12px' }}>
             {/* Admin Menu Items */}
-            {adminMenuItems.map((item: { id: string; route: string; icon: React.ReactNode; name: string; }) => (
-              <Link href={item.route} key={item.id}>
-                <div 
-                  className={`manrope flex items-center rounded-lg cursor-pointer hover:bg-gray-50 transition-all duration-200 ${
-                    isActive(item.route) ? 'bg-[#5D2A8B]' : ''
-                  }`}
-                  style={{
-                    width: '275px',
-                    height: '71px',
-                    padding: '0 23px',
-                    marginLeft: '15px'
-                  }}
-                >
-                  <div 
-                    className="flex items-center w-full"
-                    style={{
-                      gap: '12px'
-                    }}
-                  >
-                    <div className="w-6 h-6 flex items-center justify-center flex-shrink-0" style={{ filter: getIconFilter(item.route) }}>
-                      {item.icon}
-                    </div>
-                    <span 
-                      className="manrope whitespace-nowrap overflow-hidden text-ellipsis"
+            {adminMenuItems.map((item: MenuItem) => (
+              <div key={item.id}>
+                {item.route ? (
+                  // Menu item with route (no submenu)
+                  <Link href={item.route}>
+                    <div 
+                      className={`manrope flex items-center rounded-lg cursor-pointer hover:bg-gray-50 transition-all duration-200 ${
+                        isActive(item.route) ? 'bg-[#5D2A8B]' : ''
+                      }`}
                       style={{
-                        fontWeight: 500,
-                        fontSize: '20px',
-                        lineHeight: '100%',
-                        color: getTextColor(item.route),
-                        flex: 1,
-                        minWidth: 0 // This ensures text truncation works
+                        width: '275px',
+                        height: '71px',
+                        padding: '0 23px',
+                        marginLeft: '15px'
                       }}
                     >
-                      {item.name}
-                    </span>
+                      <div 
+                        className="flex items-center w-full"
+                        style={{
+                          gap: '12px'
+                        }}
+                      >
+                        <div className="w-6 h-6 flex items-center justify-center flex-shrink-0" style={{ filter: getIconFilter(item.route) }}>
+                          {item.icon}
+                        </div>
+                        <span 
+                          className="manrope whitespace-nowrap overflow-hidden text-ellipsis"
+                          style={{
+                            fontWeight: 500,
+                            fontSize: '20px',
+                            lineHeight: '100%',
+                            color: getTextColor(item.route),
+                            flex: 1,
+                            minWidth: 0 // This ensures text truncation works
+                          }}
+                        >
+                          {item.name}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ) : (
+                  // Menu item with submenu
+                  <div className="relative">
+                    <div 
+                      className={`manrope flex items-center rounded-lg cursor-pointer hover:bg-gray-50 transition-all duration-200 ${
+                        isSubmenuActive(item.subItems) ? 'bg-[#5D2A8B]' : ''
+                      }`}
+                      style={{
+                        width: '275px',
+                        height: '71px',
+                        padding: '0 23px',
+                        marginLeft: '15px'
+                      }}
+                      onClick={() => toggleSubmenu(item.id)}
+                    >
+                      <div 
+                        className="flex items-center w-full"
+                        style={{
+                          gap: '12px'
+                        }}
+                      >
+                        <div className="w-6 h-6 flex items-center justify-center flex-shrink-0" style={{ filter: getIconFilter(item.subItems?.[0].route || '') }}>
+                          {item.icon}
+                        </div>
+                        <span 
+                          className="manrope whitespace-nowrap overflow-hidden text-ellipsis"
+                          style={{
+                            fontWeight: 500,
+                            fontSize: '20px',
+                            lineHeight: '100%',
+                            color: isSubmenuActive(item.subItems) ? '#FFFFFF' : '#6E6E6EB2',
+                            flex: 1,
+                            minWidth: 0 // This ensures text truncation works
+                          }}
+                        >
+                          {item.name}
+                        </span>
+                        <ChevronDown 
+                          className={`w-5 h-5 transition-transform duration-200 ${
+                            expandedMenu === item.id ? 'rotate-180' : ''
+                          }`}
+                          style={{ 
+                            filter: isSubmenuActive(item.subItems) ? 'brightness(0) invert(1)' : 'none',
+                            color: isSubmenuActive(item.subItems) ? '#FFFFFF' : '#6E6E6EB2'
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Submenu items - only show if this menu is expanded */}
+                    {expandedMenu === item.id && item.subItems && (
+                      <div className="ml-8 mt-2 flex flex-col gap-2 submenu-up" style={{ width: '230px', marginLeft: '40px' }}>
+                        {item.subItems.map((subItem: SubMenuItem) => (
+                          <Link href={subItem.route} key={subItem.id}>
+                            <div 
+                              className={`manrope flex items-center rounded-lg cursor-pointer hover:bg-gray-50 transition-all duration-200 ${
+                                isActive(subItem.route) ? 'bg-[#5D2A8B]' : 'bg-gray-100'
+                              }`}
+                              style={{
+                                width: '230px',
+                                height: '45px',
+                                padding: '0 15px',
+                                marginLeft: '10px',
+                                borderRadius: '8px',
+                                margin: '2px 0'
+                              }}
+                            >
+                              <span 
+                                className="manrope whitespace-nowrap overflow-hidden text-ellipsis"
+                                style={{
+                                  fontWeight: 400,
+                                  fontSize: '15px',
+                                  lineHeight: '100%',
+                                  color: isActive(subItem.route) ? '#FFFFFF' : '#6E6E6EB2',
+                                  flex: 1,
+                                  minWidth: 0
+                                }}
+                              >
+                                {subItem.name}
+                              </span>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              </Link>
+                )}
+              </div>
             ))}
           </div>
 

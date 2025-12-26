@@ -58,7 +58,7 @@ export const useAiMeasurement = () => {
         deviceInfo: request.deviceInfo
       });
 
-      const response = await client.post<AiMeasurementResponse>('/api/measurements/scan', request);
+      const response = await client.post<AiMeasurementResponse>('/measurements/scan', request);
       
       console.log('✅ Body scan analysis response:', response.data);
       

@@ -1,39 +1,142 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import SubscriptionService from '@/services/subscriptionService';
+import SubscriptionService, { CreateSubscriptionPackageData } from '@/services/subscriptionService';
 
 const CreateSubscriptionPage = () => {
   const router = useRouter();
   
-  const [formData, setFormData] = useState({
-    name: '',
+  const [formData, setFormData] = useState<CreateSubscriptionPackageData & {
+    promoCode?: string;
+    selectedPricing: 'monthly' | 'quarterly' | 'yearly';
+    financialDetails: {
+      id: string;
+      amount: number;
+      platformChargePercent: number;
+      platformChargeValue: number;
+      actualAmount: number;
+      discountPercentage: number;
+    }[];
+  }>({
+    packageName: '',
     description: '',
-    maxUsers: 50,
+    services: '',
+    monthlyPrice: 0,
+    quarterlyPrice: 0,
+    yearlyPrice: 0,
+    promoStartDate: '',
+    promoEndDate: '',
     promoCode: '',
-    startDate: '',
-    endDate: '',
-    services: 1,
-    pricePerMonth: 20,
-    pricePerQuarter: 55,
-    pricePerYear: 200
+    selectedPricing: 'monthly',
+    financialDetails: [{
+      id: '1',
+      amount: 0,
+      platformChargePercent: 0,
+      platformChargeValue: 0,
+      actualAmount: 0,
+      discountPercentage: 0
+    }]
   });
 
-  const [selectedFrequency, setSelectedFrequency] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Calculate amounts whenever related fields change
+  useEffect(() => {
+    const updatedFinancialDetails = formData.financialDetails.map(detail => {
+      const amount = detail.amount || 0;
+      const platformChargePercent = detail.platformChargePercent || 0;
+      const discountPercentage = detail.discountPercentage || 0;
+      
+      // Calculate platform charge value
+      const platformChargeValue = (amount * platformChargePercent) / 100;
+      
+      // Calculate actual amount before discount
+      const actualAmountBeforeDiscount = amount + platformChargeValue;
+      
+      // Calculate discount amount and final actual amount
+      const discountValue = (actualAmountBeforeDiscount * discountPercentage) / 100;
+      const actualAmount = actualAmountBeforeDiscount - discountValue;
+      
+      return {
+        ...detail,
+        platformChargeValue: parseFloat(platformChargeValue.toFixed(2)),
+        actualAmount: parseFloat(actualAmount.toFixed(2))
+      };
+    });
+    
+    // Only update if there are actual changes
+    const hasChanges = formData.financialDetails.some((detail, index) => {
+      const updatedDetail = updatedFinancialDetails[index];
+      return (
+        detail.platformChargeValue !== updatedDetail.platformChargeValue ||
+        detail.actualAmount !== updatedDetail.actualAmount
+      );
+    });
+    
+    if (hasChanges) {
+      setFormData(prev => ({
+        ...prev,
+        financialDetails: updatedFinancialDetails
+      }));
+    }
+  }, [formData.financialDetails]); // Only watch financialDetails changes
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    if (name === 'selectedPricing') {
+      setFormData(prev => ({
+        ...prev,
+        selectedPricing: value as 'monthly' | 'quarterly' | 'yearly'
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: name.includes('Price')
+          ? Number(value) 
+          : value
+      }));
+    }
+  };
+
+  const handleFinancialDetailChange = (id: string, field: string, value: string | number) => {
     setFormData(prev => ({
       ...prev,
-      [name]: name.includes('price') || name.includes('maxUsers') || name.includes('services') 
-        ? Number(value) 
-        : value
+      financialDetails: prev.financialDetails.map(detail => 
+        detail.id === id ? { ...detail, [field]: value } : detail
+      )
     }));
   };
 
+  const addFinancialDetail = () => {
+    setFormData(prev => ({
+      ...prev,
+      financialDetails: [
+        ...prev.financialDetails,
+        {
+          id: Date.now().toString(),
+          amount: 0,
+          platformChargePercent: 0,
+          platformChargeValue: 0,
+          actualAmount: 0,
+          discountPercentage: 0
+        }
+      ]
+    }));
+  };
+
+  const removeFinancialDetail = (id: string) => {
+    if (formData.financialDetails.length > 1) {
+      setFormData(prev => ({
+        ...prev,
+        financialDetails: prev.financialDetails.filter(detail => detail.id !== id)
+      }));
+    }
+  };
+
   const generatePromoCode = () => {
-    const prefix = formData.name.substring(0, 4).toUpperCase();
+    const prefix = formData.packageName.substring(0, 4).toUpperCase();
     const randomNum = Math.floor(1000 + Math.random() * 9000);
     const year = new Date().getFullYear();
     setFormData(prev => ({
@@ -42,28 +145,37 @@ const CreateSubscriptionPage = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log('Form submitted:', formData);
     
-    // Create package using service
-    const { name, description, maxUsers, promoCode, startDate, endDate, services, pricePerMonth, pricePerQuarter, pricePerYear } = formData;
-    SubscriptionService.createPackage({
-      name,
-      description,
-      maxUsers,
-      promoCode,
-      startDate,
-      endDate,
-      services,
-      pricePerMonth,
-      pricePerQuarter,
-      pricePerYear
-    });
-    
-    // Redirect back to subscription list
-    router.push('/super-admin/subscription');
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Create package using service
+      await SubscriptionService.createSubscriptionPackage({
+        packageName: formData.packageName,
+        description: formData.description,
+        services: formData.services,
+        monthlyPrice: formData.monthlyPrice,
+        quarterlyPrice: formData.quarterlyPrice,
+        yearlyPrice: formData.yearlyPrice,
+        promoStartDate: formData.promoStartDate,
+        promoEndDate: formData.promoEndDate
+      });
+      
+      // Redirect back to subscription list
+      router.push('/super-admin/subscription');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create subscription package');
+      console.error('Error creating package:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const goBack = () => {
+    router.back();
   };
 
   return (
@@ -73,10 +185,22 @@ const CreateSubscriptionPage = () => {
         .manrope { font-family: 'Manrope', sans-serif; }
       `}</style>
       
-      <div className="mb-8">
+      <div className="mb-6">
+        <button 
+          onClick={goBack}
+          className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 mb-4"
+        >
+           Back
+        </button>
         <h1 className="text-3xl font-bold text-gray-800">Create Subscription Package</h1>
         <p className="text-gray-600 mt-2">Fill in the details to create a new subscription package</p>
       </div>
+
+      {error && (
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+          Error: {error}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -84,8 +208,8 @@ const CreateSubscriptionPage = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Package Name</label>
             <input
               type="text"
-              name="name"
-              value={formData.name}
+              name="packageName"
+              value={formData.packageName}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
               required
@@ -93,13 +217,12 @@ const CreateSubscriptionPage = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Maximum Users</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Services</label>
             <input
-              type="number"
-              name="maxUsers"
-              value={formData.maxUsers}
+              type="text"
+              name="services"
+              value={formData.services}
               onChange={handleChange}
-              min="1"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
               required
             />
@@ -127,7 +250,7 @@ const CreateSubscriptionPage = () => {
                   <input
                     type="text"
                     name="promoCode"
-                    value={formData.promoCode}
+                    value={formData.promoCode || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
                   />
@@ -145,30 +268,78 @@ const CreateSubscriptionPage = () => {
             </div>
           </div>
           
-          {/* Validity Period Section */}
+          {/* Promo Period Section */}
           <div className="md:col-span-2">
             <div className="border border-gray-200 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Validity Period</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Promo Period</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Promo Start Date</label>
                   <input
                     type="date"
-                    name="startDate"
-                    value={formData.startDate}
+                    name="promoStartDate"
+                    value={formData.promoStartDate}
                     onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Promo End Date</label>
+                  <input
+                    type="date"
+                    name="promoEndDate"
+                    value={formData.promoEndDate}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Pricing Section */}
+          <div className="md:col-span-2">
+            <div className="border border-gray-200 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Pricing</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Monthly Price (₦)</label>
+                  <input
+                    type="number"
+                    name="monthlyPrice"
+                    value={formData.monthlyPrice}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
                     required
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Quarterly Price (₦)</label>
                   <input
-                    type="date"
-                    name="endDate"
-                    value={formData.endDate}
+                    type="number"
+                    name="quarterlyPrice"
+                    value={formData.quarterlyPrice}
                     onChange={handleChange}
+                    min="0"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Yearly Price (₦)</label>
+                  <input
+                    type="number"
+                    name="yearlyPrice"
+                    value={formData.yearlyPrice}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
                     required
                   />
@@ -177,74 +348,108 @@ const CreateSubscriptionPage = () => {
             </div>
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Number of Services</label>
-            <input
-              type="number"
-              name="services"
-              value={formData.services}
-              onChange={handleChange}
-              min="1"
-              max="100"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-            />
-          </div>
-          
-          {/* Services Section */}
+          {/* Financial Details Section */}
           <div className="md:col-span-2">
             <div className="border border-gray-200 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Services & Pricing</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">Financial Details</h3>
+                <button
+                  type="button"
+                  onClick={addFinancialDetail}
+                  className="px-3 py-1 bg-[#5D2A8B] text-white rounded-md hover:bg-[#4a216e] text-sm"
+                >
+                  Add More
+                </button>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Select Pricing Type</label>
+                <select
+                  name="selectedPricing"
+                  value={formData.selectedPricing}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Price Frequency</label>
-                  <select 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                    onChange={(e) => {
-                      setSelectedFrequency(e.target.value);
-                    }}
-                    value={selectedFrequency}
-                  >
-                    <option value="">Select Frequency</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="quarterly">Quarterly</option>
-                    <option value="yearly">Yearly</option>
-                  </select>
-                </div>
-                
-                {selectedFrequency && (
-                  <div className="w-full">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {selectedFrequency === 'monthly' && 'Price per Month ($)'}
-                      {selectedFrequency === 'quarterly' && 'Price per Quarter ($)'}
-                      {selectedFrequency === 'yearly' && 'Price per Year ($)'}
-                    </label>
-                    <input
-                      type="number"
-                      name={selectedFrequency === 'monthly' ? 'pricePerMonth' : selectedFrequency === 'quarterly' ? 'pricePerQuarter' : 'pricePerYear'}
-                      value={selectedFrequency === 'monthly' ? formData.pricePerMonth : selectedFrequency === 'quarterly' ? formData.pricePerQuarter : formData.pricePerYear}
-                      onChange={handleChange}
-                      min="0"
-                      step="0.01"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                      required
-                    />
-                    {selectedFrequency === 'quarterly' && (
-                      <div className="text-xs text-gray-500 mt-1">5% discount applied</div>
+                {formData.financialDetails.map((detail, index) => (
+                  <div key={detail.id} className="border border-gray-200 rounded-lg p-4 relative">
+                    {formData.financialDetails.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeFinancialDetail(detail.id)}
+                        className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                      >
+                        Remove
+                      </button>
                     )}
-                    {selectedFrequency === 'yearly' && (
-                      <div className="text-xs text-gray-500 mt-1">10% discount applied</div>
-                    )}
+                    
+                    <h4 className="text-md font-medium text-gray-800 mb-3">Financial Detail #{index + 1}</h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₦)</label>
+                        <input
+                          type="number"
+                          value={detail.amount}
+                          onChange={(e) => handleFinancialDetailChange(detail.id, 'amount', parseFloat(e.target.value) || 0)}
+                          min="0"
+                          step="0.01"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Platform Charge %</label>
+                        <input
+                          type="number"
+                          value={detail.platformChargePercent}
+                          onChange={(e) => handleFinancialDetailChange(detail.id, 'platformChargePercent', parseFloat(e.target.value) || 0)}
+                          min="0"
+                          step="0.01"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Platform Charge Value (₦)</label>
+                        <input
+                          type="number"
+                          value={detail.platformChargeValue}
+                          readOnly
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Discount Percentage (%)</label>
+                        <input
+                          type="number"
+                          value={detail.discountPercentage}
+                          onChange={(e) => handleFinancialDetailChange(detail.id, 'discountPercentage', parseFloat(e.target.value) || 0)}
+                          min="0"
+                          step="0.01"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                        />
+                      </div>
+                      
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Actual Amount (₦)</label>
+                        <input
+                          type="number"
+                          value={detail.actualAmount}
+                          readOnly
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 font-semibold"
+                        />
+                      </div>
+                    </div>
                   </div>
-                )}
-                
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <h4 className="font-medium text-gray-800 mb-2">Discount Information</h4>
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <p>• Quarterly billing offers a 5% discount on the monthly rate.</p>
-                    <p>• Annual billing offers a 10% discount on the monthly rate.</p>
-                    <p>• Discounts are automatically calculated and applied at checkout.</p>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
@@ -252,17 +457,11 @@ const CreateSubscriptionPage = () => {
         
         <div className="mt-6 flex justify-end space-x-3">
           <button
-            type="button"
-            onClick={() => router.back()}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
             type="submit"
-            className="px-4 py-2 bg-[#5D2A8B] text-white rounded-md hover:bg-[#4a216e]"
+            className="px-4 py-2 bg-[#5D2A8B] text-white rounded-md hover:bg-[#4a216e] disabled:opacity-50"
+            disabled={loading}
           >
-            Create Package
+            {loading ? 'Creating...' : 'Create Package'}
           </button>
         </div>
       </form>

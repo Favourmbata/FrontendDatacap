@@ -283,12 +283,12 @@ const BodyMeasurementPage = () => {
                There is nothing to view right now, <br />
                 Create a body measurement to see here.
               </p>
-              <button
+              {/* <button
                 onClick={() => router.push('/user/body-measurement/create')}
                 className="manrope bg-[#5D2A8B] text-white px-6 py-2 rounded-full hover:bg-purple-700 transition-colors"
               >
                 Create Your First Measurement
-              </button>
+              </button> */}
             </div>
           ) : (
             <>

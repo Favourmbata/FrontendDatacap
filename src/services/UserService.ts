@@ -29,5 +29,3 @@ export class UserService {
     return this.httpService.patchData(data, routes.updateUserProfile());
   }
 }
-
-export default UserService;

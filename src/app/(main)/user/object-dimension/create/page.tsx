@@ -8,7 +8,8 @@ import { useRouter } from "next/navigation";
 import * as Yup from "yup";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "@/app/components/hooks/use-toast";
-import { ObjectDimensionFormValues } from "../../../../../../types";
+import { ObjectDimensionFormValues } from "@/types";
+
 
 const validationSchema = Yup.object().shape({
   title: Yup.string().required("Title is required"),

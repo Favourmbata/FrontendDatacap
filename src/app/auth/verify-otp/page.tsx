@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/api/hooks/useAuth";
+import { routes } from "@/services/apiRoutes";
 import { useAuthContext } from "@/AuthContext";
 import { toast } from "@/app/components/hooks/use-toast";
 import Link from "next/link";
@@ -71,7 +72,7 @@ function VerifyOtpContent() {
       
       console.log('🚀 Sending VERIFY OTP request to backend:', payload);
       
-      const { data } = await client.post("/api/auth/verify-otp", payload);
+      const { data } = await client.post(routes.verifyOtp(), payload);
       return data;
     },
     onSuccess: (response) => {
@@ -127,7 +128,7 @@ function VerifyOtpContent() {
       
       console.log('🚀 Sending RESEND OTP request to backend:', payload);
       
-      const { data } = await client.post("/api/auth/resend-otp", payload);
+      const { data } = await client.post(routes.resendOtp(), payload);
       return data;
     },
     onSuccess: () => {

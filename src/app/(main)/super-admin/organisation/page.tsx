@@ -1,189 +1,388 @@
+// "use client";
+
+// import React, { useState } from 'react';
+// import OrganizationsTable from '@/components/forms/OrganizationsTable';
+
+// const OrganisationManagementPage = () => {
+//   const [searchTerm, setSearchTerm] = useState('');
+
+//   return (
+//     <div className="manrope">
+//       <style jsx>{`
+//         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
+//         .manrope { font-family: 'Manrope', sans-serif; }
+//       `}</style>
+
+//       <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
+//         {/* Header Section */}
+//         <div className="mb-6">
+//           <h1 className="text-2xl font-bold text-gray-800 mb-2">Organisation Management</h1>
+//           <p className="text-gray-600">Manage organisations and their administrators</p>
+//         </div>
+
+//         <OrganizationsTable
+//           searchTerm={searchTerm}
+//           onSearchChange={setSearchTerm}
+//         />
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default OrganisationManagementPage;
+
+
 "use client";
 
-import React, { useState } from 'react';
-import { Search, Plus, Edit, Eye, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-
-interface Organisation {
-  id: string;
-  name: string;
-  adminEmail: string;
-  userCount: number;
-  status: 'active' | 'inactive';
-  createdAt: string;
-}
+import React, { useState, useEffect } from "react";
+import {
+  Search,
+  Plus,
+  Edit,
+  Eye,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import OrganizationService from "@/services/OrganizationService";
+import { Organization } from "@/types";
 
 const OrganisationManagementPage = () => {
   const router = useRouter();
-  const [organisations] = useState<Organisation[]>([
-    { 
-      id: 'ORG-001', 
-      name: 'Tech Solutions Inc.', 
-      adminEmail: 'admin@techsolutions.com', 
-      userCount: 42,
-      status: 'active',
-      createdAt: '2023-01-15T10:30:00Z'
-    },
-    { 
-      id: 'ORG-002', 
-      name: 'Global Enterprises', 
-      adminEmail: 'contact@globalent.com', 
-      userCount: 28,
-      status: 'active',
-      createdAt: '2023-02-20T14:45:00Z'
-    },
-    { 
-      id: 'ORG-003', 
-      name: 'Innovation Labs', 
-      adminEmail: 'info@innovationlabs.io', 
-      userCount: 15,
-      status: 'inactive',
-      createdAt: '2023-03-10T09:15:00Z'
-    },
-  ]);
-  
-  const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredOrganisations = organisations.filter(org => 
-    org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    org.adminEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    org.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalOrganizations, setTotalOrganizations] = useState(0);
+
+  // Filters
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] =
+    useState<"active" | "suspended" | "inactive" | "">("");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  // Date range
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  // Export
+  const [exportLoading, setExportLoading] = useState(false);
+
+  const fetchOrganizations = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const params = {
+        page,
+        limit,
+        search: searchTerm,
+        status: statusFilter || undefined,
+        sortBy,
+        sortOrder,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      };
+
+      const response = await OrganizationService.getOrganizations(params);
+
+      setOrganizations(response.organizations);
+      setTotalOrganizations(response.total);
+      setTotalPages(response.totalPages);
+    } catch (err) {
+      setError("Failed to fetch organizations");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrganizations();
+  }, [page, searchTerm, statusFilter, sortBy, sortOrder, startDate, endDate]);
+
+  const handleSortChange = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortOrder("desc");
+    }
+  };
+
+  const formatDate = (date: string) =>
+    new Date(date).toLocaleDateString();
+
+  const handleExport = async (format: "csv" | "excel") => {
+    setExportLoading(true);
+    try {
+      const params = {
+        search: searchTerm,
+        status: statusFilter || undefined,
+        sortBy,
+        sortOrder,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      };
+
+      const res = await OrganizationService.exportOrganizations(format, params);
+      const link = document.createElement("a");
+      link.href = res.downloadUrl;
+      link.download = res.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } finally {
+      setExportLoading(false);
+    }
+  };
 
   return (
     <div className="manrope">
       <style jsx>{`
-        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
-        .manrope { font-family: 'Manrope', sans-serif; }
+        @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap");
+        .manrope {
+          font-family: "Manrope", sans-serif;
+        }
       `}</style>
 
-      <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
-        {/* Header Section */}
+      <div className="ml-0 md:ml-[350px] p-6 min-h-screen bg-gray-50">
+        {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Organisation Management</h1>
-          <p className="text-gray-600">Manage organisations and their administrators</p>
+          <h1 className="text-2xl font-bold text-gray-800">
+            Organisation Management
+          </h1>
+          
         </div>
 
-        {/* Search and Action Section */}
-        <div className="mb-6">
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            <div className="flex-1 max-w-md">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Search organisations..."
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+          {/* FILTER SECTION */}
+          <div className="p-5 border-b border-gray-200 space-y-4">
+
+            {/* ROW 1 */}
+            <div className="flex flex-col md:flex-row md:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xl">
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search organizations..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setPage(1);
+                    }}
+                    className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <select
+                  value={statusFilter}
+                  onChange={(e) =>
+                    setStatusFilter(e.target.value as any)
+                  }
+                  className="px-3 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="suspended">Suspended</option>
+                  <option value="inactive">Inactive</option>
+                </select>
               </div>
-            </div>
-            
-            <button
-              className="px-4 py-3 bg-[#5D2A8B] text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center gap-2"
-              onClick={() => router.push('/super-admin/organisation/create')}
-            >
-              <Plus className="w-5 h-5" />
-              Add Organisation
-            </button>
-          </div>
-        </div>
 
-        {/* Organisations Table */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+              <button
+                onClick={() =>
+                  router.push("/super-admin/organisation/create")
+                }
+                className="px-5 py-3 bg-[#5D2A8B] text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                Create Organization
+              </button>
+            </div>
+
+            {/* ROW 2 */}
+            {/* Date Range Helper */}
+<p className="text-xs text-gray-500">
+  Select range from <span className="font-medium">Start Date</span> to{" "}
+  <span className="font-medium">End Date</span> 
+</p>
+
+{/* Date Range Inputs */}
+<div className="flex gap-3 max-w-xl">
+  {/* Start Date */}
+  <div className="w-full">
+    <label className="block text-xs text-gray-600 mb-1">
+      Start Date
+    </label>
+    <input
+      type="date"
+      value={startDate}
+      onChange={(e) => {
+        setStartDate(e.target.value);
+        setPage(1);
+      }}
+      className="w-full px-3 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-purple-500"
+    />
+  </div>
+
+  {/* End Date */}
+  <div className="w-full">
+    <label className="block text-xs text-gray-600 mb-1">
+      End Date
+    </label>
+    <input
+      type="date"
+      value={endDate}
+      min={startDate || undefined}
+      onChange={(e) => {
+        setEndDate(e.target.value);
+        setPage(1);
+      }}
+      className="w-full px-3 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-purple-500"
+    />
+  </div>
+</div>
+
+
+            {/* ROW 3 */}
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => handleExport("csv")}
+                disabled={exportLoading}
+                className="px-4 py-3 bg-green-600 text-white rounded-lg flex gap-2"
+              >
+                <Download className="w-5 h-5" />
+                Export CSV
+              </button>
+
+              <button
+                onClick={() => handleExport("excel")}
+                disabled={exportLoading}
+                className="px-4 py-3 bg-blue-600 text-white rounded-lg flex gap-2"
+              >
+                <Download className="w-5 h-5" />
+                Export Excel
+              </button>
+            </div>
+          </div>
+
+          {/* TABLE */}
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Organisation
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Admin Email
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Users
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Created
-                  </th>
-                  <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  {[
+                    "S/N",
+                    "Organization Name",
+                    "Email",
+                    "Phone",
+                    "Account",
+                    "Date Registered",
+                    "Status",
+                    "Actions",
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase"
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredOrganisations.length === 0 ? (
+
+              <tbody className="divide-y">
+                {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center">
-                      <div className="flex flex-col items-center justify-center text-gray-500">
-                        <p className="text-lg font-medium">No organisations found</p>
-                        <p className="text-sm mt-1">Try adjusting your search</p>
-                      </div>
+                    <td colSpan={8} className="text-center py-12">
+                      Loading...
+                    </td>
+                  </tr>
+                ) : organizations.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-12">
+                      No organizations found
                     </td>
                   </tr>
                 ) : (
-                  filteredOrganisations.map((org) => (
-                    <tr key={org.id} className="hover:bg-gray-50 transition-colors duration-150">
+                  organizations.map((org, i) => (
+                    <tr key={org.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
-                        <div className="text-sm font-semibold text-gray-900">{org.name}</div>
-                        <div className="text-xs text-gray-500 mt-1">{org.id}</div>
+                        {(page - 1) * limit + i + 1}
+                      </td>
+                      <td className="px-6 py-4 font-medium">
+                        {org.organizationName}
+                      </td>
+                      <td className="px-6 py-4">{org.email}</td>
+                      <td className="px-6 py-4">
+                        {org.phoneNumber || "N/A"}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">{org.adminEmail}</div>
+                        {org.accountNumber}
+                      </td>
+                      <td className="px-6 py-4 text-gray-500">
+                        {formatDate(org.registrationDate)}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">{org.userCount}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          org.status === 'active' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {org.status.charAt(0).toUpperCase() + org.status.slice(1)}
+                        <span className="px-3 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                          {org.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-500">
-                          {new Date(org.createdAt).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => router.push(`/super-admin/organisation/view/${org.id}`)}
-                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-                            title="View organisation"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          
-                          <button
-                            onClick={() => router.push(`/super-admin/organisation/edit/${org.id}`)}
-                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-                            title="Edit organisation"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          
-                          <button
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-                            title="Delete organisation"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                      <td className="px-6 py-4 flex gap-2">
+                        <Eye
+                          className="w-4 h-4 text-blue-600 cursor-pointer"
+                          onClick={() =>
+                            router.push(
+                              `/super-admin/organisation/view/${org.id}`
+                            )
+                          }
+                        />
+                        <Edit
+                          className="w-4 h-4 text-green-600 cursor-pointer"
+                          onClick={() =>
+                            router.push(
+                              `/super-admin/organisation/edit/${org.id}`
+                            )
+                          }
+                        />
+                        <Trash2 className="w-4 h-4 text-red-600 cursor-pointer" />
                       </td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* PAGINATION */}
+          <div className="p-4 flex justify-between items-center">
+            <span className="text-sm">
+              Page {page} of {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                disabled={page === 1}
+              >
+                <ChevronLeft />
+              </button>
+              <button
+                onClick={() =>
+                  setPage((p) => Math.min(p + 1, totalPages))
+                }
+                disabled={page === totalPages}
+              >
+                <ChevronRight />
+              </button>
+            </div>
           </div>
         </div>
       </div>
