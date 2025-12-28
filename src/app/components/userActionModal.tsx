@@ -1,4 +1,4 @@
-// app/components/userActionModal.tsx
+
 'use client';
 
 import React, { useState } from 'react';
@@ -9,7 +9,7 @@ interface UserActionModalProps {
   onClose: () => void;
   onViewUser: () => void;
   onEditUser: () => void;
-  onPendingUser?: () => void; // Optional since not all contexts may need it
+  onPendingUser?: () => void; 
   onOneTimeCode: () => void;
   onDelete: () => void;
   onChangePassword?: () => void;
