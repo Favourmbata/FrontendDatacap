@@ -45,7 +45,7 @@ const UserActionModal: React.FC<UserActionModalProps> = ({
         .manrope { font-family: 'Manrope', sans-serif; }
       `}</style>
 
-      {/* Backdrop */}
+     
       <div 
         className="fixed inset-0 z-40 bg-black bg-opacity-30 md:bg-transparent" 
         onClick={onClose}
@@ -96,7 +96,7 @@ const UserActionModal: React.FC<UserActionModalProps> = ({
         </div>
       </div>
 
-      {/* Desktop Modal - Only on desktop */}
+     
       <div 
         className="hidden md:block fixed bg-white shadow-lg rounded-lg z-50"
         style={{
