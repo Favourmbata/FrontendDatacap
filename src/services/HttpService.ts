@@ -99,4 +99,49 @@ export class HttpService {
     });
     return this.handleResponse<T>(response);
   }
+
+  // Add method for downloading files
+  async download(endpoint: string): Promise<Blob> {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      method: 'GET',
+      headers: this.getHeaders(),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.status}`);
+    }
+    
+    return response.blob();
+  }
+
+  // Static methods for easy usage
+  static async get<T>(endpoint: string): Promise<T> {
+    const httpService = new HttpService();
+    return httpService.getData<T>(endpoint);
+  }
+
+  static async post<T>(endpoint: string, data: any): Promise<T> {
+    const httpService = new HttpService();
+    return httpService.postData<T>(data, endpoint);
+  }
+
+  static async put<T>(endpoint: string, data: any): Promise<T> {
+    const httpService = new HttpService();
+    return httpService.putData<T>(data, endpoint);
+  }
+
+  static async delete<T>(endpoint: string): Promise<T> {
+    const httpService = new HttpService();
+    return httpService.deleteData<T>(endpoint);
+  }
+
+  static async patch<T>(endpoint: string, data: any): Promise<T> {
+    const httpService = new HttpService();
+    return httpService.patchData<T>(data, endpoint);
+  }
+
+  static async download(endpoint: string): Promise<Blob> {
+    const httpService = new HttpService();
+    return httpService.download(endpoint);
+  }
 }

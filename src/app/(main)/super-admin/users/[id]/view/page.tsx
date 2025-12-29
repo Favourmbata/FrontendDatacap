@@ -1,9 +1,9 @@
 "use client";
 
-import SuperAdminUserList from "@/modules/super-admin/user/list";
+import SuperAdminUserView from "@/modules/super-admin/user/view";
 
 
-const SuperAdminUserManagementPage = () => {
+const ViewCustomerPage = () => {
   return (
     <div className="manrope">
       <style jsx>{`
@@ -12,10 +12,10 @@ const SuperAdminUserManagementPage = () => {
       `}</style>
 
       <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
-        <SuperAdminUserList />
+        <SuperAdminUserView />
       </div>
     </div>
   );
 };
 
-export default SuperAdminUserManagementPage;
+export default ViewCustomerPage;

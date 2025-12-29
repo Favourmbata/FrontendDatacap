@@ -1,4 +1,4 @@
-// app/components/userActionModal.tsx
+
 'use client';
 
 import React, { useState } from 'react';
@@ -9,7 +9,7 @@ interface UserActionModalProps {
   onClose: () => void;
   onViewUser: () => void;
   onEditUser: () => void;
-  onPendingUser?: () => void; // Optional since not all contexts may need it
+  onPendingUser?: () => void; 
   onOneTimeCode: () => void;
   onDelete: () => void;
   onChangePassword?: () => void;
@@ -45,7 +45,7 @@ const UserActionModal: React.FC<UserActionModalProps> = ({
         .manrope { font-family: 'Manrope', sans-serif; }
       `}</style>
 
-      {/* Backdrop */}
+     
       <div 
         className="fixed inset-0 z-40 bg-black bg-opacity-30 md:bg-transparent" 
         onClick={onClose}
@@ -96,7 +96,7 @@ const UserActionModal: React.FC<UserActionModalProps> = ({
         </div>
       </div>
 
-      {/* Desktop Modal - Only on desktop */}
+     
       <div 
         className="hidden md:block fixed bg-white shadow-lg rounded-lg z-50"
         style={{

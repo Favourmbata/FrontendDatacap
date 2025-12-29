@@ -1,0 +1,34 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+// GET /api/super-admin/dashboard/analytics - Retrieve comprehensive analytics for the super admin dashboard
+export async function GET(request: NextRequest) {
+  try {
+    console.log('🔄 Proxying super admin dashboard analytics request to backend');
+
+    // Get the backend URL from environment variables
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API || process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://datacapture-backend.onrender.com';
+    
+    // Get the authorization token from the incoming request
+    const authHeader = request.headers.get('authorization');
+    
+    // Forward the request to the actual backend
+    const response = await fetch(`${backendUrl}/super-admin/dashboard/analytics`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authHeader && { 'Authorization': authHeader }),
+      },
+    });
+
+    const data = await response.json();
+
+    // Return the response from the backend
+    return NextResponse.json(data, { status: response.status });
+  } catch (error) {
+    console.error('❌ Proxy error:', error);
+    return NextResponse.json(
+      { message: 'Failed to retrieve super admin dashboard analytics', error: String(error) },
+      { status: 500 }
+    );
+  }
+}

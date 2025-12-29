@@ -67,4 +67,19 @@ export const routes = {
   updateSubscriptionPackage: (id: string) => `/api/super-admin/subscriptions/${id}`,
   deleteSubscriptionPackage: (id: string) => `/api/super-admin/subscriptions/${id}`,
   updateSubscriptionStatus: (id: string) => `/api/super-admin/subscriptions/${id}/status`,
+  exportSubscriptionPackages: (format: 'csv' | 'excel' | 'pdf') => `/api/super-admin/subscriptions/export/${format}`,
+
+
+  // Super Admin dashboard routes
+  getSuperAdminDashboardStats: () => '/api/super-admin/dashboard/stats',
+  getSuperAdminDashboardAnalytics: () => '/api/super-admin/dashboard/analytics',
+  
+  // Super Admin customer management routes
+  superAdmin: {
+    customers: '/api/super-admin/customers',
+    customerById: (id: string) => `/api/super-admin/customers/${id}`,
+    customerStatus: (id: string) => `/api/super-admin/customers/${id}/status`,
+    resetCustomerPassword: (id: string) => `/api/super-admin/customers/${id}/reset-password`,
+    exportCustomers: (format: 'csv' | 'excel' | 'pdf') => `/api/super-admin/customers/export/${format}`,
+  }
 };

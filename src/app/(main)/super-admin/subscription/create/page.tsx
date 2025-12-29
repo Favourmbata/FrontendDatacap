@@ -41,6 +41,52 @@ const CreateSubscriptionPage = () => {
 
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Validation functions
+  const validatePackageName = (name: string): string | null => {
+    if (!name.trim()) return 'Package name is required';
+    if (name.length < 2) return 'Package name must be at least 2 characters';
+    if (name.length > 50) return 'Package name must not exceed 50 characters';
+    return null;
+  };
+
+  const validatePrices = (monthly: number, quarterly: number, yearly: number): string | null => {
+    if (monthly <= 0) return 'Monthly price must be a positive number';
+    if (quarterly <= 0) return 'Quarterly price must be a positive number';
+    if (yearly <= 0) return 'Yearly price must be a positive number';
+    
+    // Check pricing logic: Monthly ≤ Quarterly ≤ Yearly
+    if (monthly > quarterly) return 'Quarterly price should be greater than or equal to monthly price';
+    if (quarterly > yearly) return 'Yearly price should be greater than or equal to quarterly price';
+    
+    return null;
+  };
+
+  const validatePromoDates = (startDate: string | undefined, endDate: string | undefined): string | null => {
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (end <= start) return 'End date must be after start date';
+    }
+    return null;
+  };
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    const nameError = validatePackageName(formData.packageName);
+    if (nameError) errors.packageName = nameError;
+    
+    const priceError = validatePrices(formData.monthlyPrice, formData.quarterlyPrice, formData.yearlyPrice);
+    if (priceError) errors.prices = priceError;
+    
+    const dateError = validatePromoDates(formData.promoStartDate, formData.promoEndDate);
+    if (dateError) errors.promoDates = dateError;
+    
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   // Calculate amounts whenever related fields change
   useEffect(() => {
@@ -98,6 +144,15 @@ const CreateSubscriptionPage = () => {
           : value
       }));
     }
+    
+    // Clear error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
   const handleFinancialDetailChange = (id: string, field: string, value: string | number) => {
@@ -148,9 +203,15 @@ const CreateSubscriptionPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Run validation before submitting
+    if (!validateForm()) {
+      return;
+    }
+    
     try {
       setLoading(true);
       setError(null);
+      setFieldErrors({}); // Clear any previous field errors
       
       // Create package using service
       await SubscriptionService.createSubscriptionPackage({
@@ -211,9 +272,12 @@ const CreateSubscriptionPage = () => {
               name="packageName"
               value={formData.packageName}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B] ${fieldErrors.packageName ? 'border-red-500' : 'border-gray-300'}`}
               required
             />
+            {fieldErrors.packageName && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.packageName}</p>
+            )}
           </div>
           
           <div>
@@ -280,7 +344,7 @@ const CreateSubscriptionPage = () => {
                     name="promoStartDate"
                     value={formData.promoStartDate}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B] ${fieldErrors.promoDates ? 'border-red-500' : 'border-gray-300'}`}
                   />
                 </div>
                 
@@ -291,10 +355,13 @@ const CreateSubscriptionPage = () => {
                     name="promoEndDate"
                     value={formData.promoEndDate}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B] ${fieldErrors.promoDates ? 'border-red-500' : 'border-gray-300'}`}
                   />
                 </div>
               </div>
+              {fieldErrors.promoDates && (
+                <p className="mt-2 text-sm text-red-600">{fieldErrors.promoDates}</p>
+              )}
             </div>
           </div>
           
@@ -312,7 +379,7 @@ const CreateSubscriptionPage = () => {
                     onChange={handleChange}
                     min="0"
                     step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B] ${fieldErrors.prices ? 'border-red-500' : 'border-gray-300'}`}
                     required
                   />
                 </div>
@@ -326,7 +393,7 @@ const CreateSubscriptionPage = () => {
                     onChange={handleChange}
                     min="0"
                     step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B] ${fieldErrors.prices ? 'border-red-500' : 'border-gray-300'}`}
                     required
                   />
                 </div>
@@ -340,11 +407,14 @@ const CreateSubscriptionPage = () => {
                     onChange={handleChange}
                     min="0"
                     step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B] ${fieldErrors.prices ? 'border-red-500' : 'border-gray-300'}`}
                     required
                   />
                 </div>
               </div>
+              {fieldErrors.prices && (
+                <p className="mt-2 text-sm text-red-600">{fieldErrors.prices}</p>
+              )}
             </div>
           </div>
           
