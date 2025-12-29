@@ -177,6 +177,17 @@ class SubscriptionService {
       throw error;
     }
   }
+
+  // Export subscription packages
+  async exportSubscriptionPackages(format: 'csv' | 'excel' | 'pdf'): Promise<Blob> {
+    try {
+      const url = routes.exportSubscriptionPackages(format);
+      return await this.httpService.download(url);
+    } catch (error) {
+      console.error('Error exporting subscription packages:', error);
+      throw error;
+    }
+  }
 }
 
 export default new SubscriptionService();

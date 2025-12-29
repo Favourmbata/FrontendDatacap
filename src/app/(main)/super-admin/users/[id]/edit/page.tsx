@@ -1,9 +1,9 @@
 "use client";
 
-import SuperAdminUserList from "@/modules/super-admin/user/list";
+import SuperAdminUserEdit from "@/modules/super-admin/user/edit";
 
 
-const SuperAdminUserManagementPage = () => {
+const EditCustomerPage = () => {
   return (
     <div className="manrope">
       <style jsx>{`
@@ -12,10 +12,10 @@ const SuperAdminUserManagementPage = () => {
       `}</style>
 
       <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
-        <SuperAdminUserList />
+        <SuperAdminUserEdit />
       </div>
     </div>
   );
 };
 
-export default SuperAdminUserManagementPage;
+export default EditCustomerPage;
