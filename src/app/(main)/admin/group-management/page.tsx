@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus, Edit, Eye, Trash2, MoreHorizontal, UserCheck, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { GroupService, Group } from '@/services/GroupService';
+import { GroupService, Group, GroupMember } from '@/services/GroupService';
 import { toast } from '@/app/components/hooks/use-toast';
 
 const GroupManagementPage = () => {
@@ -13,10 +13,10 @@ const GroupManagementPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   
-  // State for permission modal
+  // State for member modal
   const [memberModal, setMemberModal] = useState({
     isOpen: false,
-    memberIds: [] as string[],
+    members: [] as GroupMember[],
     groupName: ''
   });
   
@@ -179,10 +179,10 @@ const GroupManagementPage = () => {
   };
   
   // Open member modal
-  const openMemberModal = (memberIds: string[], groupName: string) => {
+  const openMemberModal = (members: GroupMember[], groupName: string) => {
     setMemberModal({
       isOpen: true,
-      memberIds,
+      members,
       groupName
     });
   };
@@ -191,7 +191,7 @@ const GroupManagementPage = () => {
   const closeMemberModal = () => {
     setMemberModal({
       isOpen: false,
-      memberIds: [],
+      members: [],
       groupName: ''
     });
   };
@@ -317,10 +317,10 @@ const GroupManagementPage = () => {
                               className="text-purple-600 hover:text-purple-800 font-medium text-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                openMemberModal(group.memberIds, group.name);
+                                openMemberModal(group.members || [], group.name);
                               }}
                             >
-                              View Members ({group.memberIds.length})
+                              View Members ({group.members?.length || 0})
                             </button>
                           </td>
                           <td className="px-6 py-4">
@@ -361,7 +361,7 @@ const GroupManagementPage = () => {
       {memberModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
           <div className="fixed inset-0" onClick={closeMemberModal}></div>
-          <div className="relative bg-white rounded-xl shadow-2xl z-50 w-full max-w-md max-h-[80vh] overflow-y-auto border border-gray-200">
+          <div className="relative bg-white rounded-xl shadow-2xl z-50 w-full max-w-2xl max-h-[80vh] overflow-y-auto border border-gray-200">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Members for {memberModal.groupName}</h3>
@@ -373,16 +373,32 @@ const GroupManagementPage = () => {
                 </button>
               </div>
               
-              <div className="space-y-2">
-                {memberModal.memberIds.map((memberId, index) => (
-                  <div 
-                    key={index} 
-                    className="px-4 py-2 bg-gray-50 rounded-lg text-sm font-medium text-gray-800"
-                  >
-                    {memberId}
-                  </div>
-                ))}
-              </div>
+              {memberModal.members.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p className="text-sm">No members in this group</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {memberModal.members.map((member, index) => (
+                    <div 
+                      key={index} 
+                      className="px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-900">{member.fullName}</p>
+                          <p className="text-xs text-gray-600 mt-1">{member.email}</p>
+                        </div>
+                        <div className="sm:text-right">
+                          <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
+                            {member.role}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               
               <div className="mt-6 flex justify-end">
                 <button

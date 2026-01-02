@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Edit } from 'lucide-react';
+import { ArrowLeft, Edit, Mail, User } from 'lucide-react';
 import { GroupService, Group } from '@/services/GroupService';
 import { toast } from '@/app/components/hooks/use-toast';
 
@@ -45,13 +45,13 @@ const ViewGroupPage = () => {
             className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Group Management
+            Back
           </button>
           
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#5D2A8B] mx-auto mb-4"></div>
             <h2 className="text-xl font-semibold text-gray-800 mb-2">Loading Group...</h2>
-            <p className="text-gray-600">Please wait while we fetch the group details.</p>
+            
           </div>
         </div>
       </div>
@@ -67,7 +67,7 @@ const ViewGroupPage = () => {
             className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Group Management
+            Back
           </button>
           
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
@@ -95,7 +95,7 @@ const ViewGroupPage = () => {
               className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
             >
               <ArrowLeft className="w-5 h-5 mr-2" />
-              Back to Group Management
+              Back
             </button>
             
             <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -104,13 +104,13 @@ const ViewGroupPage = () => {
                 <p className="text-gray-600 mt-1">{group.description}</p>
               </div>
               
-              <button
+              {/* <button
                 onClick={() => router.push(`/admin/group-management/edit/${group.id}`)}
                 className="mt-4 md:mt-0 px-4 py-2 bg-[#5D2A8B] text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center gap-2"
               >
                 <Edit className="w-4 h-4" />
                 Edit Group
-              </button>
+              </button> */}
             </div>
           </div>
 
@@ -142,29 +142,64 @@ const ViewGroupPage = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Last Updated</label>
-                <p className="text-gray-900">
-                  {new Date(group.updatedAt).toLocaleDateString()} at {new Date(group.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
+                <label className="block text-sm font-medium text-gray-500 mb-1">Total Members</label>
+                <p className="text-gray-900">{group.members?.length || 0}</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  group.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  {group.isActive ? 'Active' : 'Inactive'}
+                </span>
               </div>
             </div>
           </div>
 
           {/* Members */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Group Members</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-800">Group Members</h2>
+              <span className="text-sm text-gray-500">
+                {group.members?.length || 0} {group.members?.length === 1 ? 'member' : 'members'}
+              </span>
+            </div>
             
-            {group.memberIds.length === 0 ? (
-              <p className="text-gray-500 italic">No members assigned to this group</p>
+            {!group.members || group.members.length === 0 ? (
+              <div className="text-center py-8">
+                <User className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 italic">No members assigned to this group</p>
+              </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {group.memberIds.map((memberId, index) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {group.members.map((member, index) => (
                   <div 
                     key={index}
-                    className="border border-gray-200 rounded-lg p-4"
+                    className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 hover:shadow-sm transition-all duration-200"
                   >
-                    <div className="font-medium text-gray-900">
-                      {memberId}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          
+                          <h3 className="font-semibold text-gray-900 truncate">
+                            {member.fullName}
+                          </h3>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 mb-2">
+                          
+                          <p className="text-sm text-gray-600 truncate">
+                            {member.email}
+                          </p>
+                        </div>
+                        
+                        <div className="mt-2">
+                          <span className="inline-block px-2.5 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
+                            {member.role}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}

@@ -1,11 +1,23 @@
 import { HttpService } from './HttpService';
 import { routes } from './apiRoutes';
 
+export interface GroupMember {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
+}
+
 export interface Group {
+  _id: string;
   id: string;
   name: string;
   description: string;
   memberIds: string[];
+  members?: GroupMember[];
+  organizationId: string;
+  isActive: boolean;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
 }
