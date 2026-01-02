@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, MoreVertical } from 'lucide-react';
+import { Plus, MoreVertical, Search, Download } from 'lucide-react';
 import { SuperAdminActionModal } from '@/app/components/SuperAdminActionModal';
 import DeleteConfirmationModal from '@/app/components/DeleteConfirmationModal';
 import { useRouter } from 'next/navigation';
@@ -41,8 +41,8 @@ const SubscriptionPage = () => {
   const [sortBy, setSortBy] = useState<string>('setupDate');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const [exportLoading, setExportLoading] = useState<'csv' | 'excel' | 'pdf' | null>(null); // Track export loading state
-  const [showExportDropdown, setShowExportDropdown] = useState(false); // Track export dropdown visibility
+  const [exportLoading, setExportLoading] = useState<'csv' | 'excel' | 'pdf' | null>(null);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +58,6 @@ const SubscriptionPage = () => {
       setExportLoading(format);
       const blob = await SubscriptionService.exportSubscriptionPackages(format);
       
-      // Create a download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -76,12 +75,10 @@ const SubscriptionPage = () => {
   };
 
   useEffect(() => {
-    // Load packages from service
     loadPackages();
   }, []);
 
   useEffect(() => {
-    // Close export dropdown when clicking outside
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       if (showExportDropdown && !target.closest('.export-dropdown')) {
@@ -112,16 +109,14 @@ const SubscriptionPage = () => {
     router.push('/super-admin/subscription/create');
   };
 
-  // Handle action button click
   const handleActionClick = (pkg: SubscriptionPackage, e: React.MouseEvent) => {
     e.stopPropagation();
     const button = actionButtonRefs.current[pkg.id];
     if (button) {
       const rect = button.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
-      const modalHeight = 200; // Approximate modal height
+      const modalHeight = 200;
       
-      // Calculate position - show modal above if near bottom of viewport
       let top = rect.bottom;
       if (rect.bottom + modalHeight > viewportHeight) {
         top = rect.top - modalHeight;
@@ -132,13 +127,12 @@ const SubscriptionPage = () => {
         packageId: pkg.id,
         position: {
           top: top + window.scrollY,
-          left: rect.left + window.scrollX - 140 // Adjust to align properly
+          left: rect.left + window.scrollX - 140
         }
       });
     }
   };
 
-  // Close action modal
   const closeActionModal = () => {
     setActionModal({ isOpen: false, packageId: null, position: { top: 0, left: 0 } });
   };
@@ -176,7 +170,7 @@ const SubscriptionPage = () => {
       try {
         const success = await SubscriptionService.deleteSubscriptionPackage(deleteModal.packageId);
         if (success) {
-          await loadPackages(); // Refresh the list
+          await loadPackages();
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to delete subscription package');
@@ -211,18 +205,20 @@ const SubscriptionPage = () => {
         `}</style>
         
         <div className="mb-6">
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800 mb-2">Subscription Management</h1>
-              <p className="text-gray-600">Manage subscription packages for organizations</p>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-800 mb-2">Subscription Management</h1>
+                <p className="text-gray-600">Manage subscription packages for organizations</p>
+              </div>
+              <button 
+                onClick={handleCreatePackage}
+                className="px-4 py-2 bg-[#5D2A8B] hover:bg-[#4a216e] text-white rounded-lg transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                Create Package
+              </button>
             </div>
-            <button 
-              onClick={handleCreatePackage}
-              className="px-4 py-2 bg-[#5D2A8B] hover:bg-[#4a216e] text-white rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Create Package
-            </button>
           </div>
         </div>
 
@@ -246,99 +242,130 @@ const SubscriptionPage = () => {
         .manrope { font-family: 'Manrope', sans-serif; }
       `}</style>
       
+      {/* Header Section */}
       <div className="mb-6">
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+        {/* Row 1: Title and Create Button */}
+        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-800 mb-2">Subscription Management</h1>
             <p className="text-gray-600">Manage subscription packages for organizations</p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button 
-              onClick={handleCreatePackage}
-              className="px-4 py-2 bg-[#5D2A8B] hover:bg-[#4a216e] text-white rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Create Package
-            </button>
-            
-            {/* Export Dropdown */}
-            <div className="relative export-dropdown">
-              <button 
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors flex items-center gap-2"
-                disabled={exportLoading !== null}
-                onClick={() => setShowExportDropdown(!showExportDropdown)}
-              >
-                {exportLoading ? (
-                  <span>Exporting...</span>
-                ) : (
-                  <span>Export</span>
-                )}
-              </button>
-              
-              {showExportDropdown && (
-                <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                  <button
-                    onClick={() => { handleExport('csv'); setShowExportDropdown(false); }}
-                    disabled={exportLoading !== null}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Export CSV
-                  </button>
-                  <button
-                    onClick={() => { handleExport('excel'); setShowExportDropdown(false); }}
-                    disabled={exportLoading !== null}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Export Excel
-                  </button>
-                  <button
-                    onClick={() => { handleExport('pdf'); setShowExportDropdown(false); }}
-                    disabled={exportLoading !== null}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Export PDF
-                  </button>
+          <button 
+            onClick={handleCreatePackage}
+            className="px-4 py-2 bg-[#5D2A8B] hover:bg-[#4a216e] text-white rounded-lg transition-colors flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Create Package
+          </button>
+        </div>
+
+        {/* Row 2: Filter, Export, and Search (all on left side) */}
+        <div className="bg-white p-4 rounded-xl shadow mb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Left Column: All filters and search */}
+            <div className="lg:col-span-2 space-y-4">
+              {/* Filter and Export in one row */}
+              <div className="flex flex-col sm:flex-row gap-4">
+                {/* Status Filter */}
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <div className="flex gap-1">
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value as 'active' | 'inactive' | '')}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                    >
+                      <option value="">All Statuses</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                    {filterStatus && (
+                      <button
+                        onClick={() => setFilterStatus('')}
+                        className="px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors whitespace-nowrap"
+                        title="Clear filter"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
                 </div>
-              )}
+
+                {/* Export Dropdown */}
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Export</label>
+                  <div className="relative export-dropdown">
+                    <button 
+                      className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md transition-colors flex items-center justify-center gap-2"
+                      disabled={exportLoading !== null}
+                      onClick={() => setShowExportDropdown(!showExportDropdown)}
+                    >
+                      <Download className="w-4 h-4" />
+                      {exportLoading ? (
+                        <span>Exporting...</span>
+                      ) : (
+                        <span>Export</span>
+                      )}
+                    </button>
+                    
+                    {showExportDropdown && (
+                      <div className="absolute left-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                        <button
+                          onClick={() => { handleExport('csv'); setShowExportDropdown(false); }}
+                          disabled={exportLoading !== null}
+                          className="w-full text-left px-4 py-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Export CSV
+                        </button>
+                        <button
+                          onClick={() => { handleExport('excel'); setShowExportDropdown(false); }}
+                          disabled={exportLoading !== null}
+                          className="w-full text-left px-4 py-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Export Excel
+                        </button>
+                        <button
+                          onClick={() => { handleExport('pdf'); setShowExportDropdown(false); }}
+                          disabled={exportLoading !== null}
+                          className="w-full text-left px-4 py-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Export PDF
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Search below Filter and Export */}
+              <div>
+                <form onSubmit={handleSearch}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Search className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSearch(e);
+                        }
+                      }}
+                      placeholder="Search by name, description, or services"
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                    />
+                  </div>
+                </form>
+              </div>
             </div>
-          </div>
-          
-          {/* Search and Filters */}
-          <div className="bg-white p-4 rounded-xl shadow mt-6">
-            <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search by name, description, or services"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value as 'active' | 'inactive' | '')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                >
-                  <option value="">All Statuses</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-              
-              <div className="flex items-end">
-                <button
-                  type="submit"
-                  className="w-full px-4 py-2 bg-[#5D2A8B] text-white rounded-md hover:bg-[#4a216e] transition-colors"
-                >
-                  Search
-                </button>
-              </div>
-            </form>
+
+            {/* Right Column: Empty or can be used for other elements if needed */}
+            <div className="hidden lg:block">
+              {/* This column is empty, keeping layout structure */}
+            </div>
           </div>
         </div>
       </div>
@@ -350,66 +377,90 @@ const SubscriptionPage = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => {
                     setSortBy('packageName');
                     setSortOrder(sortBy === 'packageName' && sortOrder === 'asc' ? 'desc' : 'asc');
                   }}
                 >
-                  Package Name
-                  {sortBy === 'packageName' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
+                  <div className="flex items-center gap-1">
+                    Package Name
+                    {sortBy === 'packageName' && (
+                      <span className="text-[#5D2A8B]">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => {
                     setSortBy('monthlyPrice');
                     setSortOrder(sortBy === 'monthlyPrice' && sortOrder === 'asc' ? 'desc' : 'asc');
                   }}
                 >
-                  Monthly Price
-                  {sortBy === 'monthlyPrice' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
+                  <div className="flex items-center gap-1">
+                    Monthly Price
+                    {sortBy === 'monthlyPrice' && (
+                      <span className="text-[#5D2A8B]">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
                 </th>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => {
                     setSortBy('quarterlyPrice');
                     setSortOrder(sortBy === 'quarterlyPrice' && sortOrder === 'asc' ? 'desc' : 'asc');
                   }}
                 >
-                  Quarterly Price
-                  {sortBy === 'quarterlyPrice' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
+                  <div className="flex items-center gap-1">
+                    Quarterly Price
+                    {sortBy === 'quarterlyPrice' && (
+                      <span className="text-[#5D2A8B]">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
                 </th>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => {
                     setSortBy('yearlyPrice');
                     setSortOrder(sortBy === 'yearlyPrice' && sortOrder === 'asc' ? 'desc' : 'asc');
                   }}
                 >
-                  Yearly Price
-                  {sortBy === 'yearlyPrice' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
+                  <div className="flex items-center gap-1">
+                    Yearly Price
+                    {sortBy === 'yearlyPrice' && (
+                      <span className="text-[#5D2A8B]">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Services</th>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => {
                     setSortBy('status');
                     setSortOrder(sortBy === 'status' && sortOrder === 'asc' ? 'desc' : 'asc');
                   }}
                 >
-                  Status
-                  {sortBy === 'status' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
+                  <div className="flex items-center gap-1">
+                    Status
+                    {sortBy === 'status' && (
+                      <span className="text-[#5D2A8B]">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
                 </th>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => {
                     setSortBy('subscriberCount');
                     setSortOrder(sortBy === 'subscriberCount' && sortOrder === 'asc' ? 'desc' : 'asc');
                   }}
                 >
-                  Subscriber Count
-                  {sortBy === 'subscriberCount' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
+                  <div className="flex items-center gap-1">
+                    Subscribers
+                    {sortBy === 'subscriberCount' && (
+                      <span className="text-[#5D2A8B]">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
@@ -425,31 +476,31 @@ const SubscriptionPage = () => {
                       <div className="text-sm text-gray-500 max-w-xs truncate">{pkg.description}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">₦{pkg.monthlyPrice}</div>
+                      <div className="text-sm text-gray-900">₦{pkg.monthlyPrice.toLocaleString()}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">₦{pkg.quarterlyPrice}</div>
+                      <div className="text-sm text-gray-900">₦{pkg.quarterlyPrice.toLocaleString()}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">₦{pkg.yearlyPrice}</div>
+                      <div className="text-sm text-gray-900">₦{pkg.yearlyPrice.toLocaleString()}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900 max-w-xs truncate">{pkg.services}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{pkg.services}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
+                      <span className={`px-3 py-1 text-xs font-medium rounded-full ${
                         pkg.status === 'active' 
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-red-100 text-red-800'
                       }`}>
-                        {pkg.status}
+                        {pkg.status.charAt(0).toUpperCase() + pkg.status.slice(1)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{pkg.subscriberCount}</div>
+                      <div className="text-sm text-gray-900">{pkg.subscriberCount.toLocaleString()}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end">
                         <button
                           ref={(el) => {
                             actionButtonRefs.current[pkg.id] = el;
@@ -467,7 +518,10 @@ const SubscriptionPage = () => {
               ) : (
                 <tr>
                   <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
-                    No subscription packages found. Create a new package to get started.
+                    <div className="flex flex-col items-center gap-2">
+                      <p className="text-lg">No subscription packages found</p>
+                      <p className="text-sm text-gray-400">Create a new package to get started</p>
+                    </div>
                   </td>
                 </tr>
               )}
@@ -500,6 +554,5 @@ const SubscriptionPage = () => {
     </div>
   );
 };
-
 
 export default SubscriptionPage;

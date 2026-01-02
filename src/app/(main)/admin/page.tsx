@@ -16,7 +16,6 @@ const AdminDashboard = () => {
     activeUsers: 0,
     pendingUsers: 0,
     archivedUsers: 0,
-    disabledUsers: 0,
     totalMeasurements: 0,
     oneTimeCodesGenerated: 0,
     oneTimeCodesUsed: 0,
@@ -53,7 +52,6 @@ const AdminDashboard = () => {
             activeUsers: response.data.activeUsers || 0,
             pendingUsers: response.data.pendingUsers || 0,
             archivedUsers: response.data.archivedUsers || 0,
-            disabledUsers: response.data.disabledUsers || 0,
             totalMeasurements: response.data.totalMeasurements || 0,
             oneTimeCodesGenerated: response.data.oneTimeCodesGenerated || 0,
             oneTimeCodesUsed: response.data.oneTimeCodesUsed || 0,
@@ -131,12 +129,7 @@ const AdminDashboard = () => {
       bgColor: '#F0F4E8',
       icon: <Archive className="w-5 h-5" />
     },
-    { 
-      name: 'Disabled Users', 
-      value: stats.disabledUsers?.toLocaleString() || '0',
-      bgColor: '#F8E8F0',
-      icon: <XCircle className="w-5 h-5" />
-    },
+   
   ];
 
   return (

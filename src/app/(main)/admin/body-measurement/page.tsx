@@ -183,10 +183,17 @@ const AdminBodyMeasurementPage = () => {
   };
 
   // Filter measurements based on search term
-  const filteredMeasurements = measurements.filter((measurement: Measurement) => 
-    measurement.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    measurement.submissionType?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredMeasurements = measurements.filter((measurement: Measurement) => {
+    const userName = measurement.userName || '';
+    const fullName = measurement.userInfo?.fullName || '';
+    const email = measurement.userInfo?.email || '';
+    const submissionType = measurement.submissionType || '';
+    
+    return userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           submissionType.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   // Get unique section names for table headers
   const getUniqueSectionNames = () => {
@@ -279,12 +286,6 @@ const AdminBodyMeasurementPage = () => {
                There is nothing to view right now, <br />
                 Create a body measurement to see here.
               </p>
-              {/* <button
-                onClick={() => router.push('/admin/body-measurement/create')}
-                className="manrope bg-[#5D2A8B] text-white px-6 py-2 rounded-full hover:bg-purple-700 transition-colors"
-              >
-                Create Your First Measurement
-              </button> */}
             </div>
           ) : (
             <>
@@ -293,7 +294,7 @@ const AdminBodyMeasurementPage = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="bg-gray-50">
-                      <th className="manrope text-left px-6 py-4 text-sm font-medium text-gray-500">User</th>
+                      <th className="manrope text-left px-6 py-4 text-sm font-medium text-gray-500">User Details</th>
                       <th className="manrope text-left px-6 py-4 text-sm font-medium text-gray-500">Measurement Type</th>
                       {/* Dynamic section headers */}
                       {getUniqueSectionNames().slice(0, 4).map((sectionName, index) => (
@@ -307,9 +308,19 @@ const AdminBodyMeasurementPage = () => {
                   <tbody className="divide-y divide-gray-200">
                     {filteredMeasurements.map((measurement: Measurement) => (
                       <tr key={measurement.id} className="hover:bg-gray-50">
-                        <td className="manrope px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {measurement.userName}
+                        <td className="manrope px-6 py-4">
+                          <div className="flex flex-col">
+                            <div className="text-sm font-semibold text-gray-900">
+                              {measurement.userInfo?.fullName || measurement.userName || 'N/A'}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {measurement.userInfo?.email || 'N/A'}
+                            </div>
+                            {measurement.userInfo?.customUserId && (
+                              <div className="text-xs text-gray-400 mt-1">
+                                ID: {measurement.userInfo.customUserId}
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="manrope px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -373,10 +384,13 @@ const AdminBodyMeasurementPage = () => {
                       <div className="flex justify-between items-start">
                         <div>
                           <h3 className="manrope font-semibold text-gray-900">
-                            {measurement.userName}
+                            {measurement.userInfo?.fullName || measurement.userName || 'N/A'}
                           </h3>
                           <p className="manrope text-sm text-gray-500 mt-1">
-                            {measurement.submissionType}
+                            {measurement.userInfo?.email || 'N/A'}
+                          </p>
+                          <p className="manrope text-xs text-gray-400 mt-1">
+                            {measurement.submissionType} • ID: {measurement.userInfo?.customUserId || 'N/A'}
                           </p>
                         </div>
                       </div>

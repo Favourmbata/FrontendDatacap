@@ -66,7 +66,7 @@ export default function LoginForm() {
         // Redirect based on user role
         const userRole = data.user.role?.toLowerCase();
         if (userRole === 'ORGANIZATION' || userRole === 'ORGANIZATION' || userRole === 'ADMIN') {
-          router.replace("/admin");
+          router.replace("/subscription");
         } else {
           router.replace("/user");
         }
