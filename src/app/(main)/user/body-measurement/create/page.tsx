@@ -470,11 +470,24 @@ export default function SelfMeasurementForm() {
                               });
                               return;
                             }
+                            
+                            // If AI measurement is selected, redirect to AI scan page
+                            if (values.measurementType === "AI") {
+                              const params = new URLSearchParams({
+                                firstName: values.firstName,
+                                lastName: values.lastName,
+                                subject: values.subject
+                              });
+                              router.push(`/user/body-measurement/ai-scan?${params.toString()}`);
+                              return;
+                            }
+                            
+                            // Otherwise, proceed to manual measurement step 2
                             setStep(2);
                           }}
                           className="manrope w-full md:w-auto px-6 py-2.5 bg-[#5D2A8B] text-white rounded-full hover:bg-purple-700 transition-colors"
                         >
-                          Next
+                          {values.measurementType === "AI" ? "Start AI Scan" : "Next"}
                         </button>
                       </div>
                     </div>

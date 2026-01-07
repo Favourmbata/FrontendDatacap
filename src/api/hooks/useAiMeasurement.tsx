@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { useAuth } from './useAuth';
 
 interface AiMeasurementRequest {
-  imageData: string;
+  frontImageData: string;
+  sideImageData?: string;
   userHeight: number;
   scanTimestamp: string;
-  deviceInfo: string;
 }
 
 export interface MeasurementData {
@@ -52,13 +52,13 @@ export const useAiMeasurement = () => {
     
     try {
       console.log('🚀 Sending body scan analysis request:', {
-        imageData: request.imageData ? `${request.imageData.substring(0, 50)}...` : null,
+        frontImageData: request.frontImageData ? `${request.frontImageData.substring(0, 50)}...` : null,
+        sideImageData: request.sideImageData ? `${request.sideImageData.substring(0, 50)}...` : null,
         userHeight: request.userHeight,
-        scanTimestamp: request.scanTimestamp,
-        deviceInfo: request.deviceInfo
+        scanTimestamp: request.scanTimestamp
       });
 
-      const response = await client.post<AiMeasurementResponse>('/measurements/scan', request);
+      const response = await client.post<AiMeasurementResponse>('/api/measurements/scan', request);
       
       console.log('✅ Body scan analysis response:', response.data);
       
