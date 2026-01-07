@@ -211,10 +211,10 @@ const EditSubscriptionPage = ({ params }: { params: { id: string } }) => {
             onClick={() => router.back()}
             className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 mb-4"
           >
-            ← Back
+          Back
           </button>
           <h1 className="text-2xl font-bold text-gray-800">Loading Package</h1>
-          <p className="text-gray-600 mt-2">Please wait while we load the subscription package details.</p>
+         
         </div>
       </div>
     );
@@ -261,10 +261,10 @@ const EditSubscriptionPage = ({ params }: { params: { id: string } }) => {
             onClick={() => router.back()}
             className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 mb-4"
           >
-            ← Back
+             Back
           </button>
           <h1 className="text-2xl font-bold text-gray-800">Package Not Found</h1>
-          <p className="text-gray-600 mt-2">The subscription package you're looking for doesn't exist.</p>
+          
         </div>
       </div>
     );
@@ -282,10 +282,10 @@ const EditSubscriptionPage = ({ params }: { params: { id: string } }) => {
           onClick={() => router.back()}
           className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 mb-4"
         >
-          ← Back
+           Back
         </button>
         <h1 className="text-2xl font-bold text-gray-800">Edit Subscription Package</h1>
-        <p className="text-gray-600 mt-2">Modify the details for {packageData.packageName}</p>
+        
       </div>
 
       {error && (

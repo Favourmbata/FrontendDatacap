@@ -1,10 +1,12 @@
+
+
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MeasurementTopNav } from '@/app/components/MeasurementTopNav';
 import { useManualMeasurement, useUpdateManualMeasurement, MeasurementSection, MeasurementData, Measurement } from '@/api/hooks/useManualMeasurement';
-import { ArrowLeft, Save, Upload } from 'lucide-react';
+import { ArrowLeft, Save, Upload, Plus, Trash2 } from 'lucide-react';
 
 interface MeasurementDataSummary {
   chest: string;
@@ -39,6 +41,34 @@ const EditMeasurementContent = () => {
   
   const [frontImagePreview, setFrontImagePreview] = useState<string | null>(null);
   const [sideImagePreview, setSideImagePreview] = useState<string | null>(null);
+  
+  const addSection = () => {
+    const newSection = {
+      sectionName: '',
+      measurements: [{ bodyPartName: '', size: '' }]
+    };
+    setSections([...sections, newSection]);
+  };
+  
+  const removeSection = (index: number) => {
+    if (sections.length <= 1) return; // Prevent removing the last section
+    const newSections = [...sections];
+    newSections.splice(index, 1);
+    setSections(newSections);
+  };
+  
+  const addField = (sectionIndex: number) => {
+    const newSections = [...sections];
+    newSections[sectionIndex].measurements.push({ bodyPartName: '', size: '' });
+    setSections(newSections);
+  };
+  
+  const removeField = (sectionIndex: number, fieldIndex: number) => {
+    if (sections[sectionIndex].measurements.length <= 1) return; // Prevent removing the last field in a section
+    const newSections = [...sections];
+    newSections[sectionIndex].measurements.splice(fieldIndex, 1);
+    setSections(newSections);
+  };
   
   // Load measurement data when it's available
   useEffect(() => {
@@ -214,215 +244,585 @@ const EditMeasurementContent = () => {
         measurements={getSummaryMeasurements()}
       />
 
-      <div 
-        className="absolute"
-        style={{
-          width: '958px',
-          top: '271px',
-          left: '401px'
-        }}
-      >
-        <div className="mb-6">
-          <button
-            onClick={() => router.back()}
-            className="manrope flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Measurements
-          </button>
-          
-          <div className="flex justify-between items-center">
-            <h1 className="manrope text-3xl font-semibold text-gray-800">
-              Edit Measurement
-            </h1>
+      <div className="px-4 md:px-0">
+        {/* Mobile layout: full width, responsive padding */}
+        <div className="w-full mt-4 md:hidden">
+          <div className="mb-6">
             <button
-              onClick={handleSave}
-              disabled={isPending}
-              className="manrope flex items-center gap-2 bg-[#5D2A8B] text-white px-6 py-2 rounded-full hover:bg-purple-700 transition-colors disabled:opacity-50"
+              onClick={() => router.back()}
+              className="manrope flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-4"
             >
-              <Save className="w-4 h-4" />
-              {isPending ? 'Saving...' : 'Save'}
+              <ArrowLeft className="w-4 h-4" />
+              Back to Measurements
             </button>
+            
+            <div className="flex justify-between items-center">
+              <h1 className="manrope text-3xl font-semibold text-gray-800">
+                Edit Measurement
+              </h1>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            {/* Images Preview Section */}
+            <div className="mb-6 pb-6 border-b border-gray-200">
+              <h2 className="manrope text-xl font-semibold text-gray-800 mb-4">
+                Uploaded Images
+              </h2>
+              
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <p className="manrope text-sm text-gray-500 mb-2">Front View</p>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, 'front')}
+                      className="hidden"
+                      id="edit-front-image"
+                    />
+                    <label htmlFor="edit-front-image" className="cursor-pointer">
+                      {frontImagePreview ? (
+                        <img 
+                          src={frontImagePreview} 
+                          alt="Front view" 
+                          className="w-full h-auto max-h-48 object-contain rounded"
+                        />
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 text-purple-500 mx-auto mb-2" />
+                          <p className="manrope text-sm text-gray-500">
+                            Upload front view
+                          </p>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                </div>
+                
+                <div>
+                  <p className="manrope text-sm text-gray-500 mb-2">Side View</p>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, 'side')}
+                      className="hidden"
+                      id="edit-side-image"
+                    />
+                    <label htmlFor="edit-side-image" className="cursor-pointer">
+                      {sideImagePreview ? (
+                        <img 
+                          src={sideImagePreview} 
+                          alt="Side view" 
+                          className="w-full h-auto max-h-48 object-contain rounded"
+                        />
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 text-purple-500 mx-auto mb-2" />
+                          <p className="manrope text-sm text-gray-500">
+                            Upload side view
+                          </p>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Basic Information */}
+            <div className="mb-6 pb-6 border-b border-gray-200">
+              <h2 className="manrope text-xl font-semibold text-gray-800 mb-4">
+                Basic Information
+              </h2>
+              
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="manrope block text-sm font-medium text-gray-700 mb-1">
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleInputChange}
+                    className="manrope w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="manrope block text-sm font-medium text-gray-700 mb-1">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    className="manrope w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="manrope block text-sm font-medium text-gray-700 mb-1">
+                    Measurement Type
+                  </label>
+                  <input
+                    type="text"
+                    name="measurementType"
+                    value={formData.measurementType}
+                    onChange={handleInputChange}
+                    className="manrope w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="manrope block text-sm font-medium text-gray-700 mb-1">
+                    Subject
+                  </label>
+                  <input
+                    type="text"
+                    name="subject"
+                    value={formData.subject}
+                    onChange={handleInputChange}
+                    className="manrope w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Sections and Measurements */}
+            <div className="space-y-6">
+              <h2 className="manrope text-xl font-semibold text-gray-800">
+                Measurements by Section
+              </h2>
+              
+              <div className="space-y-6">
+                {sections && sections.length > 0 ? (
+                  sections.map((section: any, index: number) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-4">
+                        <input
+                          type="text"
+                          value={section.sectionName}
+                          onChange={(e) => {
+                            const updatedSections = [...sections];
+                            updatedSections[index].sectionName = e.target.value;
+                            setSections(updatedSections);
+                          }}
+                          placeholder="Section Name (e.g., Upper Body)"
+                          className="manrope px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg font-medium w-full"
+                        />
+                        {sections.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeSection(index)}
+                            className="ml-2 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"
+                            title="Remove section"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      
+                      {section.measurements && section.measurements.length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="manrope px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                  Body Part
+                                </th>
+                                <th className="manrope px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                  Size (cm)
+                                </th>
+                                <th className="manrope px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                  Actions
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                              {section.measurements.map((m: any, mIndex: number) => (
+                                <tr key={mIndex} className="hover:bg-gray-50">
+                                  <td className="manrope px-4 py-3 text-sm">
+                                    <input
+                                      type="text"
+                                      value={m.bodyPartName}
+                                      onChange={(e) => {
+                                        const updatedSections = [...sections];
+                                        updatedSections[index].measurements[mIndex].bodyPartName = e.target.value;
+                                        setSections(updatedSections);
+                                      }}
+                                      placeholder="Measurement Name"
+                                      className="manrope w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    />
+                                  </td>
+                                  <td className="manrope px-4 py-3 text-sm">
+                                    <input
+                                      type="number"
+                                      value={m.size}
+                                      onChange={(e) => {
+                                        const updatedSections = [...sections];
+                                        updatedSections[index].measurements[mIndex].size = e.target.value;
+                                        setSections(updatedSections);
+                                      }}
+                                      placeholder="Value"
+                                      className="manrope w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    />
+                                  </td>
+                                  <td className="manrope px-4 py-3 text-sm">
+                                    {section.measurements.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => removeField(index, mIndex)}
+                                        className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+                                        title="Remove field"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="manrope text-sm text-gray-500 mb-4">No measurements in this section</p>
+                      )}
+                      
+                      <button
+                        type="button"
+                        onClick={() => addField(index)}
+                        className="manrope text-[#5D2A8B] text-sm font-medium flex items-center gap-1 hover:text-purple-700 px-3 py-1 hover:bg-purple-50 rounded-lg mt-3"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Field
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="manrope text-gray-500">No sections found</p>
+                )}
+                
+                <button
+                  type="button"
+                  onClick={addSection}
+                  className="manrope w-full text-[#5D2A8B] text-sm font-medium flex items-center justify-center gap-1 hover:text-purple-700 border border-[#5D2A8B] rounded-lg px-4 py-2 hover:bg-purple-50"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Section
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="flex justify-end">
+              <button
+                onClick={handleSave}
+                disabled={isPending}
+                className="manrope flex items-center gap-2 bg-[#5D2A8B] text-white px-6 py-2 rounded-full hover:bg-purple-700 transition-colors disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                {isPending ? 'Saving...' : 'Save'}
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          {/* Images Preview Section - Added */}
-          <div className="mb-6 pb-6 border-b border-gray-200">
-            <h2 className="manrope text-xl font-semibold text-gray-800 mb-4">
-              Uploaded Images
-            </h2>
+        {/* Desktop layout: positioned absolutely */}
+        <div 
+          className="hidden md:block absolute"
+          style={{
+            width: '958px',
+            top: '271px',
+            left: '401px'
+          }}
+        >
+          <div className="mb-6">
+            <button
+              onClick={() => router.back()}
+              className="manrope flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-4"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Measurements
+            </button>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="manrope text-sm text-gray-500 mb-2">Front View</p>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleImageUpload(e, 'front')}
-                    className="hidden"
-                    id="edit-front-image"
-                  />
-                  <label htmlFor="edit-front-image" className="cursor-pointer">
-                    {frontImagePreview ? (
-                      <img 
-                        src={frontImagePreview} 
-                        alt="Front view" 
-                        className="w-full h-auto max-h-48 object-contain rounded"
-                      />
-                    ) : (
-                      <>
-                        <Upload className="w-8 h-8 text-purple-500 mx-auto mb-2" />
-                        <p className="manrope text-sm text-gray-500">
-                          Upload front view
-                        </p>
-                      </>
-                    )}
-                  </label>
+            <div className="flex justify-between items-center">
+              <h1 className="manrope text-3xl font-semibold text-gray-800">
+                Edit Measurement
+              </h1>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            {/* Images Preview Section - Added */}
+            <div className="mb-6 pb-6 border-b border-gray-200">
+              <h2 className="manrope text-xl font-semibold text-gray-800 mb-4">
+                Uploaded Images
+              </h2>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="manrope text-sm text-gray-500 mb-2">Front View</p>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, 'front')}
+                      className="hidden"
+                      id="edit-front-image-desktop"
+                    />
+                    <label htmlFor="edit-front-image-desktop" className="cursor-pointer">
+                      {frontImagePreview ? (
+                        <img 
+                          src={frontImagePreview} 
+                          alt="Front view" 
+                          className="w-full h-auto max-h-48 object-contain rounded"
+                        />
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 text-purple-500 mx-auto mb-2" />
+                          <p className="manrope text-sm text-gray-500">
+                            Upload front view
+                          </p>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                </div>
+                
+                <div>
+                  <p className="manrope text-sm text-gray-500 mb-2">Side View</p>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, 'side')}
+                      className="hidden"
+                      id="edit-side-image-desktop"
+                    />
+                    <label htmlFor="edit-side-image-desktop" className="cursor-pointer">
+                      {sideImagePreview ? (
+                        <img 
+                          src={sideImagePreview} 
+                          alt="Side view" 
+                          className="w-full h-auto max-h-48 object-contain rounded"
+                        />
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 text-purple-500 mx-auto mb-2" />
+                          <p className="manrope text-sm text-gray-500">
+                            Upload side view
+                          </p>
+                        </>
+                      )}
+                    </label>
+                  </div>
                 </div>
               </div>
+            </div>
+            
+            {/* Basic Information */}
+            <div className="mb-6 pb-6 border-b border-gray-200">
+              <h2 className="manrope text-xl font-semibold text-gray-800 mb-4">
+                Basic Information
+              </h2>
               
-              <div>
-                <p className="manrope text-sm text-gray-500 mb-2">Side View</p>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleImageUpload(e, 'side')}
-                    className="hidden"
-                    id="edit-side-image"
-                  />
-                  <label htmlFor="edit-side-image" className="cursor-pointer">
-                    {sideImagePreview ? (
-                      <img 
-                        src={sideImagePreview} 
-                        alt="Side view" 
-                        className="w-full h-auto max-h-48 object-contain rounded"
-                      />
-                    ) : (
-                      <>
-                        <Upload className="w-8 h-8 text-purple-500 mx-auto mb-2" />
-                        <p className="manrope text-sm text-gray-500">
-                          Upload side view
-                        </p>
-                      </>
-                    )}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="manrope block text-sm font-medium text-gray-700 mb-1">
+                    First Name
                   </label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleInputChange}
+                    className="manrope w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
                 </div>
+                
+                <div>
+                  <label className="manrope block text-sm font-medium text-gray-700 mb-1">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    className="manrope w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="manrope block text-sm font-medium text-gray-700 mb-1">
+                    Measurement Type
+                  </label>
+                  <input
+                    type="text"
+                    name="measurementType"
+                    value={formData.measurementType}
+                    onChange={handleInputChange}
+                    className="manrope w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="manrope block text-sm font-medium text-gray-700 mb-1">
+                    Subject
+                  </label>
+                  <input
+                    type="text"
+                    name="subject"
+                    value={formData.subject}
+                    onChange={handleInputChange}
+                    className="manrope w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Sections and Measurements */}
+            <div className="space-y-6">
+              <h2 className="manrope text-xl font-semibold text-gray-800">
+                Measurements by Section
+              </h2>
+              
+              <div className="space-y-6">
+                {sections && sections.length > 0 ? (
+                  sections.map((section: any, index: number) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-4">
+                        <input
+                          type="text"
+                          value={section.sectionName}
+                          onChange={(e) => {
+                            const updatedSections = [...sections];
+                            updatedSections[index].sectionName = e.target.value;
+                            setSections(updatedSections);
+                          }}
+                          placeholder="Section Name (e.g., Upper Body)"
+                          className="manrope px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg font-medium w-full max-w-xs"
+                        />
+                        {sections.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeSection(index)}
+                            className="ml-2 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"
+                            title="Remove section"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      
+                      {section.measurements && section.measurements.length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="manrope px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                  Body Part
+                                </th>
+                                <th className="manrope px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                  Size (cm)
+                                </th>
+                                <th className="manrope px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                  Actions
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                              {section.measurements.map((m: any, mIndex: number) => (
+                                <tr key={mIndex} className="hover:bg-gray-50">
+                                  <td className="manrope px-4 py-3 text-sm">
+                                    <input
+                                      type="text"
+                                      value={m.bodyPartName}
+                                      onChange={(e) => {
+                                        const updatedSections = [...sections];
+                                        updatedSections[index].measurements[mIndex].bodyPartName = e.target.value;
+                                        setSections(updatedSections);
+                                      }}
+                                      placeholder="Measurement Name (e.g., Chest)"
+                                      className="manrope w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    />
+                                  </td>
+                                  <td className="manrope px-4 py-3 text-sm">
+                                    <input
+                                      type="number"
+                                      value={m.size}
+                                      onChange={(e) => {
+                                        const updatedSections = [...sections];
+                                        updatedSections[index].measurements[mIndex].size = e.target.value;
+                                        setSections(updatedSections);
+                                      }}
+                                      placeholder="Value (e.g., 92)"
+                                      className="manrope w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    />
+                                  </td>
+                                  <td className="manrope px-4 py-3 text-sm">
+                                    {section.measurements.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => removeField(index, mIndex)}
+                                        className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+                                        title="Remove field"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="manrope text-sm text-gray-500 mb-4">No measurements in this section</p>
+                      )}
+                      
+                      <button
+                        type="button"
+                        onClick={() => addField(index)}
+                        className="manrope text-[#5D2A8B] text-sm font-medium flex items-center gap-1 hover:text-purple-700 px-3 py-1 hover:bg-purple-50 rounded-lg mt-3"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Field
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="manrope text-gray-500">No sections found</p>
+                )}
+                
+                <button
+                  type="button"
+                  onClick={addSection}
+                  className="manrope w-full text-[#5D2A8B] text-sm font-medium flex items-center justify-center gap-1 hover:text-purple-700 border border-[#5D2A8B] rounded-lg px-4 py-2 hover:bg-purple-50"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Section
+                </button>
               </div>
             </div>
           </div>
           
-          {/* Basic Information */}
-          <div className="mb-6 pb-6 border-b border-gray-200">
-            <h2 className="manrope text-xl font-semibold text-gray-800 mb-4">
-              Basic Information
-            </h2>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="manrope block text-sm font-medium text-gray-700 mb-1">
-                  First Name
-                </label>
-                <input
-                  type="text"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                  className="manrope w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-              
-              <div>
-                <label className="manrope block text-sm font-medium text-gray-700 mb-1">
-                  Last Name
-                </label>
-                <input
-                  type="text"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleInputChange}
-                  className="manrope w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-              
-              <div>
-                <label className="manrope block text-sm font-medium text-gray-700 mb-1">
-                  Measurement Type
-                </label>
-                <input
-                  type="text"
-                  name="measurementType"
-                  value={formData.measurementType}
-                  onChange={handleInputChange}
-                  className="manrope w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-              
-              <div>
-                <label className="manrope block text-sm font-medium text-gray-700 mb-1">
-                  Subject
-                </label>
-                <input
-                  type="text"
-                  name="subject"
-                  value={formData.subject}
-                  onChange={handleInputChange}
-                  className="manrope w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="flex justify-end">
+              <button
+                onClick={handleSave}
+                disabled={isPending}
+                className="manrope flex items-center gap-2 bg-[#5D2A8B] text-white px-6 py-2 rounded-full hover:bg-purple-700 transition-colors disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                {isPending ? 'Saving...' : 'Save'}
+              </button>
             </div>
-          </div>
-
-          {/* Sections and Measurements */}
-          <div className="space-y-6">
-            <h2 className="manrope text-xl font-semibold text-gray-800">
-              Measurements by Section
-            </h2>
-            
-            {sections && sections.length > 0 ? (
-              sections.map((section: any, index: number) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <h3 className="manrope text-lg font-medium text-gray-800 mb-4">
-                    {section.sectionName}
-                  </h3>
-                  
-                  {section.measurements && section.measurements.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="manrope px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                              Body Part
-                            </th>
-                            <th className="manrope px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                              Size (cm)
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                          {section.measurements.map((m: any, mIndex: number) => (
-                            <tr key={mIndex} className="hover:bg-gray-50">
-                              <td className="manrope px-4 py-3 text-sm text-gray-900">
-                                {m.bodyPartName}
-                              </td>
-                              <td className="manrope px-4 py-3 text-sm text-gray-900 font-medium">
-                                {m.size}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <p className="manrope text-sm text-gray-500">No measurements in this section</p>
-                  )}
-                </div>
-              ))
-            ) : (
-              <p className="manrope text-gray-500">No sections found</p>
-            )}
           </div>
         </div>
       </div>

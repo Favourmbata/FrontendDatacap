@@ -20,9 +20,12 @@ interface UserActionModalProps {
   onArchiveUser?: () => void;
   onSendWelcomeEmail?: () => void;
   onSetActive?: () => void;
+  onShareToOthers?: () => void;
+  onShareToOrganization?: () => void;
   currentUserStatus?: 'pending' | 'active' | 'disabled' | 'archived';
  
   position: { top: number; left: number };
+  windowHeight?: number;
 }
 
 const UserActionModal: React.FC<UserActionModalProps> = ({
@@ -38,11 +41,19 @@ const UserActionModal: React.FC<UserActionModalProps> = ({
   onArchiveUser,
   onSendWelcomeEmail,
   onSetActive,
+  onShareToOthers,
+  onShareToOrganization,
   currentUserStatus,
-  position
+  position,
+  windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800
 }) => {
   const [showStatusOptions, setShowStatusOptions] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  // Calculate modal position based on button position to avoid going off-screen
+  const modalTop = position.top > windowHeight / 2 
+    ? position.top - 160 // Position above if button is in lower half of screen
+    : position.top + 30;  // Position below if button is in upper half of screen
 
   // Handle click outside to close
   useEffect(() => {
@@ -121,7 +132,6 @@ const UserActionModal: React.FC<UserActionModalProps> = ({
                   onClose();
                 }}
               >
-                <Key className="w-5 h-5" />
                 Reset Password
               </button>
             )}
@@ -177,8 +187,80 @@ const UserActionModal: React.FC<UserActionModalProps> = ({
                   onClose();
                 }}
               >
-               
+                            
                 Activate User
+              </button>
+            )}
+                        
+            {onShareToOthers && onShareToOrganization && (
+              <div className="relative" id="share-dropdown">
+                <button 
+                  className="manrope text-left p-3 rounded-lg hover:bg-gray-50 transition-colors text-base text-[#1A1A1A] w-full flex items-center gap-3"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const dropdown = document.getElementById('share-dropdown');
+                    const menu = dropdown?.querySelector('.share-menu');
+                    if (menu) {
+                      menu.classList.toggle('hidden');
+                    }
+                  }}
+                >
+                              
+                  Share
+                </button>
+                            
+                <div className="share-menu absolute left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 z-50 hidden max-h-[200px] overflow-y-auto">
+                  <button 
+                    className="manrope w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors text-base text-[#1A1A1A] flex items-center gap-3"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onShareToOthers();
+                      onClose();
+                    }}
+                  >
+                                
+                    Share to others
+                  </button>
+                  <button 
+                    className="manrope w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors text-base text-[#1A1A1A] flex items-center gap-3"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onShareToOrganization();
+                      onClose();
+                    }}
+                  >
+                                
+                    Share to organization
+                  </button>
+                </div>
+              </div>
+            )}
+                        
+            {onShareToOthers && !onShareToOrganization && (
+              <button 
+                className="manrope text-left p-3 rounded-lg hover:bg-gray-50 transition-colors text-base text-[#1A1A1A] flex items-center gap-3"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShareToOthers();
+                  onClose();
+                }}
+              >
+                            
+                Share to others
+              </button>
+            )}
+                        
+            {!onShareToOthers && onShareToOrganization && (
+              <button 
+                className="manrope text-left p-3 rounded-lg hover:bg-gray-50 transition-colors text-base text-[#1A1A1A] flex items-center gap-3"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShareToOrganization();
+                  onClose();
+                }}
+              >
+                            
+                Share to organization
               </button>
             )}
           </div>
@@ -190,7 +272,7 @@ const UserActionModal: React.FC<UserActionModalProps> = ({
         ref={modalRef}
         className="hidden md:block fixed bg-white shadow-lg rounded-lg z-50"
         style={{
-          top: `${position.top}px`,
+          top: `${modalTop}px`,
           left: `${position.left}px`,
           width: '180px',
           borderRadius: '12px',
@@ -233,7 +315,6 @@ const UserActionModal: React.FC<UserActionModalProps> = ({
                 onClose();
               }}
             >
-              
               Reset Password
             </button>
           )}
@@ -289,11 +370,118 @@ const UserActionModal: React.FC<UserActionModalProps> = ({
                 onClose();
               }}
             >
-             
+                        
               Activate User
             </button>
           )}
-          
+                    
+          {onShareToOthers && onShareToOrganization && (
+            <div className="relative" id="share-dropdown-desktop">
+              <button 
+                className="manrope text-left hover:bg-gray-50 p-2 rounded transition-colors flex items-center gap-2 text-sm text-[#1A1A1A] w-full"
+                style={{
+                  fontSize: '14px',
+                  color: '#1A1A1A',
+                  border: 'none',
+                  background: 'none',
+                  width: '100%'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const dropdown = document.getElementById('share-dropdown-desktop');
+                  const menu = dropdown?.querySelector('.share-menu-desktop');
+                  if (menu) {
+                    menu.classList.toggle('hidden');
+                  }
+                }}
+              >
+                          
+                Share
+              </button>
+                                   
+              <div className="share-menu-desktop absolute left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 z-50 hidden max-h-[200px] overflow-y-auto">
+                <button 
+                  className="manrope text-left hover:bg-gray-50 p-2 rounded transition-colors flex items-center gap-2 text-sm text-[#1A1A1A] w-full"
+                  style={{
+                    fontSize: '14px',
+                    color: '#1A1A1A',
+                    border: 'none',
+                    background: 'none',
+                    width: '100%'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShareToOthers();
+                    onClose();
+                  }}
+                >
+                            
+                  Share to others
+                </button>
+                <button 
+                  className="manrope text-left hover:bg-gray-50 p-2 rounded transition-colors flex items-center gap-2 text-sm text-[#1A1A1A] w-full"
+                  style={{
+                    fontSize: '14px',
+                    color: '#1A1A1A',
+                    border: 'none',
+                    background: 'none',
+                    width: '100%'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShareToOrganization();
+                    onClose();
+                  }}
+                >
+                            
+                  Share to organization
+                </button>
+              </div>
+            </div>
+          )}
+                    
+          {onShareToOthers && !onShareToOrganization && (
+            <button 
+              className="manrope text-left hover:bg-gray-50 p-2 rounded transition-colors flex items-center gap-2 text-sm text-[#1A1A1A] w-full"
+              style={{
+                fontSize: '14px',
+                color: '#1A1A1A',
+                border: 'none',
+                background: 'none',
+                width: '100%'
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onShareToOthers();
+                onClose();
+              }}
+            >
+                        
+              Share to others
+            </button>
+          )}
+                    
+          {!onShareToOthers && onShareToOrganization && (
+            <button 
+              className="manrope text-left hover:bg-gray-50 p-2 rounded transition-colors flex items-center gap-2 text-sm text-[#1A1A1A] w-full"
+              style={{
+                fontSize: '14px',
+                color: '#1A1A1A',
+                border: 'none',
+                background: 'none',
+                width: '100%'
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onShareToOrganization();
+                onClose();
+              }}
+            >
+                        
+              Share to organization
+            </button>
+          )}
+                    
           {onDelete && (
             <button 
               className="manrope text-left hover:bg-gray-50 p-2 rounded transition-colors flex items-center gap-2 text-sm text-[#FF6161] w-full"
@@ -303,7 +491,7 @@ const UserActionModal: React.FC<UserActionModalProps> = ({
                 onClose();
               }}
             >
-            
+                        
               Delete
             </button>
           )}

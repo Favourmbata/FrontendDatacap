@@ -562,8 +562,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
-import { AdminUserService, AdminUser } from "@/services/AdminUserService";
-import { AdminMeasurementService } from "@/services/AdminMeasurementService";
+import { AdminUserService, AdminUser } from '@/services/AdminUserService';
+import { AdminMeasurementService } from '@/services/AdminMeasurementService';
+import { useSectionOptions } from '@/api/hooks/useManualMeasurement';
 import { toast } from "@/app/components/hooks/use-toast";
 import { MeasurementTopNav } from "@/app/components/MeasurementTopNav";
 
@@ -637,7 +638,7 @@ const convertMeasurementToFormValues = (measurement: any): FormValues => {
     
     if (fields.length > 0) {
       sections.push({
-        name: "Copied Measurements",
+        name: "",
         fields
       });
     }
@@ -695,6 +696,7 @@ export default function AdminBodyMeasurementCreate() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copyDataParam, setCopyDataParam] = useState<string | null>(null);
+  const { data: sectionOptions = [], isLoading: isLoadingSections } = useSectionOptions();
   
   // Get copy data from query parameters after component mounts
   useEffect(() => {
@@ -725,11 +727,9 @@ export default function AdminBodyMeasurementCreate() {
       notes: "",
       sections: [
         {
-          name: "Upper Body",
+          name: "",
           fields: [
-            { name: "Chest", value: "" },
-            { name: "Waist", value: "" },
-            { name: "Hips", value: "" }
+            { name: "", value: "" }
           ]
         }
       ]
@@ -865,6 +865,27 @@ export default function AdminBodyMeasurementCreate() {
   const updateSectionName = (index: number, name: string) => {
     const newSections = [...formik.values.sections];
     newSections[index].name = name;
+    
+    // Define default measurements for each section
+    const defaultMeasurements: Record<string, string[]> = {
+      "Upper Body": "Chest,Shoulders,Arms,Sleeve Length,Back Width,Front Length,Across Back,Across Front".split(","),
+      "Lower Body": "Waist,Hips,Inseam,Thigh,Calf,Ankle".split(","),
+      "Full Body": "Chest,Waist,Hips,Inseam,Shoulders,Thigh".split(","),
+      "Arms": "Upper Arm,Elbow,Sleeve Length,Forearm,Wrist".split(","),
+      "Legs": "Thigh,Knee,Calf,Ankle,Inseam".split(","),
+      "Neck": "Neck,Collar".split(","),
+      "Torso": "Chest,Back Width,Front Length,Across Back,Across Front".split(","),
+    };
+    
+    // If the section has default measurements, add them
+    if (defaultMeasurements[name] && newSections[index].fields.length === 1 && newSections[index].fields[0].name === "") {
+      const defaultFields = defaultMeasurements[name].map(measurementName => ({
+        name: measurementName,
+        value: ""
+      }));
+      newSections[index].fields = defaultFields;
+    }
+    
     formik.setFieldValue("sections", newSections);
   };
 
@@ -1059,14 +1080,19 @@ export default function AdminBodyMeasurementCreate() {
                     <div key={sectionIndex} className="space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <input
-                            type="text"
+                          <select
                             value={section.name}
                             onChange={(e) => updateSectionName(sectionIndex, e.target.value)}
-                            onBlur={formik.handleBlur}
-                            placeholder="Section Name (e.g., Upper Body)"
                             className="manrope w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm font-medium"
-                          />
+                            disabled={isLoadingSections}
+                          >
+                            <option value="">Select a section</option>
+                            {sectionOptions.map((option: string, idx: number) => (
+                              <option key={idx} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
 
                         </div>
                         {formik.values.sections.length > 1 && (

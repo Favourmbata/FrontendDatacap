@@ -1,28 +1,52 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import SubscriptionService, { SubscriptionPackage } from '@/services/subscriptionService';
 
-const ViewSubscriptionPage = ({ params }: { params: { id: string } }) => {
+const ViewSubscriptionPage = () => {
+  const { id } = useParams();
   const router = useRouter();
   const [packageData, setPackageData] = useState<SubscriptionPackage | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadPackageData();
-  }, [params.id]);
+    console.log('Params ID:', id);
+    if (id) {
+      loadPackageData();
+    } else {
+      setError('Package ID is missing from URL');
+      setLoading(false);
+    }
+  }, [id]);
 
   const loadPackageData = async () => {
     try {
+      if (!id) {
+        setError('Package ID is required');
+        setLoading(false);
+        return;
+      }
+      
+      // Handle the case where id might be an array
+      const packageId = Array.isArray(id) ? id[0] : id;
+      
+      if (!packageId) {
+        setError('Package ID is required');
+        setLoading(false);
+        return;
+      }
+      
       setLoading(true);
       setError(null);
-      const foundPackage = await SubscriptionService.getSubscriptionPackageById(params.id);
+      console.log('Attempting to load package with ID:', packageId);
+      const foundPackage = await SubscriptionService.getSubscriptionPackageById(packageId);
+      console.log('Loaded package:', foundPackage);
       setPackageData(foundPackage);
     } catch (err) {
+      console.error('Error in loadPackageData:', err);
       setError(err instanceof Error ? err.message : 'Failed to load subscription package');
-      console.error('Error loading package:', err);
     } finally {
       setLoading(false);
     }
@@ -112,7 +136,7 @@ const ViewSubscriptionPage = ({ params }: { params: { id: string } }) => {
           onClick={() => router.back()}
           className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 mb-4"
         >
-          ← Back
+          Back
         </button>
         <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
           <div>
@@ -211,39 +235,7 @@ const ViewSubscriptionPage = ({ params }: { params: { id: string } }) => {
           </div>
         </div>
         
-        {/* Financial Details Section */}
-        <div className="mt-8 border-t border-gray-200 pt-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Financial Details</h2>
-          
-          {/* Table header - always visible */}
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount (₦)</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Platform Charge %</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Platform Charge Value (₦)</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Discount %</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actual Amount (₦)</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {/* Example row - in a real implementation, you would map through actual financial details */}
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Sample Service</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">0.00</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">0.00</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">0.00</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">0.00</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">0.00</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          
-          <p className="text-sm text-gray-500 mt-2">Note: Financial details are calculated based on selected pricing type and additional services.</p>
-        </div>
+       
       </div>
     </div>
   );

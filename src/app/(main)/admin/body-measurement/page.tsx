@@ -42,7 +42,7 @@ const AdminBodyMeasurementPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalMeasurements, setTotalMeasurements] = useState(0);
 
-  // Fetch measurements from API
+ 
   useEffect(() => {
     const fetchMeasurements = async () => {
       try {
@@ -50,7 +50,6 @@ const AdminBodyMeasurementPage = () => {
         const measurementService = new AdminMeasurementService();
         const response = await measurementService.getMeasurements(currentPage, 10);
         
-        // Handle the response structure from the API
         const responseData = response.data;
         setMeasurements(responseData.measurements || []);
         setTotalPages(responseData.pagination?.totalPages || 1);
@@ -206,24 +205,65 @@ const AdminBodyMeasurementPage = () => {
     setIsModalOpen(false);
   };
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (selectedMeasurement) {
-      const measurementData = JSON.stringify({
-        ...selectedMeasurement,
-        id: undefined,
-        _id: undefined,
-        createdAt: undefined,
-        submissionType: selectedMeasurement.submissionType || 'Manual',
-      });
-      
-      const encodedData = encodeURIComponent(measurementData);
-      router.push(`/admin/body-measurement/create?copyData=${encodedData}`);
-      
-      toast({
-        title: 'Copied',
-        description: 'Measurement has been copied successfully',
-        variant: 'default'
-      });
+      try {
+        // Format the measurement data in a readable format for clipboard
+        let formattedData = `Measurement Details:\n\n`;
+        
+        // Add user information if available
+        if (selectedMeasurement.userInfo) {
+          formattedData += `User: ${selectedMeasurement.userInfo.fullName || 'N/A'}\n`;
+          formattedData += `Email: ${selectedMeasurement.userInfo.email || 'N/A'}\n`;
+          formattedData += `User ID: ${selectedMeasurement.userInfo.customUserId || 'N/A'}\n\n`;
+        }
+        
+        // Add submission type
+        formattedData += `Submission Type: ${selectedMeasurement.submissionType || 'Manual'}\n\n`;
+        
+        // Add measurements data based on format
+        if (selectedMeasurement.sections && Array.isArray(selectedMeasurement.sections)) {
+          formattedData += 'Measurements (by sections):\n';
+          selectedMeasurement.sections.forEach((section: any) => {
+            formattedData += `\n${section.sectionName || 'Section'}:\n`;
+            if (section.measurements && Array.isArray(section.measurements)) {
+              section.measurements.forEach((measurement: any) => {
+                if (measurement.bodyPartName && measurement.size !== undefined && measurement.size !== null) {
+                  formattedData += `  - ${measurement.bodyPartName}: ${measurement.size} cm\n`;
+                }
+              });
+            }
+          });
+        } else if (selectedMeasurement.measurements && typeof selectedMeasurement.measurements === 'object') {
+          formattedData += 'Measurements:\n';
+          Object.entries(selectedMeasurement.measurements).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) {
+              formattedData += `  - ${key}: ${value} cm\n`;
+            }
+          });
+        }
+        
+        // Add notes if available
+        if (selectedMeasurement.notes) {
+          formattedData += `\nNotes: ${selectedMeasurement.notes}\n`;
+        }
+        
+        // Copy to clipboard
+        await navigator.clipboard.writeText(formattedData);
+        
+        toast({
+          title: 'Copied',
+          description: 'Measurement data has been copied sucessfully',
+          variant: 'default'
+        });
+      } catch (err: any) {
+        console.error('Failed to copy measurement:', err);
+        toast({
+          title: 'Error',
+          description: 'Failed to copy measurement data',
+          variant: 'destructive'
+        });
+      }
     }
   };
 

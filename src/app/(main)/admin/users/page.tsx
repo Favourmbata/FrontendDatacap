@@ -304,9 +304,9 @@ const UsersManagementPage = () => {
     try {
       const httpService = new HttpService();
       await httpService.postData<any>({
-        adminMessage: 'Hello!',
-        generateNewPassword: false
-      }, `/api/org-user/users/${userId}/send-email`);
+        adminMessage: 'Welcome to our organization!',
+        generateNewPassword: true
+      }, `/api/admin/users/${userId}/send-email`);
       
       toast({ 
         title: 'Email Sent', 
@@ -325,31 +325,208 @@ const UsersManagementPage = () => {
     }
   };
 
+  // Handle reset password - open modal for password reset
+  const handleChangePassword = (userId: string) => {
+    setPasswordModal({
+      isOpen: true,
+      password: '',
+      userId: userId
+    });
+  };
+
+  // Handle reset password - open modal for password reset
   const handleResetPassword = async (userId: string) => {
     try {
+      // Open the modal with empty state initially
+      setPasswordModal({
+        isOpen: true,
+        password: '',
+        userId: userId
+      });
+    } catch (error: any) {
+      console.error('Error opening reset password modal:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to open reset password modal',
+        variant: 'destructive'
+      });
+    }
+    
+    closeActionModal();
+  };
+
+  // Handle generate custom ID
+  const handleGenerateCustomId = async (userId: string) => {
+    try {
       const adminUserService = new AdminUserService();
-      const response = await adminUserService.updateAdminUserPassword(userId, { generateNew: true });
+      const response = await adminUserService.generateCustomUserId(userId);
       
-      if (response.success && response.data?.generatedPassword) {
-        setPasswordModal({
-          isOpen: true,
-          password: response.data.generatedPassword,
-          userId: userId
-        });
-      } else {
-        toast({ 
-          title: 'Password Reset', 
-          description: response.data?.message || 'Password has been reset successfully',
-          variant: 'default'
-        });
-      }
+      // Update the user's customUserId in the local state
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === userId ? { ...user, customerUserId: response.data.customUserId } : user
+        )
+      );
+      
+      toast({ 
+        title: 'Success', 
+        description: response.data.message || 'Custom ID generated successfully',
+        variant: 'default'
+      });
       
       closeActionModal();
     } catch (error: any) {
-      console.error('Error resetting password:', error);
+      console.error('Error generating custom ID:', error);
       toast({ 
         title: 'Error', 
-        description: error.message || 'Failed to reset password',
+        description: error.message || 'Failed to generate custom ID',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const closePasswordModal = () => {
+    setPasswordModal({
+      isOpen: false,
+      password: '',
+      userId: null
+    });
+  };
+
+  // Handle password confirmation (both manual entry and generated)
+  const handlePasswordConfirm = async (password: string, generateNew: boolean) => {
+    if (!passwordModal.userId) return;
+    
+    try {
+      const adminUserService = new AdminUserService();
+      
+      let response;
+      
+      if (generateNew) {
+        // If generating, call the API to generate a new password on the backend
+        response = await adminUserService.updateAdminUserPassword(passwordModal.userId, { generateNew: true });
+      } else {
+        // If manual entry, send the provided password
+        response = await adminUserService.updateAdminUserPassword(passwordModal.userId, { password, generateNew: false });
+      }
+      
+      if (response.success) {
+        toast({ 
+          title: 'Success', 
+          description: response.data?.message || 'Password updated successfully',
+          variant: 'default'
+        });
+      } else {
+        toast({ 
+          title: 'Error', 
+          description: response.data?.message || 'Failed to update password',
+          variant: 'destructive'
+        });
+      }
+    } catch (error: any) {
+      console.error('Error updating password:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to update password',
+        variant: 'destructive'
+      });
+    }
+    
+    closePasswordModal();
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
+  // Handle status change
+  const handleStatusChange = async (userId: string, newStatus: 'pending' | 'active' | 'disabled' | 'archived') => {
+    try {
+      const adminUserService = new AdminUserService();
+      await adminUserService.updateAdminUserStatus(userId, { status: newStatus });
+      
+      // Update the user status in the local state
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === userId ? { ...user, status: newStatus } : user
+        )
+      );
+      
+      toast({ 
+        title: 'Success', 
+        description: 'User status updated successfully',
+        variant: 'default'
+      });
+      
+      closeActionModal();
+    } catch (error: any) {
+      console.error('Error updating user status:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to update user status',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDelete = (userId: string) => {
+    handleDeleteUser(userId);
+  };
+
+  const handleSetActive = async (userId: string) => {
+    try {
+      const adminUserService = new AdminUserService();
+      const updatedUser = await adminUserService.updateAdminUserStatus(userId, { status: 'active' });
+      
+      // Update the user status in the local state
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === userId ? { ...user, status: 'active' } : user
+        )
+      );
+      
+      toast({ 
+        title: 'Success', 
+        description: 'User activated successfully',
+        variant: 'default'
+      });
+      
+      closeActionModal();
+    } catch (error: any) {
+      console.error('Error activating user:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to activate user',
+        variant: 'destructive'
+      });
+    }
+  };
+  
+
+
+  const handleSendWelcomeEmail = async (userId: string) => {
+    try {
+      const httpService = new HttpService();
+      await httpService.postData<any>({
+        adminMessage: "Welcome to our organization!",
+        generateNewPassword: true
+      }, `/api/admin/users/${userId}/send-email`);
+      
+      toast({ 
+        title: 'Welcome Email Sent', 
+        description: 'Welcome email sent successfully',
+        variant: 'default'
+      });
+      
+      closeActionModal();
+    } catch (error: any) {
+      console.error('Error sending welcome email:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to send welcome email',
         variant: 'destructive'
       });
     }
@@ -413,162 +590,7 @@ const UsersManagementPage = () => {
     }
   };
 
-  const handleSendWelcomeEmail = async (userId: string) => {
-    try {
-      // Get user details to get their email
-      const adminUserService = new AdminUserService();
-      const user = await adminUserService.getAdminUserById(userId);
-      
-      // Generate a one-time code for the user first
-      const oneTimeCodeService = new OneTimeCodeService();
-      const codeRequest = {
-        userEmail: user.email,
-        expirationHours: 24
-      };
-      
-      // Generate the one-time code
-      const codeResponse = await oneTimeCodeService.generateOneTimeCode(codeRequest);
-      
-      if (!codeResponse.success) {
-        throw new Error(codeResponse.data?.message || 'Failed to generate one-time code');
-      }
-      
-      // Now send the email with the generated code
-      const response = await oneTimeCodeService.sendOneTimeCodeEmail(codeResponse.data.code);
-      
-      if (response.success) {
-        toast({ 
-          title: 'Welcome Email Sent', 
-          description: response.data?.message || 'Welcome email sent successfully',
-          variant: 'default'
-        });
-      } else {
-        throw new Error(response.message || 'Failed to send email');
-      }
-      
-      closeActionModal();
-    } catch (error: any) {
-      console.error('Error sending welcome email:', error);
-      toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to send welcome email',
-        variant: 'destructive'
-      });
-    }
-  };
 
-  const closePasswordModal = () => {
-    setPasswordModal({
-      isOpen: false,
-      password: '',
-      userId: null
-    });
-  };
-
-  const handleSetActive = async (userId: string) => {
-    try {
-      const adminUserService = new AdminUserService();
-      const updatedUser = await adminUserService.updateAdminUserStatus(userId, { status: 'active' });
-      
-      // Update the user status in the local state
-      setUsers(prevUsers => 
-        prevUsers.map(user => 
-          user.id === userId ? { ...user, status: 'active' } : user
-        )
-      );
-      
-      toast({ 
-        title: 'Success', 
-        description: 'User activated successfully',
-        variant: 'default'
-      });
-      
-      closeActionModal();
-    } catch (error: any) {
-      console.error('Error activating user:', error);
-      toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to activate user',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleDelete = (userId: string) => {
-    handleDeleteUser(userId);
-  };
-
-  // Handle page change
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-    }
-  };
-
-  // Handle status change
-  const handleStatusChange = async (userId: string, newStatus: 'pending' | 'active' | 'disabled' | 'archived') => {
-    try {
-      const adminUserService = new AdminUserService();
-      await adminUserService.updateAdminUserStatus(userId, { status: newStatus });
-      
-      // Update the user status in the local state
-      setUsers(prevUsers => 
-        prevUsers.map(user => 
-          user.id === userId ? { ...user, status: newStatus } : user
-        )
-      );
-      
-      toast({ 
-        title: 'Success', 
-        description: 'User status updated successfully',
-        variant: 'default'
-      });
-      
-      closeActionModal();
-    } catch (error: any) {
-      console.error('Error updating user status:', error);
-      toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to update user status',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  // Handle password change
-  const handleChangePassword = (userId: string) => {
-    router.push(`/admin/users/change-password/${userId}`);
-  };
-
-  // Handle generate custom ID
-  const handleGenerateCustomId = async (userId: string) => {
-    try {
-      const adminUserService = new AdminUserService();
-      const response = await adminUserService.generateCustomUserId(userId);
-      
-      // Update the user's customUserId in the local state
-      setUsers(prevUsers => 
-        prevUsers.map(user => 
-          user.id === userId ? { ...user, customerUserId: response.data.customUserId } : user
-        )
-      );
-      
-      toast({ 
-        title: 'Success', 
-        description: response.data.message || 'Custom ID generated successfully',
-        variant: 'default'
-      });
-      
-      closeActionModal();
-    } catch (error: any) {
-      console.error('Error generating custom ID:', error);
-      toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to generate custom ID',
-        variant: 'destructive'
-      });
-    }
-  };
 
   // Handle assign permissions
   const handleAssignPermissions = async (userId: string, permissions: string[]) => {
@@ -675,33 +697,38 @@ const UsersManagementPage = () => {
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
         .manrope { font-family: 'Manrope', sans-serif; }
         
-        /* Custom scrollbar */
-        .custom-scrollbar::-webkit-scrollbar {
-          height: 8px;
+        /* Custom scrollbar - always visible */
+        .table-container::-webkit-scrollbar {
           width: 8px;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
+        .table-container::-webkit-scrollbar-track {
           background: #f1f1f1;
           border-radius: 4px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
+        .table-container::-webkit-scrollbar-thumb {
           background: #c1c1c1;
           border-radius: 4px;
+          min-height: 20px; /* Ensure thumb is not too long */
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        .table-container::-webkit-scrollbar-thumb:hover {
           background: #a1a1a1;
         }
         
         /* Table container with fixed height for scroll */
         .table-container {
           max-height: calc(100vh - 300px);
-          overflow-y: auto;
+          overflow-y: scroll; /* Always show scrollbar */
         }
         
         @media (min-width: 768px) {
           .table-container {
             max-height: calc(100vh - 280px);
           }
+        }
+        
+        /* Ensure proper spacing when modals are open */
+        .table-content-area {
+          padding-bottom: 20px;
         }
       `}</style>
 
@@ -783,106 +810,98 @@ const UsersManagementPage = () => {
           ) : (
             <>
               <div className="table-container">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50 sticky top-0 z-10">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        First Name
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Last Name
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Email
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Phone Number
-                      </th>
-                      
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                         User ID
-                      </th>
-                      
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredUsers.length === 0 ? (
+                <div className="table-content-area">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
-                        <td colSpan={9} className="px-6 py-12 text-center">
-                          <div className="flex flex-col items-center justify-center text-gray-500">
-                           
-                            <p className="text-lg font-medium">No users found</p>
-                            <p className="text-sm mt-1">Try adjusting your search or filter</p>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredUsers.map((user) => (
-                        <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-150">
-                          <td className="px-6 py-4">
-                            <div className="text-sm font-semibold text-gray-900">{user.firstName}</div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm font-semibold text-gray-900">{user.lastName}</div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm text-gray-900">{user.email}</div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              {user.phoneNumber ? (
-                                <>
-                                  <Phone className="w-4 h-4 text-gray-500" />
-                                  <span className="text-sm text-gray-900">{user.phoneNumber}</span>
-                                </>
-                              ) : (
-                                <span className="text-sm text-gray-400">Not provided</span>
-                              )}
-                            </div>
-                          </td>
-                          
-                          <td className="px-6 py-4">
-                            <div className="text-sm font-medium text-gray-900">{user.customerUserId}</div>
-                          </td>
-                          
-                          <td className="px-6 py-4">
-                            <StatusBadgeDisplay status={user.status} />
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {/* Change Password Button */}
-                              <button
-                                onClick={() => handleChangePassword(user.id)}
-                                className="flex items-center gap-1 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200"
-                                title="Change Password"
-                              >
+                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          First Name
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Last Name
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Email
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Phone Number
+                        </th>
                                 
-                                <span>Change Password</span>
-                              </button>
-                              
-                              <button
-                                ref={(el) => {
-                                  actionButtonRefs.current[user.id] = el;
-                                }}
-                                onClick={(e) => handleActionClick(user.id, e)}
-                                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-                                title="More actions"
-                              >
-                                <MoreVertical className="w-4 h-4" />
-                              </button>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                           User ID
+                        </th>
+                                
+                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredUsers.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="px-6 py-12 text-center">
+                            <div className="flex flex-col items-center justify-center text-gray-500">
+                                      
+                              <p className="text-lg font-medium">No users found</p>
+                              <p className="text-sm mt-1">Try adjusting your search or filter</p>
                             </div>
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : (
+                        filteredUsers.map((user) => (
+                          <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-150">
+                            <td className="px-6 py-4">
+                              <div className="text-sm font-semibold text-gray-900">{user.firstName}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm font-semibold text-gray-900">{user.lastName}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm text-gray-900">{user.email}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                {user.phoneNumber ? (
+                                  <>
+                                    <Phone className="w-4 h-4 text-gray-500" />
+                                    <span className="text-sm text-gray-900">{user.phoneNumber}</span>
+                                  </>
+                                ) : (
+                                  <span className="text-sm text-gray-400">Not provided</span>
+                                )}
+                              </div>
+                            </td>
+                                    
+                            <td className="px-6 py-4">
+                              <div className="text-sm font-medium text-gray-900">{user.customerUserId}</div>
+                            </td>
+                                    
+                            <td className="px-6 py-4">
+                              <StatusBadgeDisplay status={user.status} />
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  ref={(el) => {
+                                    actionButtonRefs.current[user.id] = el;
+                                  }}
+                                  onClick={(e) => handleActionClick(user.id, e)}
+                                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                                  title="More actions"
+                                >
+                                  <MoreVertical className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
               
               {/* Pagination */}
@@ -936,8 +955,10 @@ const UsersManagementPage = () => {
           onArchiveUser={() => handleArchiveUser(actionModal.userId!)}
           onSendWelcomeEmail={() => handleSendWelcomeEmail(actionModal.userId!)}
           onSetActive={() => handleSetActive(actionModal.userId!)}
+
           currentUserStatus={users.find(u => u.id === actionModal.userId)?.status}
           position={actionModal.position}
+          windowHeight={typeof window !== 'undefined' ? window.innerHeight : 800}
         />
       )}
       
@@ -946,8 +967,9 @@ const UsersManagementPage = () => {
         isOpen={passwordModal.isOpen}
         onClose={closePasswordModal}
         password={passwordModal.password}
-        title="Password Generated"
-        message="The new password has been generated successfully:"
+        onConfirm={handlePasswordConfirm}
+        title="Reset Password"
+        message="Enter a new password or generate one automatically:"
       />
       
       {/* Delete Confirmation Modal */}
