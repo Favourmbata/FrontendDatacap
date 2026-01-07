@@ -2124,7 +2124,7 @@ const Page = () => {
                         <span className="text-sm text-gray-500">{row.type}</span>
                       </div>
                     </td>
-                    {/* Dynamic section measurements */}
+                 
                     {getUniqueSectionNames().map((sectionName, secIndex) => (
                       <td key={secIndex} className="manrope px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {getMeasurementsForSection(row, sectionName)}
@@ -2149,7 +2149,7 @@ const Page = () => {
         </div>
       </div>
 
-      {/* Action Modal */}
+    
       <ActionModal
         isOpen={dropdownOpen !== null}
         onClose={closeDropdown}
