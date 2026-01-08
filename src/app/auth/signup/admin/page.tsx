@@ -911,6 +911,7 @@ export default function OrganizationSignupPage() {
             onClick={handleSubmit}
             disabled={isPending}
             className="submit-button mobile-submit-button"
+            onTouchStart={() => {}} // Fixes potential iOS Safari click delay
           >
             {isPending ? 'Signing up...' : 'Sign Up as Organization'}
           </button>
@@ -1170,6 +1171,7 @@ export default function OrganizationSignupPage() {
                   onClick={handleSubmit}
                   disabled={isPending}
                   className="submit-button desktop-submit-button"
+                  onTouchStart={() => {}} // Fixes potential iOS Safari click delay
                 >
                   {isPending ? 'Signing up...' : 'Sign Up as Organization'}
                 </button>

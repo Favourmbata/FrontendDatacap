@@ -177,7 +177,10 @@ function AiBodyMeasurementContent() {
         frontImageData: frontImageData,
         sideImageData: sideImageData,
         userHeight: parseFloat(height),
-        scanTimestamp: new Date().toISOString()
+        scanTimestamp: new Date().toISOString(),
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        subject: formData.subject
       };
       
       await analyzeBodyScan(requestData);

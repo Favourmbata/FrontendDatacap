@@ -8,6 +8,9 @@ interface AiMeasurementRequest {
   sideImageData?: string;
   userHeight: number;
   scanTimestamp: string;
+  firstName: string;
+  lastName: string;
+  subject: string;
 }
 
 export interface MeasurementData {
@@ -30,6 +33,9 @@ export interface MeasurementData {
   analysisTimestamp: string;
   createdAt: string;
   updatedAt: string;
+  firstName: string;
+  lastName: string;
+  subject: string;
 }
 
 interface AiMeasurementResponse {

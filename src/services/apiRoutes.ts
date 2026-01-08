@@ -77,7 +77,20 @@ export const routes = {
   validateCode: () => '/api/admin/external/validate-code',
   submitExternalMeasurement: () => '/api/admin/external/measurements',
   
-  // Subscription management routes
+  // General subscription management routes
+  getSubscriptions: (search?: string) => {
+    let url = '/api/super-admin/subscriptions/general';
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    const paramString = params.toString();
+    return paramString ? `${url}?${paramString}` : url;
+  },
+  getSubscriptionById: (id: string) => `/api/super-admin/subscriptions/general/${id}`,
+  createSubscription: () => '/api/super-admin/subscriptions/general',
+  updateSubscription: (id: string) => `/api/super-admin/subscriptions/general/${id}`,
+  deleteSubscription: (id: string) => `/api/super-admin/subscriptions/general/${id}`,
+  
+  // Subscription package management routes
   getSubscriptionPackages: (page: number = 1, limit: number = 10, search?: string, sortBy?: string, sortOrder?: 'asc' | 'desc', status?: 'active' | 'inactive') => {
     let url = `/api/super-admin/subscriptions?page=${page}&limit=${limit}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
@@ -105,5 +118,34 @@ export const routes = {
     customerStatus: (id: string) => `/api/super-admin/customers/${id}/status`,
     resetCustomerPassword: (id: string) => `/api/super-admin/customers/${id}/reset-password`,
     exportCustomers: (format: 'csv' | 'excel' | 'pdf') => `/api/super-admin/customers/export/${format}`,
-  }
+  },
+
+  // Module management routes
+  getModules: (search?: string, status?: 'active' | 'inactive') => {
+    let url = '/api/super-admin/modules';
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (status) params.append('status', status);
+    const paramString = params.toString();
+    return paramString ? `${url}?${paramString}` : url;
+  },
+  getModuleById: (id: string) => `/api/super-admin/modules?id=${id}`,
+  createModule: () => '/api/super-admin/modules',
+  updateModule: (id: string) => `/api/super-admin/modules`,
+  deleteModule: (id: string) => `/api/super-admin/modules?id=${id}`,
+  
+  // Verified subscription management routes
+  getVerifiedSubscriptions: (search?: string) => {
+    let url = '/api/super-admin/verified-subscriptions';
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    const paramString = params.toString();
+    return paramString ? `${url}?${paramString}` : url;
+  },
+  getVerifiedSubscriptionById: (id: string) => `/api/super-admin/verified-subscriptions/${id}`,
+  createVerifiedSubscription: () => '/api/super-admin/verified-subscriptions',
+  updateVerifiedSubscription: (id: string) => `/api/super-admin/verified-subscriptions/${id}`,
+  deleteVerifiedSubscription: (id: string) => `/api/super-admin/verified-subscriptions/${id}`,
+  
+  scanMeasurements: () => '/api/measurements/scan'
 };

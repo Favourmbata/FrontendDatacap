@@ -6,6 +6,9 @@ interface AiMeasurementRequest {
   sideImageData?: string;
   userHeight: number;
   scanTimestamp: string;
+  firstName: string;
+  lastName: string;
+  subject: string;
 }
 
 interface MeasurementData {
@@ -17,6 +20,9 @@ interface MeasurementData {
   analysisTimestamp: string;
   createdAt: string;
   updatedAt: string;
+  firstName: string;
+  lastName: string;
+  subject: string;
 }
 
 interface AiMeasurementResponse {
@@ -69,6 +75,18 @@ function validateRequest(body: any): { isValid: boolean; errors: string[] } {
     }
   }
 
+  if (!body.firstName) {
+    errors.push('firstName is required');
+  }
+  
+  if (!body.lastName) {
+    errors.push('lastName is required');
+  }
+  
+  if (!body.subject) {
+    errors.push('subject is required');
+  }
+
   // Validate image data format
   if (body.frontImageData) {
     if (typeof body.frontImageData !== 'string') {
@@ -90,6 +108,19 @@ function validateRequest(body: any): { isValid: boolean; errors: string[] } {
   // Validate optional side image data
   if (body.sideImageData && typeof body.sideImageData !== 'string') {
     errors.push('sideImageData must be a string');
+  }
+
+  // Validate names
+  if (body.firstName && typeof body.firstName !== 'string') {
+    errors.push('firstName must be a string');
+  }
+  
+  if (body.lastName && typeof body.lastName !== 'string') {
+    errors.push('lastName must be a string');
+  }
+  
+  if (body.subject && typeof body.subject !== 'string') {
+    errors.push('subject must be a string');
   }
 
   return {
@@ -177,7 +208,10 @@ export async function POST(request: NextRequest) {
       scanTimestamp: body.scanTimestamp,
       analysisTimestamp: now,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      firstName: body.firstName,
+      lastName: body.lastName,
+      subject: body.subject
     };
 
     // Store the measurement (in-memory for now)
