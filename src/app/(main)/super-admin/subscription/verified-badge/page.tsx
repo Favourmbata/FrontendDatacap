@@ -1,270 +1,254 @@
-"use client";
+"use client"
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { 
-  Search, 
-  Plus, 
-  Eye, 
-  Edit, 
-  Trash2, 
-  Download, 
-  Filter,
-  MapPin,
-  Building,
-  User,
-  Mail,
-  Phone,
-  Globe,
-  ChevronDown,
-  X,
-  Calendar,
-  DollarSign,
-  Hash,
-  Map,
-  Home,
-  Clock
-} from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from "react"
+import { Search, Plus, Download, Filter, ChevronDown, CheckCircle, Edit, Trash2, MoreVertical } from "lucide-react"
+import { VerifiedBadgeApprovalModal } from "../../verifiedbadge-approval/page"
 
 interface Organization {
-  id: string;
-  serialNumber: number;
-  name: string;
-  totalSubscriptionAmount: number;
-  currency: string;
-  totalLocations: number;
-  headquarters: string;
-  locationVerificationCost: number;
-  subscriptionDuration: string;
-  address: string;
-  city: string;
-  lga: string;
-  state: string;
-  country: string;
-  branches: Branch[];
-  createdAt: string;
-  updatedAt: string;
+  id: string
+  serialNumber: number
+  name: string
+  totalSubscriptionAmount: number
+  currency: string
+  totalLocations: number
+  headquarters: string
+  locationVerificationCost: number
+  subscriptionDuration: string
+  address: string
+  city: string
+  lga: string
+  state: string
+  country: string
+  branches: Branch[]
+  createdAt: string
+  updatedAt: string
 }
 
 interface Branch {
-  id: string;
-  branchName: string;
-  houseNumber: string;
-  streetName: string;
-  cityRegion: string;
-  buildingType?: string;
-  lga: string;
-  state: string;
-  country: string;
-  contactPerson?: string;
-  contactPosition?: string;
-  contactEmail?: string;
-  contactPhone?: string;
+  id: string
+  branchName: string
+  houseNumber: string
+  streetName: string
+  cityRegion: string
+  buildingType?: string
+  lga: string
+  state: string
+  country: string
+  contactPerson?: string
+  contactPosition?: string
+  contactEmail?: string
+  contactPhone?: string
 }
 
 const VerifiedBadgeSubscriptionPage = () => {
-  // States
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [filteredOrganizations, setFilteredOrganizations] = useState<Organization[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [showBranchModal, setShowBranchModal] = useState(false);
-  const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [organizationToDelete, setOrganizationToDelete] = useState<string | null>(null);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Organization; direction: 'asc' | 'desc' } | null>(null);
-  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [filteredOrganizations, setFilteredOrganizations] = useState<Organization[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [showBranchModal, setShowBranchModal] = useState(false)
+  const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [organizationToDelete, setOrganizationToDelete] = useState<string | null>(null)
+  const [showApprovalModal, setShowApprovalModal] = useState(false)
+  const [organizationForApproval, setOrganizationForApproval] = useState<Organization | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [organizationToEdit, setOrganizationToEdit] = useState<Organization | null>(null)
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Organization; direction: "asc" | "desc" } | null>(null)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const tableContainerRef = useRef<HTMLDivElement>(null)
 
-  // Sample data
+  // ... existing sample data ...
   const sampleData: Organization[] = [
     {
-      id: 'ORG-001',
+      id: "ORG-001",
       serialNumber: 1,
-      name: 'Tech Innovators Ltd',
+      name: "Tech Innovators Ltd",
       totalSubscriptionAmount: 2500000,
-      currency: 'NGN',
+      currency: "NGN",
       totalLocations: 3,
-      headquarters: 'Lagos Main Office',
+      headquarters: "Lagos Main Office",
       locationVerificationCost: 750000,
-      subscriptionDuration: '12 months',
-      address: '123 Innovation Street, Ikeja',
-      city: 'Lagos',
-      lga: 'Ikeja',
-      state: 'Lagos',
-      country: 'Nigeria',
+      subscriptionDuration: "12 months",
+      address: "123 Innovation Street, Ikeja",
+      city: "Lagos",
+      lga: "Ikeja",
+      state: "Lagos",
+      country: "Nigeria",
       branches: [
         {
-          id: 'b1',
-          branchName: 'Lagos Main Office',
-          houseNumber: '123',
-          streetName: 'Innovation Street',
-          cityRegion: 'Ikeja',
-          buildingType: 'Commercial',
-          lga: 'Ikeja',
-          state: 'Lagos',
-          country: 'Nigeria',
-          contactPerson: 'John Doe',
-          contactPosition: 'Manager',
-          contactEmail: 'john@techinnovators.com',
-          contactPhone: '+2348012345678'
-        }
+          id: "b1",
+          branchName: "Lagos Main Office",
+          houseNumber: "123",
+          streetName: "Innovation Street",
+          cityRegion: "Ikeja",
+          buildingType: "Commercial",
+          lga: "Ikeja",
+          state: "Lagos",
+          country: "Nigeria",
+          contactPerson: "John Doe",
+          contactPosition: "Manager",
+          contactEmail: "john@techinnovators.com",
+          contactPhone: "+2348012345678",
+        },
       ],
-      createdAt: '2024-01-01',
-      updatedAt: '2024-01-01'
+      createdAt: "2024-01-01",
+      updatedAt: "2024-01-01",
     },
     {
-      id: 'ORG-002',
+      id: "ORG-002",
       serialNumber: 2,
-      name: 'Green Energy Solutions',
+      name: "Green Energy Solutions",
       totalSubscriptionAmount: 1800000,
-      currency: 'NGN',
+      currency: "NGN",
       totalLocations: 2,
-      headquarters: 'Port Harcourt HQ',
+      headquarters: "Port Harcourt HQ",
       locationVerificationCost: 600000,
-      subscriptionDuration: '24 months',
-      address: '45 Energy Road, GRA',
-      city: 'Port Harcourt',
-      lga: 'Port Harcourt City',
-      state: 'Rivers',
-      country: 'Nigeria',
+      subscriptionDuration: "24 months",
+      address: "45 Energy Road, GRA",
+      city: "Port Harcourt",
+      lga: "Port Harcourt City",
+      state: "Rivers",
+      country: "Nigeria",
       branches: [
         {
-          id: 'b2',
-          branchName: 'Port Harcourt HQ',
-          houseNumber: '45',
-          streetName: 'Energy Road',
-          cityRegion: 'GRA',
-          buildingType: 'Industrial',
-          lga: 'Port Harcourt City',
-          state: 'Rivers',
-          country: 'Nigeria',
-          contactPerson: 'Michael Brown',
-          contactPosition: 'Director',
-          contactEmail: 'michael@greenenergy.com',
-          contactPhone: '+2348055555555'
-        }
+          id: "b2",
+          branchName: "Port Harcourt HQ",
+          houseNumber: "45",
+          streetName: "Energy Road",
+          cityRegion: "GRA",
+          buildingType: "Industrial",
+          lga: "Port Harcourt City",
+          state: "Rivers",
+          country: "Nigeria",
+          contactPerson: "Michael Brown",
+          contactPosition: "Director",
+          contactEmail: "michael@greenenergy.com",
+          contactPhone: "+2348055555555",
+        },
       ],
-      createdAt: '2024-01-02',
-      updatedAt: '2024-01-02'
+      createdAt: "2024-01-02",
+      updatedAt: "2024-01-02",
     },
     {
-      id: 'ORG-003',
+      id: "ORG-003",
       serialNumber: 3,
-      name: 'MediCare Hospital Group',
+      name: "MediCare Hospital Group",
       totalSubscriptionAmount: 3500000,
-      currency: 'NGN',
+      currency: "NGN",
       totalLocations: 4,
-      headquarters: 'Abuja Central',
+      headquarters: "Abuja Central",
       locationVerificationCost: 950000,
-      subscriptionDuration: '36 months',
-      address: '78 Health Avenue, Wuse 2',
-      city: 'Abuja',
-      lga: 'Abuja Municipal',
-      state: 'FCT',
-      country: 'Nigeria',
+      subscriptionDuration: "36 months",
+      address: "78 Health Avenue, Wuse 2",
+      city: "Abuja",
+      lga: "Abuja Municipal",
+      state: "FCT",
+      country: "Nigeria",
       branches: [],
-      createdAt: '2024-01-03',
-      updatedAt: '2024-01-03'
-    }
-  ];
+      createdAt: "2024-01-03",
+      updatedAt: "2024-01-03",
+    },
+  ]
 
-  // Fetch data
+  // ... existing useEffect ...
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
+      setLoading(true)
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setOrganizations(sampleData);
-        setFilteredOrganizations(sampleData);
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+        setOrganizations(sampleData)
+        setFilteredOrganizations(sampleData)
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error("Error fetching data:", error)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
-    
-    fetchData();
-  }, []);
+    }
 
-  // Filter and search
+    fetchData()
+  }, [])
+
+  // ... existing filter and search ...
   useEffect(() => {
     if (!searchTerm) {
-      setFilteredOrganizations(organizations);
+      setFilteredOrganizations(organizations)
     } else {
-      const filtered = organizations.filter(org =>
-        org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        org.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        org.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        org.state.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        org.lga.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredOrganizations(filtered);
+      const filtered = organizations.filter(
+        (org) =>
+          org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          org.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          org.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          org.state.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          org.lga.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
+      setFilteredOrganizations(filtered)
     }
-  }, [searchTerm, organizations]);
+  }, [searchTerm, organizations])
 
-  // Sorting
+  // ... existing sorting ...
   const sortedOrganizations = useMemo(() => {
-    if (!sortConfig) return filteredOrganizations;
-    
+    if (!sortConfig) return filteredOrganizations
+
     return [...filteredOrganizations].sort((a, b) => {
       if (a[sortConfig.key] < b[sortConfig.key]) {
-        return sortConfig.direction === 'asc' ? -1 : 1;
+        return sortConfig.direction === "asc" ? -1 : 1
       }
       if (a[sortConfig.key] > b[sortConfig.key]) {
-        return sortConfig.direction === 'asc' ? 1 : -1;
+        return sortConfig.direction === "asc" ? 1 : -1
       }
-      return 0;
-    });
-  }, [filteredOrganizations, sortConfig]);
+      return 0
+    })
+  }, [filteredOrganizations, sortConfig])
 
   const requestSort = (key: keyof Organization) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
+    let direction: "asc" | "desc" = "asc"
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc"
     }
-    setSortConfig({ key, direction });
-  };
+    setSortConfig({ key, direction })
+  }
 
-  // Format currency
+  // ... existing formatCurrency ...
   const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
+    return new Intl.NumberFormat("en-NG", {
+      style: "currency",
       currency: currency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount);
-  };
+    }).format(amount)
+  }
 
-  // Format date
+  // ... existing formatDate ...
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
+  }
 
-  // Export to Excel
+  // ... existing exportToExcel ...
   const exportToExcel = () => {
     const headers = [
-      'S/N',
-      'Organization Name',
-      'ID',
-      'Total Subscription (₦)',
-      'Currency',
-      'Total Locations',
-      'Headquarters',
-      'Location Verification Cost',
-      'Subscription Duration',
-      'Address',
-      'City',
-      'LGA',
-      'State',
-      'Country',
-      'Created Date',
-      'Updated Date'
-    ];
+      "S/N",
+      "Organization Name",
+      "ID",
+      "Total Subscription (₦)",
+      "Currency",
+      "Total Locations",
+      "Headquarters",
+      "Location Verification Cost",
+      "Subscription Duration",
+      "Address",
+      "City",
+      "LGA",
+      "State",
+      "Country",
+      "Created Date",
+      "Updated Date",
+    ]
 
-    const data = organizations.map(org => [
+    const data = organizations.map((org) => [
       org.serialNumber,
       org.name,
       org.id,
@@ -280,47 +264,54 @@ const VerifiedBadgeSubscriptionPage = () => {
       org.state,
       org.country,
       formatDate(org.createdAt),
-      formatDate(org.updatedAt)
-    ]);
+      formatDate(org.updatedAt),
+    ])
 
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => row.join(','))
-    ].join('\n');
+    const csvContent = [headers.join(","), ...data.map((row) => row.join(","))].join("\n")
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'verified-badge-subscriptions.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+    link.setAttribute("download", "verified-badge-subscriptions.csv")
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
-  // Handle view headquarters
+  // ... existing handleViewHeadquarters ...
   const handleViewHeadquarters = (org: Organization) => {
-    setSelectedOrganization(org);
-    setShowBranchModal(true);
-  };
+    setSelectedOrganization(org)
+    setShowBranchModal(true)
+  }
 
-  // Handle delete
+  const handleOpenApproval = (org: Organization) => {
+    setOrganizationForApproval(org)
+    setShowApprovalModal(true)
+  }
+
+  const handleEdit = (org: Organization) => {
+    setOrganizationToEdit(org)
+    setShowEditModal(true)
+  }
+
+  // ... existing handleDelete ...
   const handleDelete = (id: string) => {
-    setOrganizationToDelete(id);
-    setShowDeleteModal(true);
-  };
+    setOrganizationToDelete(id)
+    setShowDeleteModal(true)
+  }
 
   const confirmDelete = () => {
     if (organizationToDelete) {
-      setOrganizations(orgs => orgs.filter(org => org.id !== organizationToDelete));
-      setFilteredOrganizations(orgs => orgs.filter(org => org.id !== organizationToDelete));
-      setShowDeleteModal(false);
-      setOrganizationToDelete(null);
+      setOrganizations((orgs) => orgs.filter((org) => org.id !== organizationToDelete))
+      setFilteredOrganizations((orgs) => orgs.filter((org) => org.id !== organizationToDelete))
+      setShowDeleteModal(false)
+      setOrganizationToDelete(null)
     }
-  };
+  }
 
-  // Loading skeleton
+  // ... existing loading skeleton ...
   if (loading) {
     return (
       <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
@@ -355,7 +346,7 @@ const VerifiedBadgeSubscriptionPage = () => {
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -416,25 +407,25 @@ const VerifiedBadgeSubscriptionPage = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              
+
               <button className="flex items-center justify-center border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
                 <Filter className="w-5 h-5 mr-2" />
                 More Filters
               </button>
             </div>
-            
+
             <div className="flex gap-3">
-              <button 
+              <button
                 className="flex items-center justify-center bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
                 onClick={exportToExcel}
               >
                 <Download className="w-5 h-5 mr-2" />
                 Export to Excel
               </button>
-              
-              <button 
+
+              <button
                 className="flex items-center justify-center bg-[#5D2A8B] text-white px-4 py-2 rounded-lg hover:bg-[#4a216d] transition-colors"
-                onClick={() => window.location.href = '/super-admin/subscription/verified-badge/create'}
+                onClick={() => (window.location.href = "/super-admin/subscription/verified-badge/create")}
               >
                 <Plus className="w-5 h-5 mr-2" />
                 Add New Subscription
@@ -446,494 +437,247 @@ const VerifiedBadgeSubscriptionPage = () => {
         {/* Main Table with Horizontal Scroll */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div ref={tableContainerRef} className="table-container overflow-x-auto max-h-[600px]">
-            <table className="w-full min-w-[1600px]">
+            <table className="w-full min-w-[1800px]">
               <thead className="sticky-header">
                 <tr className="bg-gray-50 border-b border-gray-200">
                   {/* S/N */}
-                  <th 
+                  <th
                     className="py-3 px-4 text-left text-gray-600 font-medium cursor-pointer hover:bg-gray-100 whitespace-nowrap"
-                    onClick={() => requestSort('serialNumber')}
+                    onClick={() => requestSort("serialNumber")}
                   >
                     <div className="flex items-center">
-                     
                       S/N
-                      <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${
-                        sortConfig?.key === 'serialNumber' && sortConfig.direction === 'desc' ? 'rotate-180' : ''
-                      }`} />
+                      <ChevronDown
+                        className={`w-4 h-4 ml-1 transition-transform ${
+                          sortConfig?.key === "serialNumber" && sortConfig.direction === "desc" ? "rotate-180" : ""
+                        }`}
+                      />
                     </div>
                   </th>
-                  
+
                   {/* Organization Name */}
-                  <th 
+                  <th
                     className="py-3 px-4 text-left text-gray-600 font-medium cursor-pointer hover:bg-gray-100 whitespace-nowrap"
-                    onClick={() => requestSort('name')}
+                    onClick={() => requestSort("name")}
                   >
                     <div className="flex items-center">
-                      
                       Organization Name
-                      <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${
-                        sortConfig?.key === 'name' && sortConfig.direction === 'desc' ? 'rotate-180' : ''
-                      }`} />
+                      <ChevronDown
+                        className={`w-4 h-4 ml-1 transition-transform ${
+                          sortConfig?.key === "name" && sortConfig.direction === "desc" ? "rotate-180" : ""
+                        }`}
+                      />
                     </div>
                   </th>
-                  
+
                   {/* ID */}
                   <th className="py-3 px-4 text-left text-gray-600 font-medium whitespace-nowrap">
-                    <div className="flex items-center">
-                     
-                      ID
-                    </div>
+                    <div className="flex items-center">ID</div>
                   </th>
-                  
+
                   {/* Total Subscription */}
-                  <th 
+                  <th
                     className="py-3 px-4 text-left text-gray-600 font-medium cursor-pointer hover:bg-gray-100 whitespace-nowrap"
-                    onClick={() => requestSort('totalSubscriptionAmount')}
+                    onClick={() => requestSort("totalSubscriptionAmount")}
                   >
                     <div className="flex items-center">
-                     
                       Total Subscription
-                      <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${
-                        sortConfig?.key === 'totalSubscriptionAmount' && sortConfig.direction === 'desc' ? 'rotate-180' : ''
-                      }`} />
+                      <ChevronDown
+                        className={`w-4 h-4 ml-1 transition-transform ${
+                          sortConfig?.key === "totalSubscriptionAmount" && sortConfig.direction === "desc"
+                            ? "rotate-180"
+                            : ""
+                        }`}
+                      />
                     </div>
                   </th>
-                  
+
                   {/* Currency */}
                   <th className="py-3 px-4 text-left text-gray-600 font-medium whitespace-nowrap">
-                    <div className="flex items-center">
-                    
-                      Currency
-                    </div>
+                    <div className="flex items-center">Currency</div>
                   </th>
-                  
+
                   {/* Total Locations */}
-                  <th 
+                  <th
                     className="py-3 px-4 text-left text-gray-600 font-medium cursor-pointer hover:bg-gray-100 whitespace-nowrap"
-                    onClick={() => requestSort('totalLocations')}
+                    onClick={() => requestSort("totalLocations")}
                   >
                     <div className="flex items-center">
-                     
                       Total Locations
-                      <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${
-                        sortConfig?.key === 'totalLocations' && sortConfig.direction === 'desc' ? 'rotate-180' : ''
-                      }`} />
+                      <ChevronDown
+                        className={`w-4 h-4 ml-1 transition-transform ${
+                          sortConfig?.key === "totalLocations" && sortConfig.direction === "desc" ? "rotate-180" : ""
+                        }`}
+                      />
                     </div>
                   </th>
-                  
+
                   {/* Headquarters */}
                   <th className="py-3 px-4 text-left text-gray-600 font-medium whitespace-nowrap">
-                    <div className="flex items-center">
-                     
-                      Headquarters
-                    </div>
+                    <div className="flex items-center">Headquarters</div>
                   </th>
-                  
-                  {/* Location Verification Cost */}
-                  <th 
+
+                  {/* Verification Cost */}
+                  <th
                     className="py-3 px-4 text-left text-gray-600 font-medium cursor-pointer hover:bg-gray-100 whitespace-nowrap"
-                    onClick={() => requestSort('locationVerificationCost')}
+                    onClick={() => requestSort("locationVerificationCost")}
                   >
                     <div className="flex items-center">
-                     
                       Verification Cost
-                      <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${
-                        sortConfig?.key === 'locationVerificationCost' && sortConfig.direction === 'desc' ? 'rotate-180' : ''
-                      }`} />
+                      <ChevronDown
+                        className={`w-4 h-4 ml-1 transition-transform ${
+                          sortConfig?.key === "locationVerificationCost" && sortConfig.direction === "desc"
+                            ? "rotate-180"
+                            : ""
+                        }`}
+                      />
                     </div>
                   </th>
-                  
-                  {/* Subscription Duration */}
+
+                  {/* Duration */}
                   <th className="py-3 px-4 text-left text-gray-600 font-medium whitespace-nowrap">
-                    <div className="flex items-center">
-                      
-                      Duration
-                    </div>
+                    <div className="flex items-center">Duration</div>
                   </th>
-                  
-                  {/* Address */}
-                  <th className="py-3 px-4 text-left text-gray-600 font-medium whitespace-nowrap">
-                    <div className="flex items-center">
-                      
-                      Address
-                    </div>
-                  </th>
-                  
+
                   {/* City */}
-                  <th 
+                  <th
                     className="py-3 px-4 text-left text-gray-600 font-medium cursor-pointer hover:bg-gray-100 whitespace-nowrap"
-                    onClick={() => requestSort('city')}
+                    onClick={() => requestSort("city")}
                   >
                     <div className="flex items-center">
-                      
                       City
-                      <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${
-                        sortConfig?.key === 'city' && sortConfig.direction === 'desc' ? 'rotate-180' : ''
-                      }`} />
+                      <ChevronDown
+                        className={`w-4 h-4 ml-1 transition-transform ${
+                          sortConfig?.key === "city" && sortConfig.direction === "desc" ? "rotate-180" : ""
+                        }`}
+                      />
                     </div>
                   </th>
-                  
-                  {/* LGA */}
-                  <th className="py-3 px-4 text-left text-gray-600 font-medium whitespace-nowrap">
-                    <div className="flex items-center">
-                     
-                      LGA
-                    </div>
-                  </th>
-                  
+
                   {/* State */}
-                  <th 
+                  <th
                     className="py-3 px-4 text-left text-gray-600 font-medium cursor-pointer hover:bg-gray-100 whitespace-nowrap"
-                    onClick={() => requestSort('state')}
+                    onClick={() => requestSort("state")}
                   >
                     <div className="flex items-center">
-                    
                       State
-                      <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${
-                        sortConfig?.key === 'state' && sortConfig.direction === 'desc' ? 'rotate-180' : ''
-                      }`} />
+                      <ChevronDown
+                        className={`w-4 h-4 ml-1 transition-transform ${
+                          sortConfig?.key === "state" && sortConfig.direction === "desc" ? "rotate-180" : ""
+                        }`}
+                      />
                     </div>
                   </th>
-                  
-                  {/* Country */}
-                  <th 
-                    className="py-3 px-4 text-left text-gray-600 font-medium cursor-pointer hover:bg-gray-100 whitespace-nowrap"
-                    onClick={() => requestSort('country')}
-                  >
-                    <div className="flex items-center">
-                      <Globe className="w-4 h-4 mr-2 text-gray-400" />
-                      Country
-                      <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${
-                        sortConfig?.key === 'country' && sortConfig.direction === 'desc' ? 'rotate-180' : ''
-                      }`} />
-                    </div>
+
+                  {/* Verified Badge */}
+                  <th className="py-3 px-4 text-left text-gray-600 font-medium whitespace-nowrap">
+                    <div className="flex items-center">Verified Badge</div>
                   </th>
-                  
-                  {/* Created At */}
-                  <th 
-                    className="py-3 px-4 text-left text-gray-600 font-medium cursor-pointer hover:bg-gray-100 whitespace-nowrap"
-                    onClick={() => requestSort('createdAt')}
-                  >
-                    <div className="flex items-center">
-                     
-                      Created
-                      <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${
-                        sortConfig?.key === 'createdAt' && sortConfig.direction === 'desc' ? 'rotate-180' : ''
-                      }`} />
-                    </div>
-                  </th>
-                  
-                  {/* Updated At */}
-                  <th 
-                    className="py-3 px-4 text-left text-gray-600 font-medium cursor-pointer hover:bg-gray-100 whitespace-nowrap"
-                    onClick={() => requestSort('updatedAt')}
-                  >
-                    <div className="flex items-center">
-                     
-                      Updated
-                      <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${
-                        sortConfig?.key === 'updatedAt' && sortConfig.direction === 'desc' ? 'rotate-180' : ''
-                      }`} />
-                    </div>
-                  </th>
-                  
+
                   {/* Actions */}
-                  <th className="py-3 px-4 text-left text-gray-600 font-medium sticky right-0 bg-gray-50 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <Edit className="w-4 h-4 mr-2 text-gray-400" />
-                      Actions
-                    </div>
+                  <th className="py-3 px-4 text-left text-gray-600 font-medium whitespace-nowrap">
+                    <div className="flex items-center">Actions</div>
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {sortedOrganizations.length > 0 ? (
-                  sortedOrganizations.map((org) => (
-                    <tr key={org.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      {/* S/N */}
-                      <td className="py-4 px-4 font-medium text-gray-900 whitespace-nowrap">
-                        {org.serialNumber}
-                      </td>
-                      
-                      {/* Organization Name */}
-                      <td className="py-4 px-4 whitespace-nowrap">
-                        <div className="font-medium text-gray-900">{org.name}</div>
-                      </td>
-                      
-                      {/* ID */}
-                      <td className="py-4 px-4 text-gray-700 font-mono whitespace-nowrap">
-                        {org.id}
-                      </td>
-                      
-                      {/* Total Subscription */}
-                      <td className="py-4 px-4 whitespace-nowrap">
-                        <div className="font-bold text-gray-900">
-                          {formatCurrency(org.totalSubscriptionAmount, org.currency)}
-                        </div>
-                      </td>
-                      
-                      {/* Currency */}
-                      <td className="py-4 px-4 text-gray-700 whitespace-nowrap">
-                        <span className="px-2 py-1 bg-gray-100 text-gray-800 text-sm rounded-full">
-                          {org.currency}
-                        </span>
-                      </td>
-                      
-                      {/* Total Locations */}
-                      <td className="py-4 px-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-800 font-medium">
-                            {org.totalLocations}
-                          </span>
-                        </div>
-                      </td>
-                      
-                      {/* Headquarters */}
-                      <td className="py-4 px-4 whitespace-nowrap">
+                {sortedOrganizations.map((org) => (
+                  <tr key={org.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="py-4 px-4 text-gray-900 font-medium text-sm">{org.serialNumber}</td>
+                    <td className="py-4 px-4 text-gray-900 font-medium text-sm">{org.name}</td>
+                    <td className="py-4 px-4 text-gray-600 text-sm">{org.id}</td>
+                    <td className="py-4 px-4 text-gray-900 font-medium text-sm">
+                      {formatCurrency(org.totalSubscriptionAmount, org.currency)}
+                    </td>
+                    <td className="py-4 px-4 text-gray-600 text-sm">{org.currency}</td>
+                    <td className="py-4 px-4 text-gray-600 text-sm text-center">{org.totalLocations}</td>
+                    <td className="py-4 px-4 text-gray-600 text-sm">{org.headquarters}</td>
+                    <td className="py-4 px-4 text-gray-600 text-sm">
+                      {formatCurrency(org.locationVerificationCost, org.currency)}
+                    </td>
+                    <td className="py-4 px-4 text-gray-600 text-sm">{org.subscriptionDuration}</td>
+                    <td className="py-4 px-4 text-gray-600 text-sm">{org.city}</td>
+                    <td className="py-4 px-4 text-gray-600 text-sm">{org.state}</td>
+
+                    <td className="py-4 px-4 text-sm">
+                      <button
+                        onClick={() => handleOpenApproval(org)}
+                        className="flex items-center justify-center gap-1 bg-[#5D2A8B] text-white px-3 py-1.5 rounded-lg hover:bg-[#4a216d] transition-colors text-xs font-medium whitespace-nowrap"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Verified Badge
+                      </button>
+                    </td>
+
+                    <td className="py-4 px-4 text-sm">
+                      <div className="relative">
                         <button
-                          onClick={() => handleViewHeadquarters(org)}
-                          className="flex items-center text-purple-600 hover:text-purple-800 font-medium"
+                          onClick={() => setOpenMenuId(openMenuId === org.id ? null : org.id)}
+                          className="flex items-center justify-center gap-1 bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-300 transition-colors"
                         >
-                          <MapPin className="w-4 h-4 mr-1" />
-                          View
+                          <MoreVertical className="w-4 h-4" />
                         </button>
-                      </td>
-                      
-                      {/* Location Verification Cost */}
-                      <td className="py-4 px-4 whitespace-nowrap">
-                        <div className="font-medium text-red-600">
-                          {formatCurrency(org.locationVerificationCost, org.currency)}
-                        </div>
-                      </td>
-                      
-                      {/* Subscription Duration */}
-                      <td className="py-4 px-4 whitespace-nowrap">
-                        <span className="px-2 py-1 bg-green-100 text-green-800 text-sm rounded-full">
-                          {org.subscriptionDuration}
-                        </span>
-                      </td>
-                      
-                      {/* Address */}
-                      <td className="py-4 px-4 whitespace-nowrap max-w-[200px] truncate">
-                        <div className="text-gray-700" title={org.address}>
-                          {org.address}
-                        </div>
-                      </td>
-                      
-                      {/* City */}
-                      <td className="py-4 px-4 text-gray-700 whitespace-nowrap">
-                        {org.city}
-                      </td>
-                      
-                      {/* LGA */}
-                      <td className="py-4 px-4 text-gray-700 whitespace-nowrap">
-                        {org.lga}
-                      </td>
-                      
-                      {/* State */}
-                      <td className="py-4 px-4 whitespace-nowrap">
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                          {org.state}
-                        </span>
-                      </td>
-                      
-                      {/* Country */}
-                      <td className="py-4 px-4 text-gray-700 whitespace-nowrap">
-                        {org.country}
-                      </td>
-                      
-                      {/* Created At */}
-                      <td className="py-4 px-4 text-gray-500 text-sm whitespace-nowrap">
-                        {formatDate(org.createdAt)}
-                      </td>
-                      
-                      {/* Updated At */}
-                      <td className="py-4 px-4 text-gray-500 text-sm whitespace-nowrap">
-                        {formatDate(org.updatedAt)}
-                      </td>
-                      
-                      {/* Actions (Sticky) */}
-                      <td className="py-4 px-4 sticky right-0 bg-white whitespace-nowrap">
-                        <div className="flex items-center space-x-3">
-                          <button 
-                            onClick={() => window.location.href = `/super-admin/subscription/verified-badge/view/${org.id}`}
-                            className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 transition-colors"
-                            title="View Details"
-                          >
-                            <Eye className="w-5 h-5" />
-                          </button>
-                          <button 
-                            onClick={() => window.location.href = `/super-admin/subscription/verified-badge/edit/${org.id}`}
-                            className="text-yellow-600 hover:text-yellow-800 p-1 rounded hover:bg-yellow-50 transition-colors"
-                            title="Edit"
-                          >
-                            <Edit className="w-5 h-5" />
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(org.id)}
-                            className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={16} className="py-8 px-4 text-center text-gray-500">
-                      No organizations found
+
+                        {openMenuId === org.id && (
+                          <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                            <button
+                              onClick={() => {
+                                handleEdit(org)
+                                setOpenMenuId(null)
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-gray-700 hover:bg-gray-50 flex items-center gap-2 border-b border-gray-100"
+                            >
+                              <Edit className="w-4 h-4" />
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleDelete(org.id)
+                                setOpenMenuId(null)
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 flex items-center gap-2"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           </div>
         </div>
-
-        {/* Summary */}
-        <div className="mt-4 text-sm text-gray-600">
-          Showing {sortedOrganizations.length} of {organizations.length} organizations
-        </div>
       </div>
 
-      {/* Branch Details Modal */}
-      {showBranchModal && selectedOrganization && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000] p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900">Branch Details</h3>
-                <p className="text-gray-600">{selectedOrganization.name}</p>
-              </div>
-              <button
-                onClick={() => setShowBranchModal(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
+      <VerifiedBadgeApprovalModal
+        isOpen={showApprovalModal}
+        onClose={() => setShowApprovalModal(false)}
+        organization={organizationForApproval}
+      />
 
-            <div className="p-6">
-              {/* Branch list */}
-              <div className="space-y-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4">All Branches ({selectedOrganization.branches.length})</h4>
-                
-                {selectedOrganization.branches.map((branch, index) => (
-                  <div key={branch.id} className="border border-gray-200 rounded-xl p-6 hover:border-purple-300 transition-colors">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <div className="flex items-center mb-2">
-                          <Building className="w-5 h-5 text-purple-600 mr-2" />
-                          <h5 className="text-lg font-semibold text-gray-900">{branch.branchName}</h5>
-                          {index === 0 && (
-                            <span className="ml-3 px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                              Headquarters
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-gray-600">
-                          {branch.houseNumber} {branch.streetName}, {branch.cityRegion}, {branch.lga}, {branch.state}, {branch.country}
-                        </p>
-                        {branch.buildingType && (
-                          <span className="inline-block mt-2 px-3 py-1 bg-gray-100 text-gray-800 text-sm rounded-full">
-                            {branch.buildingType}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Contact Information */}
-                    {branch.contactPerson && (
-                      <div className="mt-4 pt-4 border-t border-gray-100">
-                        <h6 className="text-sm font-medium text-gray-700 mb-3">Contact Person</h6>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                          <div className="flex items-center">
-                            <User className="w-4 h-4 text-gray-400 mr-2" />
-                            <span className="text-gray-700">{branch.contactPerson}</span>
-                          </div>
-                          {branch.contactPosition && (
-                            <div className="flex items-center">
-                              <Building className="w-4 h-4 text-gray-400 mr-2" />
-                              <span className="text-gray-700">{branch.contactPosition}</span>
-                            </div>
-                          )}
-                          {branch.contactEmail && (
-                            <div className="flex items-center">
-                              <Mail className="w-4 h-4 text-gray-400 mr-2" />
-                              <span className="text-gray-700">{branch.contactEmail}</span>
-                            </div>
-                          )}
-                          {branch.contactPhone && (
-                            <div className="flex items-center">
-                              <Phone className="w-4 h-4 text-gray-400 mr-2" />
-                              <span className="text-gray-700">{branch.contactPhone}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {/* Add More Branches Button */}
-                <div className="mt-6">
-                  <button className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:text-purple-600 hover:border-purple-300 hover:bg-purple-50 transition-colors">
-                    <Plus className="w-5 h-5 inline-block mr-2" />
-                    Add More Branches
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-end space-x-3">
-              <button
-                onClick={() => setShowBranchModal(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => window.location.href = `/super-admin/subscription/verified-badge/edit/${selectedOrganization.id}`}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-              >
-                Edit Organization
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000] p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-sm mx-4">
             <div className="p-6">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
-                  <Trash2 className="w-6 h-6 text-red-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Delete Organization</h3>
-                  <p className="text-gray-600">This action cannot be undone</p>
-                </div>
-              </div>
-              <p className="text-gray-700 mb-6">
-                Are you sure you want to delete this organization? All associated data including branches will be permanently removed.
+              <h2 className="text-lg font-bold text-gray-900 mb-2">Delete Organization</h2>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete this organization? This action cannot be undone.
               </p>
-              <div className="flex justify-end space-x-3">
+              <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => setShowDeleteModal(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmDelete}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                 >
-                  Delete Organization
+                  Delete
                 </button>
               </div>
             </div>
@@ -941,7 +685,8 @@ const VerifiedBadgeSubscriptionPage = () => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default VerifiedBadgeSubscriptionPage;
+export default VerifiedBadgeSubscriptionPage
+
