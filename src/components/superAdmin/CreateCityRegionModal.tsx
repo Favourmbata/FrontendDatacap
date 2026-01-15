@@ -227,11 +227,11 @@ const CreateCityRegionModal: React.FC<CreateCityRegionModalProps> = ({
 
     try {
       const payload = {
-        countryCode: formData.countryCode,
-        stateCode: formData.stateCode,
-        cityName: formData.cityName,
+        country: formData.countryCode,
+        stateProvince: formData.stateCode,
+        city: formData.cityName,
         lga: formData.lga,
-        region: formData.region
+        cityRegion: formData.region
       };
 
       if (regionToEdit) {

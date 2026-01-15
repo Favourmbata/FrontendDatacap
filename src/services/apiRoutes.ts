@@ -77,35 +77,15 @@ export const routes = {
   validateCode: () => '/api/admin/external/validate-code',
   submitExternalMeasurement: () => '/api/admin/external/measurements',
   
-  // General subscription management routes
-  getSubscriptions: (search?: string) => {
-    let url = '/api/super-admin/subscriptions/general';
-    const params = new URLSearchParams();
-    if (search) params.append('search', search);
-    const paramString = params.toString();
-    return paramString ? `${url}?${paramString}` : url;
-  },
-  getSubscriptionById: (id: string) => `/api/super-admin/subscriptions/general/${id}`,
-  createSubscription: () => '/api/super-admin/subscriptions/general',
-  updateSubscription: (id: string) => `/api/super-admin/subscriptions/general/${id}`,
-  deleteSubscription: (id: string) => `/api/super-admin/subscriptions/general/${id}`,
-  
-  // Subscription package management routes
-  getSubscriptionPackages: (page: number = 1, limit: number = 10, search?: string, sortBy?: string, sortOrder?: 'asc' | 'desc', status?: 'active' | 'inactive') => {
-    let url = `/api/super-admin/subscriptions?page=${page}&limit=${limit}`;
-    if (search) url += `&search=${encodeURIComponent(search)}`;
-    if (sortBy) url += `&sortBy=${sortBy}`;
-    if (sortOrder) url += `&sortOrder=${sortOrder}`;
-    if (status) url += `&status=${status}`;
-    return url;
-  },
-  createSubscriptionPackage: () => '/api/super-admin/subscriptions',
-  getSubscriptionPackageById: (id: string) => `/api/super-admin/subscriptions/${id}`,
-  updateSubscriptionPackage: (id: string) => `/api/super-admin/subscriptions/${id}`,
-  deleteSubscriptionPackage: (id: string) => `/api/super-admin/subscriptions/${id}`,
-  updateSubscriptionStatus: (id: string) => `/api/super-admin/subscriptions/${id}/status`,
-  exportSubscriptionPackages: (format: 'csv' | 'excel' | 'pdf') => `/api/super-admin/subscriptions/export/${format}`,
 
+ // For subscription packages
+createSubscriptionPackage: () => '/api/subscription-packages',
+getSubscriptionPackageById: (id: string) => `/api/subscription-packages/${id}`,
+getAllSubscriptionPackage: () => `/api/subscription-packages`, // Remove the id parameter
+updateSubscriptionPackage: (id: string) => `/api/subscription-packages/${id}`,
+deleteSubscriptionPackage: (id: string) => `/api/subscription-packages/${id}`,
+updateSubscriptionStatus: (id: string) => `/api/subscription-packages/${id}/status`,
+exportSubscriptionPackages: (format: 'csv' | 'excel' | 'pdf') => `/api/subscription-packages/export/${format}`,
 
   // Super Admin dashboard routes
   getSuperAdminDashboardStats: () => '/api/super-admin/dashboard/stats',
@@ -149,19 +129,19 @@ export const routes = {
   
   // City region management routes
   getCityRegions: (page: number = 1, limit: number = 10, search?: string, sortBy?: string, sortOrder?: 'asc' | 'desc', status?: 'active' | 'inactive') => {
-    let url = `/api/super-admin/city-regions?page=${page}&limit=${limit}`;
+    let url = `/api/city-regions?page=${page}&limit=${limit}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (sortBy) url += `&sortBy=${sortBy}`;
     if (sortOrder) url += `&sortOrder=${sortOrder}`;
     if (status) url += `&status=${status}`;
     return url;
   },
-  getCityRegionById: (id: string) => `/api/super-admin/city-regions/${id}`,
-  createCityRegion: () => '/api/super-admin/city-regions',
-  updateCityRegion: (id: string) => `/api/super-admin/city-regions/${id}`,
-  deleteCityRegion: (id: string) => `/api/super-admin/city-regions/${id}`,
-  updateCityRegionStatus: (id: string) => `/api/super-admin/city-regions/${id}/status`,
-  exportCityRegions: (format: 'csv' | 'excel' | 'pdf') => `/api/super-admin/city-regions/export/${format}`,
+  getCityRegionById: (id: string) => `/api/city-regions/${id}`,
+  createCityRegion: () => '/api/city-regions',
+  updateCityRegion: (id: string) => `/api/city-regions/${id}`,
+  deleteCityRegion: (id: string) => `/api/city-regions/${id}`,
+  updateCityRegionStatus: (id: string) => `/api/city-regions/${id}/status`,
+  exportCityRegions: (format: 'csv' | 'excel' | 'pdf') => `/api/city-regions/export/${format}`,
   
   scanMeasurements: () => '/api/measurements/scan'
 };

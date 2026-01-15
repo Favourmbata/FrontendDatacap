@@ -2,47 +2,50 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft, Save, DollarSign, Calendar, Tag, FileText } from 'lucide-react';
 import SubscriptionService, { SubscriptionPackage, CreateSubscriptionPackageData } from '@/services/subscriptionService';
 
-const EditSubscriptionPage = ({ params }: { params: { id: string } }) => {
+// Update interface to extend SubscriptionPackage with featuresInput
+interface ExtendedSubscriptionPackage extends SubscriptionPackage {
+  featuresInput?: string;
+}
+
+const EditSubscriptionPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const router = useRouter();
-  const [packageData, setPackageData] = useState<SubscriptionPackage & {
-    promoCode?: string;
-    selectedPricing: 'monthly' | 'quarterly' | 'yearly';
-    financialDetails: {
-      id: string;
-      amount: number;
-      platformChargePercent: number;
-      platformChargeValue: number;
-      actualAmount: number;
-      discountPercentage: number;
-    }[];
-  } | null>(null);
+  const [packageData, setPackageData] = useState<ExtendedSubscriptionPackage | null>(null);
+  const [id, setId] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Get params.id using React.use()
+  useEffect(() => {
+    const getParams = async () => {
+      const resolvedParams = await params;
+      setId(resolvedParams.id);
+    };
+    getParams();
+  }, [params]);
 
   useEffect(() => {
-    loadPackageData();
-  }, [params.id]);
+    if (id) {
+      loadPackageData();
+    }
+  }, [id]);
 
   const loadPackageData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const foundPackage = await SubscriptionService.getSubscriptionPackageById(params.id);
-      setPackageData({
+      const foundPackage = await SubscriptionService.getSubscriptionPackageById(id);
+      
+      // Transform the package data to include featuresInput
+      const transformedPackage: ExtendedSubscriptionPackage = {
         ...foundPackage,
-        promoCode: foundPackage.promoCode || '',
-        selectedPricing: 'monthly',
-        financialDetails: [{
-          id: '1',
-          amount: 0, // Default value, can be loaded from backend if stored there
-          platformChargePercent: 0,
-          platformChargeValue: 0,
-          actualAmount: 0,
-          discountPercentage: 0
-        }]
-      });
+        featuresInput: '' // Initialize empty for the form
+      };
+      
+      setPackageData(transformedPackage);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load subscription package');
       console.error('Error loading package:', err);
@@ -51,170 +54,219 @@ const EditSubscriptionPage = ({ params }: { params: { id: string } }) => {
     }
   };
 
-  // Calculate amounts whenever related fields change
-  useEffect(() => {
-    if (!packageData) return;
-    
-    const updatedFinancialDetails = packageData.financialDetails.map(detail => {
-      const amount = detail.amount || 0;
-      const platformChargePercent = detail.platformChargePercent || 0;
-      const discountPercentage = detail.discountPercentage || 0;
-      
-      // Calculate platform charge value
-      const platformChargeValue = (amount * platformChargePercent) / 100;
-      
-      // Calculate actual amount before discount
-      const actualAmountBeforeDiscount = amount + platformChargeValue;
-      
-      // Calculate discount amount and final actual amount
-      const discountValue = (actualAmountBeforeDiscount * discountPercentage) / 100;
-      const actualAmount = actualAmountBeforeDiscount - discountValue;
-      
-      return {
-        ...detail,
-        platformChargeValue: parseFloat(platformChargeValue.toFixed(2)),
-        actualAmount: parseFloat(actualAmount.toFixed(2))
-      };
-    });
-    
-    // Only update if there are actual changes
-    const hasChanges = packageData.financialDetails.some((detail, index) => {
-      const updatedDetail = updatedFinancialDetails[index];
-      return (
-        detail.platformChargeValue !== updatedDetail.platformChargeValue ||
-        detail.actualAmount !== updatedDetail.actualAmount
-      );
-    });
-    
-    if (hasChanges) {
-      setPackageData(prev => prev ? {
-        ...prev,
-        financialDetails: updatedFinancialDetails
-      } : null);
-    }
-  }, [packageData?.financialDetails]);
+  // Validation functions
+  const validateTitle = (title: string): string | null => {
+    if (!title.trim()) return 'Title is required';
+    if (title.length < 2) return 'Title must be at least 2 characters';
+    if (title.length > 100) return 'Title must not exceed 100 characters';
+    return null;
+  };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const validatePrice = (price: number): string | null => {
+    if (price <= 0) return 'Price must be a positive number';
+    if (price > 1000000) return 'Price is too high';
+    return null;
+  };
+
+  const validateDescription = (description: string): string | null => {
+    if (!description.trim()) return 'Description is required';
+    if (description.length < 10) return 'Description must be at least 10 characters';
+    return null;
+  };
+
+  const validateFeatures = (features: string[]): string | null => {
+    if (features.length === 0) return 'At least one feature is required';
+    if (features.some(f => f.length > 200)) return 'Feature must not exceed 200 characters';
+    return null;
+  };
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    if (packageData) {
+      const titleError = validateTitle(packageData.title);
+      if (titleError) errors.title = titleError;
+      
+      const descriptionError = validateDescription(packageData.description);
+      if (descriptionError) errors.description = descriptionError;
+      
+      const priceError = validatePrice(packageData.price);
+      if (priceError) errors.price = priceError;
+      
+      const featuresError = validateFeatures(packageData.features);
+      if (featuresError) errors.features = featuresError;
+    }
+    
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (!packageData) return;
     
     const { name, value } = e.target;
-    if (name === 'selectedPricing') {
+    
+    if (name === 'price') {
+      // Ensure price is always a number
+      const numValue = value === '' ? 0 : parseFloat(value);
       setPackageData(prev => prev ? {
         ...prev,
-        selectedPricing: value as 'monthly' | 'quarterly' | 'yearly'
+        [name]: isNaN(numValue) ? 0 : numValue
       } : null);
     } else {
       setPackageData(prev => prev ? {
         ...prev,
-        [name]: name.includes('Price')
-          ? Number(value)
-          : value
+        [name]: value
       } : null);
+    }
+    
+    // Clear error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
     }
   };
 
-  const handleFinancialDetailChange = (id: string, field: string, value: string | number) => {
+  const handleFeaturesInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!packageData) return;
     
+    const { value } = e.target;
     setPackageData(prev => prev ? {
       ...prev,
-      financialDetails: prev.financialDetails.map(detail => 
-        detail.id === id ? { ...detail, [field]: value } : detail
-      )
+      featuresInput: value
     } : null);
   };
 
-  const addFinancialDetail = () => {
-    if (!packageData) return;
+  const addFeature = () => {
+    if (!packageData || !packageData.featuresInput?.trim()) return;
     
+    const feature = packageData.featuresInput.trim();
+    
+    // Check for duplicates
+    if (packageData.features.includes(feature)) {
+      setFieldErrors(prev => ({
+        ...prev,
+        features: 'This feature already exists'
+      }));
+      return;
+    }
+    
+    const newFeatures = [...packageData.features, feature];
     setPackageData(prev => prev ? {
       ...prev,
-      financialDetails: [
-        ...prev.financialDetails,
-        {
-          id: Date.now().toString(),
-          amount: 0,
-          platformChargePercent: 0,
-          platformChargeValue: 0,
-          actualAmount: 0,
-          discountPercentage: 0
-        }
-      ]
+      features: newFeatures,
+      featuresInput: ''
+    } : null);
+    
+    // Clear error if exists
+    if (fieldErrors.features) {
+      setFieldErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.features;
+        return newErrors;
+      });
+    }
+  };
+
+  const removeFeature = (index: number) => {
+    if (!packageData) return;
+    
+    const newFeatures = packageData.features.filter((_, i) => i !== index);
+    setPackageData(prev => prev ? {
+      ...prev,
+      features: newFeatures
     } : null);
   };
 
-  const removeFinancialDetail = (id: string) => {
-    if (!packageData || packageData.financialDetails.length <= 1) return;
-    
-    setPackageData(prev => prev ? {
-      ...prev,
-      financialDetails: prev.financialDetails.filter(detail => detail.id !== id)
-    } : null);
-  };
-
-  const generatePromoCode = () => {
-    if (!packageData) return;
-    
-    const prefix = packageData.packageName.substring(0, 4).toUpperCase();
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const year = new Date().getFullYear();
-    setPackageData(prev => prev ? {
-      ...prev,
-      promoCode: `${prefix}${randomNum}${year}`
-    } : null);
+  const handleFeaturesKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && packageData?.featuresInput?.trim()) {
+      e.preventDefault();
+      addFeature();
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (packageData) {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Prepare update data - only include fields that can be updated
-        const updateData: Partial<CreateSubscriptionPackageData> = {
-          packageName: packageData.packageName,
-          services: packageData.services,
-          description: packageData.description,
-          monthlyPrice: packageData.monthlyPrice,
-          quarterlyPrice: packageData.quarterlyPrice,
-          yearlyPrice: packageData.yearlyPrice,
-          promoStartDate: packageData.promoStartDate,
-          promoEndDate: packageData.promoEndDate
-        };
-        
-        // Update package using service
-        await SubscriptionService.updateSubscriptionPackage(packageData.id, updateData);
-        
-        // Redirect back to subscription list
-        router.push('/super-admin/subscription');
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to update subscription package');
-        console.error('Error updating package:', err);
-      } finally {
-        setLoading(false);
-      }
+    if (!packageData || !id) return;
+    
+    // Run validation before submitting
+    if (!validateForm()) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Prepare update data - only include fields that your API accepts
+      const updateData: CreateSubscriptionPackageData = {
+        title: packageData.title,
+        description: packageData.description,
+        price: packageData.price,
+        features: packageData.features,
+        note: packageData.note || '',
+        services: packageData.services || '',
+        monthlyPrice: packageData.monthlyPrice || 0,
+        quarterlyPrice: packageData.quarterlyPrice || 0,
+        yearlyPrice: packageData.yearlyPrice || 0,
+        promoStartDate: packageData.promoStartDate,
+        promoEndDate: packageData.promoEndDate
+      };
+      
+      // Update package using service
+      await SubscriptionService.updateSubscriptionPackage(id, updateData);
+      
+      // Redirect back to subscription list
+      router.push('/super-admin/subscription');
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update subscription package');
+      console.error('Error updating package:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) {
+  const goBack = () => {
+    router.back();
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  if (loading && !packageData) {
     return (
-      <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
+      <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
         <style jsx>{`
           @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
           .manrope { font-family: 'Manrope', sans-serif; }
         `}</style>
         
-        <div className="mb-6">
-          <button 
-            onClick={() => router.back()}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 mb-4"
-          >
-          Back
-          </button>
-          <h1 className="text-2xl font-bold text-gray-800">Loading Package</h1>
-         
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <button 
+              onClick={goBack}
+              className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
+            >
+              <ArrowLeft className="w-5 h-5 mr-2" />
+              Back to List
+            </button>
+            
+            <div>
+              <h1 className="text-2xl font-bold text-[#1A1A1A]">Loading Package</h1>
+              <p className="text-gray-600">Please wait while we load the subscription package details.</p>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -222,27 +274,33 @@ const EditSubscriptionPage = ({ params }: { params: { id: string } }) => {
 
   if (error) {
     return (
-      <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
+      <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
         <style jsx>{`
           @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
           .manrope { font-family: 'Manrope', sans-serif; }
         `}</style>
         
-        <div className="mb-6">
-          <button 
-            onClick={() => router.back()}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 mb-4"
-          >
-            ← Back
-          </button>
-          <h1 className="text-2xl font-bold text-gray-800">Error Loading Package</h1>
-          <p className="text-gray-600 mt-2">{error}</p>
-          <button 
-            onClick={loadPackageData}
-            className="mt-4 px-4 py-2 bg-[#5D2A8B] text-white rounded-md hover:bg-[#4a216e]"
-          >
-            Retry
-          </button>
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <button 
+              onClick={goBack}
+              className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
+            >
+              <ArrowLeft className="w-5 h-5 mr-2" />
+              Back to List
+            </button>
+            
+            <div>
+              <h1 className="text-2xl font-bold text-[#1A1A1A]">Error Loading Package</h1>
+              <p className="text-gray-600">{error}</p>
+              <button 
+                onClick={loadPackageData}
+                className="mt-4 px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -250,313 +308,357 @@ const EditSubscriptionPage = ({ params }: { params: { id: string } }) => {
 
   if (!packageData) {
     return (
-      <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
+      <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
         <style jsx>{`
           @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
           .manrope { font-family: 'Manrope', sans-serif; }
         `}</style>
         
-        <div className="mb-6">
-          <button 
-            onClick={() => router.back()}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 mb-4"
-          >
-             Back
-          </button>
-          <h1 className="text-2xl font-bold text-gray-800">Package Not Found</h1>
-          
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <button 
+              onClick={goBack}
+              className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
+            >
+              <ArrowLeft className="w-5 h-5 mr-2" />
+              Back to List
+            </button>
+            
+            <div>
+              <h1 className="text-2xl font-bold text-[#1A1A1A]">Package Not Found</h1>
+              <p className="text-gray-600">The subscription package doesn't exist.</p>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
+    <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
       <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
         .manrope { font-family: 'Manrope', sans-serif; }
       `}</style>
       
-      <div className="mb-6">
-        <button 
-          onClick={() => router.back()}
-          className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 mb-4"
-        >
-           Back
-        </button>
-        <h1 className="text-2xl font-bold text-gray-800">Edit Subscription Package</h1>
-        
-      </div>
-
-      {error && (
-        <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-          Error: {error}
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <button 
+            onClick={goBack}
+            className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back to List
+          </button>
+          
+          <div>
+            <h1 className="text-2xl font-bold text-[#1A1A1A]">Edit Subscription Package</h1>
+            <p className="text-gray-600">Update the subscription package details</p>
+          </div>
         </div>
-      )}
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Package Name</label>
-            <input
-              type="text"
-              name="packageName"
-              value={packageData.packageName}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-              required
-            />
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+            <strong>Error:</strong> {error}
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Services</label>
-            <input
-              type="text"
-              name="services"
-              value={packageData.services}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-              required
-            />
-          </div>
-          
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              name="description"
-              value={packageData.description}
-              onChange={handleChange}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-              required
-            />
-          </div>
-          
-          {/* Promo Code Section */}
-          <div className="md:col-span-2">
-            <div className="border border-gray-200 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Promo Code</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Promo Code</label>
-                  <input
-                    type="text"
-                    name="promoCode"
-                    value={packageData.promoCode || ''}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                  />
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            {/* Form Header */}
+            <div className="mb-8 flex items-center">
+              <div className="p-2 bg-purple-100 rounded-lg mr-3">
+                <Tag className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Package Details</h2>
+                <p className="text-sm text-gray-600">Update basic information about the subscription</p>
+              </div>
+            </div>
+
+            {/* Title */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Package Title *
+              </label>
+              <input
+                type="text"
+                name="title"
+                value={packageData.title}
+                onChange={handleChange}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-colors ${
+                  fieldErrors.title ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="Enter package title"
+                required
+              />
+              {fieldErrors.title && (
+                <p className="mt-2 text-sm text-red-600">{fieldErrors.title}</p>
+              )}
+            </div>
+
+            {/* Description */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description *
+              </label>
+              <textarea
+                name="description"
+                value={packageData.description}
+                onChange={handleChange}
+                rows={4}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-colors ${
+                  fieldErrors.description ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="Describe what this subscription package offers..."
+                required
+              />
+              {fieldErrors.description && (
+                <p className="mt-2 text-sm text-red-600">{fieldErrors.description}</p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                {packageData.description.length} characters (minimum 10)
+              </p>
+            </div>
+
+            {/* Note */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Note (Optional)
+              </label>
+              <textarea
+                name="note"
+                value={packageData.note || ''}
+                onChange={handleChange}
+                rows={2}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-colors"
+                placeholder="Additional notes about this subscription package..."
+              />
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-gray-200 my-8"></div>
+
+            {/* Features Section */}
+            <div className="mb-8">
+              <div className="flex items-center mb-6">
+                <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                  <FileText className="w-6 h-6 text-blue-600" />
                 </div>
-                <div className="flex items-end">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Features *</h3>
+                  <p className="text-sm text-gray-600">Update features included in this package</p>
+                </div>
+              </div>
+
+              {/* Feature Input */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Add Feature
+                </label>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={packageData.featuresInput || ''}
+                      onChange={handleFeaturesInputChange}
+                      onKeyDown={handleFeaturesKeyDown}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-colors ${
+                        fieldErrors.features ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="Enter a feature and press Enter or click Add"
+                    />
+                  </div>
                   <button
                     type="button"
-                    onClick={generatePromoCode}
-                    className="w-full px-4 py-2 bg-[#5D2A8B] text-white rounded-md hover:bg-[#4a216e]"
+                    onClick={addFeature}
+                    className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center transition-colors"
                   >
-                    Generate Code
+                    Add
                   </button>
+                </div>
+                {fieldErrors.features && (
+                  <p className="mt-2 text-sm text-red-600">{fieldErrors.features}</p>
+                )}
+              </div>
+
+              {/* Features List */}
+              {packageData.features.length > 0 ? (
+                <div className="mt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-sm font-medium text-gray-700">
+                      Features ({packageData.features.length})
+                    </h4>
+                    <span className="text-xs text-gray-500">Click × to remove</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {packageData.features.map((feature, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                            <FileText className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <span className="text-gray-800">{feature}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeFeature(index)}
+                          className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                          title="Remove feature"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-6 p-8 border-2 border-dashed border-gray-300 rounded-lg text-center">
+                  <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-2">No features added yet</p>
+                  <p className="text-sm text-gray-500">
+                    Add features that users will get with this subscription
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-gray-200 my-8"></div>
+
+            {/* Pricing Section */}
+            <div className="mb-8">
+              <div className="flex items-center mb-6">
+                <div className="p-2 bg-green-100 rounded-lg mr-3">
+                  <DollarSign className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Pricing</h3>
+                  <p className="text-sm text-gray-600">Update subscription pricing</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Price */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Subscription Price (₦) *
+                  </label>
+                  <input
+                    type="number"
+                    name="price"
+                    value={packageData.price || ''}
+                    onChange={handleChange}
+                    min="0"
+                    step="1"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-colors ${
+                      fieldErrors.price ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="0"
+                  />
+                  {fieldErrors.price && (
+                    <p className="mt-2 text-sm text-red-600">{fieldErrors.price}</p>
+                  )}
+                  <p className="text-sm text-green-600 font-medium">
+                    {packageData.price > 0 ? formatCurrency(packageData.price) : 'Set price'}
+                  </p>
+                </div>
+
+                {/* Services */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Services
+                  </label>
+                  <input
+                    type="text"
+                    name="services"
+                    value={packageData.services || ''}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-colors"
+                    placeholder="Enter services included"
+                  />
                 </div>
               </div>
             </div>
-          </div>
-          
-          {/* Promo Period Section */}
-          <div className="md:col-span-2">
-            <div className="border border-gray-200 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Promo Period</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            {/* Divider */}
+            <div className="border-t border-gray-200 my-8"></div>
+
+            {/* Promo Period Section */}
+            <div className="mb-8">
+              <div className="flex items-center mb-6">
+                <div className="p-2 bg-yellow-100 rounded-lg mr-3">
+                  <Calendar className="w-6 h-6 text-yellow-600" />
+                </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Promo Start Date</label>
+                  <h3 className="text-lg font-semibold text-gray-900">Promo Period (Optional)</h3>
+                  <p className="text-sm text-gray-600">Set promotion dates for this package</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Promo Start Date
+                  </label>
                   <input
                     type="date"
                     name="promoStartDate"
                     value={packageData.promoStartDate || ''}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-colors"
                   />
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Promo End Date</label>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Promo End Date
+                  </label>
                   <input
                     type="date"
                     name="promoEndDate"
                     value={packageData.promoEndDate || ''}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-colors"
                   />
                 </div>
               </div>
             </div>
-          </div>
-          
-          {/* Pricing Section */}
-          <div className="md:col-span-2">
-            <div className="border border-gray-200 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Pricing</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Monthly Price (₦)</label>
-                  <input
-                    type="number"
-                    name="monthlyPrice"
-                    value={packageData.monthlyPrice}
-                    onChange={handleChange}
-                    min="0"
-                    step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Quarterly Price (₦)</label>
-                  <input
-                    type="number"
-                    name="quarterlyPrice"
-                    value={packageData.quarterlyPrice}
-                    onChange={handleChange}
-                    min="0"
-                    step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Yearly Price (₦)</label>
-                  <input
-                    type="number"
-                    name="yearlyPrice"
-                    value={packageData.yearlyPrice}
-                    onChange={handleChange}
-                    min="0"
-                    step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                    required
-                  />
-                </div>
-              </div>
+
+            {/* Required Fields Note */}
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Note:</strong> Fields marked with * are required. At least one feature must be added.
+              </p>
             </div>
           </div>
-          
-          {/* Financial Details Section */}
-          <div className="md:col-span-2">
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">Financial Details</h3>
-                <button
-                  type="button"
-                  onClick={addFinancialDetail}
-                  className="px-3 py-1 bg-[#5D2A8B] text-white rounded-md hover:bg-[#4a216e] text-sm"
-                >
-                  Add More
-                </button>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Select Pricing Type</label>
-                <select
-                  name="selectedPricing"
-                  value={packageData.selectedPricing}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                >
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-              </div>
-              
-              <div className="space-y-4">
-                {packageData.financialDetails.map((detail, index) => (
-                  <div key={detail.id} className="border border-gray-200 rounded-lg p-4 relative">
-                    {packageData.financialDetails.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeFinancialDetail(detail.id)}
-                        className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                      >
-                        Remove
-                      </button>
-                    )}
-                    
-                    <h4 className="text-md font-medium text-gray-800 mb-3">Financial Detail #{index + 1}</h4>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₦)</label>
-                        <input
-                          type="number"
-                          value={detail.amount}
-                          onChange={(e) => handleFinancialDetailChange(detail.id, 'amount', parseFloat(e.target.value) || 0)}
-                          min="0"
-                          step="0.01"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Platform Charge %</label>
-                        <input
-                          type="number"
-                          value={detail.platformChargePercent}
-                          onChange={(e) => handleFinancialDetailChange(detail.id, 'platformChargePercent', parseFloat(e.target.value) || 0)}
-                          min="0"
-                          step="0.01"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Platform Charge Value (₦)</label>
-                        <input
-                          type="number"
-                          value={detail.platformChargeValue}
-                          readOnly
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Discount Percentage (%)</label>
-                        <input
-                          type="number"
-                          value={detail.discountPercentage}
-                          onChange={(e) => handleFinancialDetailChange(detail.id, 'discountPercentage', parseFloat(e.target.value) || 0)}
-                          min="0"
-                          step="0.01"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                        />
-                      </div>
-                      
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Actual Amount (₦)</label>
-                        <input
-                          type="number"
-                          value={detail.actualAmount}
-                          readOnly
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 font-semibold"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-4">
+            <button
+              type="button"
+              onClick={goBack}
+              className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading}
+            >
+              <Save className="w-5 h-5 mr-2" />
+              {loading ? 'Updating...' : 'Update Package'}
+            </button>
           </div>
-        </div>
-        
-        <div className="mt-6 flex justify-end space-x-3">
-          <button
-            type="submit"
-            className="px-4 py-2 bg-[#5D2A8B] text-white rounded-md hover:bg-[#4a216e] disabled:opacity-50"
-            disabled={loading}
-          >
-            {loading ? 'Updating...' : 'Update Package'}
-          </button>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 };

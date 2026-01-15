@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit2, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import CityRegionService, { CityRegion } from '@/services/cityRegionService';
 
@@ -12,22 +12,29 @@ const CityRegionPage = () => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // Delete modal states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [regionToDelete, setRegionToDelete] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+
   // Fetch data from the API
   useEffect(() => {
-    const fetchRegions = async () => {
-      try {
-        const { regions } = await CityRegionService.getCityRegions(1, 100); // Get all regions
-        setRegions(regions);
-        setFilteredRegions(regions);
-      } catch (error) {
-        console.error('Error fetching city regions:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     fetchRegions();
   }, []);
+
+  const fetchRegions = async () => {
+    try {
+      const { regions } = await CityRegionService.getCityRegions(1, 100);
+      setRegions(regions);
+      setFilteredRegions(regions);
+    } catch (error) {
+      console.error('Error fetching city regions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter regions based on search term
   useEffect(() => {
@@ -35,11 +42,11 @@ const CityRegionPage = () => {
       setFilteredRegions(regions);
     } else {
       const filtered = regions.filter(region =>
-        region.countryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        region.stateName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        region.cityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        region.country?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        region.stateProvince?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        region.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (region.lga && region.lga.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (region.region && region.region.toLowerCase().includes(searchTerm.toLowerCase()))
+        (region.cityRegion && region.cityRegion.toLowerCase().includes(searchTerm.toLowerCase()))
       );
       setFilteredRegions(filtered);
     }
@@ -50,39 +57,39 @@ const CityRegionPage = () => {
   };
 
   const handleEdit = (region: CityRegion) => {
-    router.push(`/super-admin/subscription/city-region/edit/${region.id}`);
+    router.push(`/super-admin/subscription/city-region/edit/${region._id || region.id}`);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this city region? This action cannot be undone.')) {
-      try {
-        await CityRegionService.deleteCityRegion(id);
-        // Refetch regions
-        const { regions } = await CityRegionService.getCityRegions(1, 100);
-        setRegions(regions);
-        setFilteredRegions(regions);
-      } catch (error) {
-        console.error('Error deleting city region:', error);
-        alert('Failed to delete city region');
-      }
-    }
+  const handleDeleteClick = (id: string) => {
+    setRegionToDelete(id);
+    setShowDeleteModal(true);
   };
 
-  const handleToggleStatus = async (id: string) => {
+  const handleDeleteConfirm = async () => {
+    if (!regionToDelete) return;
+    
+    setDeleteLoading(true);
     try {
-      const region = regions.find(r => r.id === id);
-      if (region) {
-        const newStatus = region.status === 'active' ? 'inactive' : 'active';
-        await CityRegionService.updateCityRegionStatus(id, newStatus);
-        // Refetch regions
-        const { regions } = await CityRegionService.getCityRegions(1, 100);
-        setRegions(regions);
-        setFilteredRegions(regions);
+      const success = await CityRegionService.deleteCityRegion(regionToDelete);
+      if (success) {
+        setSuccessMessage('City region deleted successfully');
+        await fetchRegions();
+        setShowDeleteModal(false);
+        setShowDeleteSuccess(true);
       }
-    } catch (error) {
-      console.error('Error updating city region status:', error);
-      alert('Failed to update city region status');
+    } catch (error: any) {
+      console.error('Error deleting city region:', error);
+      setSuccessMessage(error.message || 'Failed to delete city region');
+      setShowDeleteSuccess(true);
+    } finally {
+      setDeleteLoading(false);
+      setRegionToDelete(null);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+    setRegionToDelete(null);
   };
 
   const formatDate = (dateString: Date | string) => {
@@ -117,11 +124,69 @@ const CityRegionPage = () => {
   }
 
   return (
-    <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
+    <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50 relative">
       <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
         .manrope { font-family: 'Manrope', sans-serif; }
       `}</style>
+
+      {/* Delete Confirmation Overlay (no dark background) */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <div className="absolute inset-0 bg-transparent" onClick={handleDeleteCancel}></div>
+          <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative z-10">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <Trash2 className="w-8 h-8 text-red-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Delete City Region</h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete this city region? This action cannot be undone.
+              </p>
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={handleDeleteCancel}
+                  className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={deleteLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  className="flex-1 bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                  disabled={deleteLoading}
+                >
+                  {deleteLoading ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Overlay */}
+      {showDeleteSuccess && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <div className="absolute inset-0 bg-transparent" onClick={() => setShowDeleteSuccess(false)}></div>
+          <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative z-10">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Success!</h3>
+              <p className="text-gray-600 mb-6">{successMessage}</p>
+              <button
+                onClick={() => setShowDeleteSuccess(false)}
+                className="w-full bg-[#5D2A8B] text-white py-3 rounded-lg hover:bg-[#4a216d] transition-colors"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
@@ -136,9 +201,8 @@ const CityRegionPage = () => {
           </div>
         </div>
 
-        {/* Search and Add buttons in separate containers */}
+        {/* Search and Add buttons */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          {/* Search on the left - No shadow container */}
           <div className="relative md:w-1/3">
             <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
               <Search className="w-4 h-4 text-gray-400" />
@@ -152,7 +216,6 @@ const CityRegionPage = () => {
             />
           </div>
           
-          {/* Add City Region button on the right */}
           <div>
             <button 
               className="flex items-center justify-center bg-[#5D2A8B] text-white px-4 py-2 rounded-lg hover:bg-[#4a216d] transition-colors whitespace-nowrap"
@@ -164,7 +227,7 @@ const CityRegionPage = () => {
           </div>
         </div>
 
-        {/* Table Container - Only contains the table */}
+        {/* Table Container */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -174,7 +237,7 @@ const CityRegionPage = () => {
                   <th className="py-3 px-4 text-left text-gray-600 font-medium text-sm">State/Province</th>
                   <th className="py-3 px-4 text-left text-gray-600 font-medium text-sm">LGA</th>
                   <th className="py-3 px-4 text-left text-gray-600 font-medium text-sm">City</th>
-                  <th className="py-3 px-4 text-left text-gray-600 font-medium text-sm">Region</th>
+                  <th className="py-3 px-4 text-left text-gray-600 font-medium text-sm">City Region</th>
                   <th className="py-3 px-4 text-left text-gray-600 font-medium text-sm">Status</th>
                   <th className="py-3 px-4 text-left text-gray-600 font-medium text-sm">Created Date</th>
                   <th className="py-3 px-4 text-left text-gray-600 font-medium text-sm">Actions</th>
@@ -182,89 +245,75 @@ const CityRegionPage = () => {
               </thead>
               <tbody>
                 {filteredRegions.length > 0 ? (
-                  filteredRegions.map((region) => (
-                    <tr key={region.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-4 px-4">
-                        <div>
-                          <span className="font-medium text-sm">{region.countryName}</span>
-                          <span className="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                            {region.countryCode}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <div>
-                          <span className="font-medium text-sm">{region.stateName}</span>
-                          <span className="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                            {region.stateCode}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        {region.lga ? (
-                          <span className="font-medium text-sm">{region.lga}</span>
-                        ) : (
-                          <span className="text-gray-400 text-sm">-</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="font-medium text-sm">{region.cityName}</span>
-                      </td>
-                      <td className="py-4 px-4">
-                        {region.region ? (
-                          <span className="font-medium text-sm">{region.region}</span>
-                        ) : (
-                          <span className="text-gray-400 text-sm">-</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-4">
-                        <button
-                          onClick={() => handleToggleStatus(region.id)}
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium cursor-pointer transition-all ${
-                            region.status === 'active'
-                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                              : 'bg-red-100 text-red-800 hover:bg-red-200'
-                          }`}
-                        >
-                          {region.status === 'active' ? (
-                            <>
-                              <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
-                              Active
-                            </>
+                  filteredRegions.map((region) => {
+                    const regionId = region._id || region.id;
+                    
+                    return (
+                      <tr key={regionId} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-4 px-4">
+                          <span className="font-medium text-sm">{region.country || region.countryName || '-'}</span>
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="font-medium text-sm">{region.stateProvince || region.stateName || '-'}</span>
+                        </td>
+                        <td className="py-4 px-4">
+                          {region.lga ? (
+                            <span className="font-medium text-sm">{region.lga}</span>
                           ) : (
-                            <>
-                              <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5"></span>
-                              Inactive
-                            </>
+                            <span className="text-gray-400 text-sm">-</span>
                           )}
-                        </button>
-                      </td>
-                      <td className="py-4 px-4 text-gray-700 text-sm">
-                        {formatDate(region.createdAt)}
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center space-x-1">
-                          <button
-                            onClick={() => handleEdit(region)}
-                            className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors text-xs"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                            <span>Edit</span>
-                          </button>
-                          
-                          <button
-                            onClick={() => handleDelete(region.id)}
-                            className="flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded-md transition-colors text-xs"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>Delete</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="font-medium text-sm">{region.city || region.cityName || '-'}</span>
+                        </td>
+                        <td className="py-4 px-4">
+                          {region.cityRegion || region.region ? (
+                            <span className="font-medium text-sm">{region.cityRegion || region.region}</span>
+                          ) : (
+                            <span className="text-gray-400 text-sm">-</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            region.isActive || region.status === 'active'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                              region.isActive || region.status === 'active'
+                                ? 'bg-green-500'
+                                : 'bg-red-500'
+                            }`}></span>
+                            {region.isActive || region.status === 'active' ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-gray-700 text-sm">
+                          {formatDate(region.createdAt)}
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center space-x-1">
+                            <button
+                              onClick={() => handleEdit(region)}
+                              className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors text-xs"
+                              title="Edit"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                              <span>Edit</span>
+                            </button>
+                            
+                            <button
+                              onClick={() => handleDeleteClick(regionId)}
+                              className="flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded-md transition-colors text-xs"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan={8} className="py-12 px-4 text-center">
@@ -293,7 +342,6 @@ const CityRegionPage = () => {
             </table>
           </div>
 
-          {/* Pagination would go here */}
           {filteredRegions.length > 0 && (
             <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50">
               <div className="text-xs text-gray-600">

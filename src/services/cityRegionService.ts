@@ -1,27 +1,36 @@
-
 import { HttpService } from './HttpService';
 import { routes } from './apiRoutes';
 
 interface CityRegion {
-  region?: string;
-  lga: any;
+  message: string;
+  _id: string;
   id: string;
-  countryCode: string;
-  countryName: string;
-  stateCode: string;
-  stateName: string;
-  cityName: string;
+  country: string;
+  stateProvince: string;
+  lga: string;
+  city: string;
+  cityRegion: string;
+  isActive: boolean;
   status: 'active' | 'inactive';
+  createdBy: string;
   createdAt: Date;
   updatedAt: Date;
+  __v?: number;
+  // For backward compatibility (if API returns old field names)
+  countryCode?: string;
+  countryName?: string;
+  stateCode?: string;
+  stateName?: string;
+  cityName?: string;
+  region?: string;
 }
 
 interface CityRegionFormData {
-  countryCode: string;
-  stateCode: string;
-  cityName: string;
+  country: string;
+  stateProvince: string;
+  city: string;
   lga?: string;
-  region?: string;
+  cityRegion?: string;
 }
 
 class CityRegionService {

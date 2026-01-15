@@ -11,51 +11,47 @@ const CreateCityRegionPage = () => {
   const [loading, setLoading] = useState(false);
   const [countries, setCountries] = useState<any[]>([]);
   const [states, setStates] = useState<any[]>([]);
-  const [lgas, setLgas] = useState<string[]>([]);
   const [cities, setCities] = useState<any[]>([]);
-  const [regions, setRegions] = useState<string[]>([]);
   
-  // Form states
+  // Form states - using backend field names
   const [formData, setFormData] = useState({
-    countryCode: '',
-    stateCode: '',
+    country: '',
+    stateProvince: '',
     lga: '',
-    cityName: '',
-    region: ''
+    city: '',
+    cityRegion: ''
   });
+
+  // Success modal state
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Dropdown states
   const [countryDropdownOpen, setCountryDropdownOpen] = useState(false);
   const [stateDropdownOpen, setStateDropdownOpen] = useState(false);
-  const [lgaDropdownOpen, setLgaDropdownOpen] = useState(false);
   const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
-  const [regionDropdownOpen, setRegionDropdownOpen] = useState(false);
   
   // Search states
   const [countrySearch, setCountrySearch] = useState('');
   const [stateSearch, setStateSearch] = useState('');
-  const [lgaSearch, setLgaSearch] = useState('');
   const [citySearch, setCitySearch] = useState('');
-  const [regionSearch, setRegionSearch] = useState('');
   
-  // Add more forms visibility
-  const [showAddCountry, setShowAddCountry] = useState(false);
-  const [newCountry, setNewCountry] = useState('');
-  const [showAddState, setShowAddState] = useState(false);
-  const [newState, setNewState] = useState('');
-  const [showAddLga, setShowAddLga] = useState(false);
-  const [newLga, setNewLga] = useState('');
-  const [showAddCity, setShowAddCity] = useState(false);
-  const [newCity, setNewCity] = useState('');
-  const [showAddRegion, setShowAddRegion] = useState(false);
-  const [newRegion, setNewRegion] = useState('');
+  // Manual input states
+  const [showManualCountry, setShowManualCountry] = useState(false);
+  const [manualCountry, setManualCountry] = useState('');
+  const [showManualState, setShowManualState] = useState(false);
+  const [manualState, setManualState] = useState('');
+  const [showManualLGA, setShowManualLGA] = useState(false);
+  const [manualLGA, setManualLGA] = useState('');
+  const [showManualCity, setShowManualCity] = useState(false);
+  const [manualCity, setManualCity] = useState('');
+  const [showManualRegion, setShowManualRegion] = useState(false);
+  const [manualRegion, setManualRegion] = useState('');
 
   // Refs for closing dropdowns on outside click
   const countryRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef<HTMLDivElement>(null);
-  const lgaRef = useRef<HTMLDivElement>(null);
   const cityRef = useRef<HTMLDivElement>(null);
-  const regionRef = useRef<HTMLDivElement>(null);
 
   // Load initial data
   useEffect(() => {
@@ -64,52 +60,51 @@ const CreateCityRegionPage = () => {
 
   // Load states when country changes
   useEffect(() => {
-    if (formData.countryCode) {
-      loadStates(formData.countryCode);
+    if (formData.country) {
+      // For country name, we need to get country code first
+      const country = countries.find(c => c.name === formData.country);
+      if (country?.isoCode) {
+        loadStates(country.isoCode);
+      }
       // Reset dependent fields
       setFormData(prev => ({ 
         ...prev, 
-        stateCode: '', 
+        stateProvince: '', 
         lga: '', 
-        cityName: '', 
-        region: '' 
+        city: '', 
+        cityRegion: '' 
       }));
-      setLgas([]);
-      setCities([]);
-      setRegions([]);
-      setShowAddState(false);
-      setShowAddLga(false);
-      setShowAddCity(false);
-      setShowAddRegion(false);
+      setShowManualState(false);
+      setShowManualLGA(false);
+      setShowManualCity(false);
+      setShowManualRegion(false);
     }
-  }, [formData.countryCode]);
+  }, [formData.country, countries]);
 
-  // Load LGAs and cities when state changes
+  // Load cities when state changes
   useEffect(() => {
-    if (formData.stateCode && formData.countryCode) {
-      loadMockLGAs(formData.stateCode);
-      loadCities(formData.countryCode, formData.stateCode);
+    if (formData.stateProvince && formData.country) {
+      // Get country code for loading cities
+      const country = countries.find(c => c.name === formData.country);
+      if (country?.isoCode) {
+        // Get state code for loading cities
+        const state = states.find(s => s.name === formData.stateProvince);
+        if (state?.isoCode) {
+          loadCities(country.isoCode, state.isoCode);
+        }
+      }
       // Reset dependent fields
       setFormData(prev => ({ 
         ...prev, 
         lga: '', 
-        cityName: '', 
-        region: '' 
+        city: '', 
+        cityRegion: '' 
       }));
-      setRegions([]);
-      setShowAddLga(false);
-      setShowAddCity(false);
-      setShowAddRegion(false);
+      setShowManualLGA(false);
+      setShowManualCity(false);
+      setShowManualRegion(false);
     }
-  }, [formData.stateCode, formData.countryCode]);
-
-  // Reset region when city changes
-  useEffect(() => {
-    if (formData.cityName) {
-      setFormData(prev => ({ ...prev, region: '' }));
-      setShowAddRegion(false);
-    }
-  }, [formData.cityName]);
+  }, [formData.stateProvince, formData.country, countries, states]);
 
   const loadCountries = async () => {
     try {
@@ -138,21 +133,10 @@ const CreateCityRegionPage = () => {
     }
   };
 
-  const loadMockLGAs = (stateCode: string) => {
-    // Mock LGAs - in real app, fetch from API
-    const mockLGAs = {
-      'LA': ['Ikeja', 'Alimosho', 'Kosofe', 'Mushin', 'Oshodi-Isolo', 'Shomolu'],
-      'AB': ['Abuja Municipal', 'Bwari', 'Gwagwalada', 'Kuje', 'Kwali'],
-      'RI': ['Port Harcourt', 'Obio-Akpor', 'Eleme', 'Ikwerre', 'Etche'],
-    };
-    
-    setLgas(mockLGAs[stateCode as keyof typeof mockLGAs] || []);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.countryCode || !formData.stateCode || !formData.cityName) {
+    if (!formData.country || !formData.stateProvince || !formData.city) {
       alert('Please fill in all required fields (Country, State, City)');
       return;
     }
@@ -160,118 +144,37 @@ const CreateCityRegionPage = () => {
     setLoading(true);
 
     try {
+      // Create payload matching backend expectations
       const payload = {
-        countryCode: formData.countryCode,
-        stateCode: formData.stateCode,
-        cityName: formData.cityName,
-        lga: formData.lga,
-        region: formData.region
+        country: formData.country,
+        stateProvince: formData.stateProvince,
+        city: formData.city,
+        lga: formData.lga || undefined, // Optional field
+        cityRegion: formData.cityRegion || undefined // Optional field
       };
 
-      await CityRegionService.createCityRegion(payload);
-      router.push('/super-admin/subscription/city-region');
-    } catch (error) {
+      console.log('Sending payload:', payload);
+      
+      const response = await CityRegionService.createCityRegion(payload);
+      console.log('API Response:', response);
+      
+      // Show success modal with API message
+      setSuccessMessage(response.message || 'City region created successfully');
+      setShowSuccessModal(true);
+      
+      // Don't navigate automatically, let user close the modal first
+    } catch (error: any) {
       console.error('Error creating city region:', error);
-      alert('Failed to create city region');
+      alert(error.response?.data?.message || 'Failed to create city region');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddNewCountry = () => {
-    if (!newCountry.trim()) {
-      alert('Please enter a country name');
-      return;
-    }
-    
-    const newCountryCode = newCountry.substring(0, 3).toUpperCase();
-    
-    setCountries(prev => [
-      ...prev,
-      {
-        name: newCountry,
-        isoCode: newCountryCode,
-        flag: "🏳️"
-      }
-    ]);
-    
-    setFormData({
-      countryCode: newCountryCode,
-      stateCode: '',
-      lga: '',
-      cityName: '',
-      region: ''
-    });
-    
-    setShowAddCountry(false);
-    setNewCountry('');
-  };
-
-  const handleAddNewState = () => {
-    if (!newState.trim()) {
-      alert('Please enter a state name');
-      return;
-    }
-    
-    const newStateCode = newState.substring(0, 2).toUpperCase();
-    
-    setStates(prev => [
-      ...prev,
-      {
-        name: newState,
-        isoCode: newStateCode,
-        countryCode: formData.countryCode
-      }
-    ]);
-    
-    setFormData(prev => ({ ...prev, stateCode: newStateCode }));
-    setShowAddState(false);
-    setNewState('');
-  };
-
-  const handleAddNewLga = () => {
-    if (!newLga.trim()) {
-      alert('Please enter an LGA name');
-      return;
-    }
-    
-    setLgas(prev => [...prev, newLga]);
-    setFormData(prev => ({ ...prev, lga: newLga }));
-    setShowAddLga(false);
-    setNewLga('');
-    // No alert for LGA
-  };
-
-  const handleAddNewCity = () => {
-    if (!newCity.trim()) {
-      alert('Please enter a city name');
-      return;
-    }
-    
-    setCities(prev => [
-      ...prev,
-      {
-        name: newCity,
-        stateCode: formData.stateCode,
-        countryCode: formData.countryCode
-      }
-    ]);
-    
-    setFormData(prev => ({ ...prev, cityName: newCity }));
-    setShowAddCity(false);
-    setNewCity('');
-  };
-
-  const handleAddNewRegion = () => {
-    if (!newRegion.trim()) {
-      alert('Please enter a region name');
-      return;
-    }
-    
-    setRegions(prev => [...prev, newRegion]);
-    setFormData(prev => ({ ...prev, region: newRegion }));
-    setShowAddRegion(false);
-    setNewRegion('');
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    // Navigate back to city region list after user closes modal
+    router.push('/super-admin/subscription/city-region');
   };
 
   const filteredCountries = countries.filter(country =>
@@ -284,32 +187,19 @@ const CreateCityRegionPage = () => {
     state.isoCode.toLowerCase().includes(stateSearch.toLowerCase())
   );
 
-  const filteredLgas = lgas.filter(lga =>
-    lga.toLowerCase().includes(lgaSearch.toLowerCase())
-  );
-
   const filteredCities = cities.filter(city =>
     city.name.toLowerCase().includes(citySearch.toLowerCase())
   );
 
-  const filteredRegions = regions.filter(region =>
-    region.toLowerCase().includes(regionSearch.toLowerCase())
-  );
-
-  const selectedCountry = countries.find(c => c.isoCode === formData.countryCode);
-  const selectedState = states.find(s => s.isoCode === formData.stateCode);
-
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const refs = [countryRef, stateRef, lgaRef, cityRef, regionRef];
+      const refs = [countryRef, stateRef, cityRef];
       refs.forEach(ref => {
         if (ref.current && !ref.current.contains(event.target as Node)) {
           if (ref === countryRef) setCountryDropdownOpen(false);
           if (ref === stateRef) setStateDropdownOpen(false);
-          if (ref === lgaRef) setLgaDropdownOpen(false);
           if (ref === cityRef) setCityDropdownOpen(false);
-          if (ref === regionRef) setRegionDropdownOpen(false);
         }
       });
     };
@@ -324,6 +214,29 @@ const CreateCityRegionPage = () => {
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
         .manrope { font-family: 'Manrope', sans-serif; }
       `}</style>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Success!</h3>
+              <p className="text-gray-600 mb-6">{successMessage}</p>
+              <button
+                onClick={handleSuccessModalClose}
+                className="w-full bg-[#5D2A8B] text-white py-3 rounded-lg hover:bg-[#4a216d] transition-colors"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
@@ -343,10 +256,11 @@ const CreateCityRegionPage = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <form onSubmit={handleSubmit}>
             <div className="space-y-6">
+              {/* Form fields remain the same as before */}
               {/* 1. Country Field */}
               <div ref={countryRef} className="relative">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  1. Country <span className="text-red-500">*</span>
+                  Country <span className="text-red-500">*</span>
                 </label>
                 
                 <div className="relative">
@@ -355,18 +269,16 @@ const CreateCityRegionPage = () => {
                     onClick={() => {
                       setCountryDropdownOpen(!countryDropdownOpen);
                       setStateDropdownOpen(false);
-                      setLgaDropdownOpen(false);
                       setCityDropdownOpen(false);
-                      setRegionDropdownOpen(false);
                     }}
                     className="w-full flex items-center justify-between p-3 border rounded-lg hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
                   >
                     <div className="flex items-center gap-3">
                       <Globe className="w-5 h-5 text-gray-400" />
-                      {selectedCountry ? (
+                      {formData.country ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-lg">{selectedCountry.flag || "🏳️"}</span>
-                          <span>{selectedCountry.name} ({selectedCountry.isoCode})</span>
+                          <span className="text-lg">🌍</span>
+                          <span>{formData.country}</span>
                         </div>
                       ) : (
                         <span className="text-gray-500">Select a country...</span>
@@ -398,24 +310,23 @@ const CreateCityRegionPage = () => {
                             type="button"
                             onClick={() => {
                               setFormData({
-                                countryCode: country.isoCode,
-                                stateCode: '',
+                                country: country.name,
+                                stateProvince: '',
                                 lga: '',
-                                cityName: '',
-                                region: ''
+                                city: '',
+                                cityRegion: ''
                               });
                               setCountryDropdownOpen(false);
                             }}
                             className={`w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 ${
-                              formData.countryCode === country.isoCode ? 'bg-[#5D2A8B]/10' : ''
+                              formData.country === country.name ? 'bg-[#5D2A8B]/10' : ''
                             }`}
                           >
-                            <span className="text-lg">{country.flag || "🏳️"}</span>
+                            <span className="text-lg">🌍</span>
                             <div className="text-left">
                               <div className="font-medium">{country.name}</div>
-                              <div className="text-xs text-gray-500">{country.isoCode}</div>
                             </div>
-                            {formData.countryCode === country.isoCode && (
+                            {formData.country === country.name && (
                               <div className="ml-auto w-2 h-2 bg-[#5D2A8B] rounded-full"></div>
                             )}
                           </button>
@@ -429,35 +340,49 @@ const CreateCityRegionPage = () => {
                   )}
                 </div>
 
-                {/* Always visible Add More Country button */}
+                {/* Other/Add manually option */}
                 <div className="mt-2">
                   <button
                     type="button"
-                    onClick={() => setShowAddCountry(!showAddCountry)}
+                    onClick={() => setShowManualCountry(!showManualCountry)}
                     className="w-full flex items-center justify-center gap-2 px-3 py-2 text-[#5D2A8B] hover:bg-[#5D2A8B]/10 rounded-lg border border-dashed border-[#5D2A8B]"
                   >
                     <Plus className="w-4 h-4" />
-                    Add More Countries
+                    Other (Add manually)
                   </button>
                 </div>
 
-                {showAddCountry && (
+                {showManualCountry && (
                   <div className="mt-3 p-4 border rounded-lg bg-blue-50">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Add New Country
+                      Add Country Manually
                     </label>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
                         placeholder="Enter country name..."
-                        value={newCountry}
-                        onChange={(e) => setNewCountry(e.target.value)}
+                        value={manualCountry}
+                        onChange={(e) => setManualCountry(e.target.value)}
                         autoFocus
                       />
                       <button
                         type="button"
-                        onClick={handleAddNewCountry}
+                        onClick={() => {
+                          if (!manualCountry.trim()) {
+                            alert('Please enter a country name');
+                            return;
+                          }
+                          setFormData({
+                            country: manualCountry,
+                            stateProvince: '',
+                            lga: '',
+                            city: '',
+                            cityRegion: ''
+                          });
+                          setShowManualCountry(false);
+                          setManualCountry('');
+                        }}
                         className="px-4 py-2 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d]"
                       >
                         Add
@@ -465,8 +390,8 @@ const CreateCityRegionPage = () => {
                       <button
                         type="button"
                         onClick={() => {
-                          setShowAddCountry(false);
-                          setNewCountry('');
+                          setShowManualCountry(false);
+                          setManualCountry('');
                         }}
                         className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                       >
@@ -477,13 +402,13 @@ const CreateCityRegionPage = () => {
                 )}
               </div>
 
-              {/* 2. State Field */}
+              
               <div ref={stateRef} className="relative">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  2. State/Province <span className="text-red-500">*</span>
+                   State/Province <span className="text-red-500">*</span>
                 </label>
                 
-                {!formData.countryCode ? (
+                {!formData.country ? (
                   <div className="p-4 bg-gray-50 rounded-lg text-gray-500 text-center">
                     Please select a country first
                   </div>
@@ -495,16 +420,14 @@ const CreateCityRegionPage = () => {
                         onClick={() => {
                           setStateDropdownOpen(!stateDropdownOpen);
                           setCountryDropdownOpen(false);
-                          setLgaDropdownOpen(false);
                           setCityDropdownOpen(false);
-                          setRegionDropdownOpen(false);
                         }}
                         className="w-full flex items-center justify-between p-3 border rounded-lg hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
                       >
                         <div className="flex items-center gap-3">
                           <MapPin className="w-5 h-5 text-gray-400" />
-                          {selectedState ? (
-                            <span>{selectedState.name} ({selectedState.isoCode})</span>
+                          {formData.stateProvince ? (
+                            <span>{formData.stateProvince}</span>
                           ) : (
                             <span className="text-gray-500">Select state...</span>
                           )}
@@ -536,23 +459,20 @@ const CreateCityRegionPage = () => {
                                 onClick={() => {
                                   setFormData({
                                     ...formData,
-                                    stateCode: state.isoCode,
+                                    stateProvince: state.name,
                                     lga: '',
-                                    cityName: '',
-                                    region: ''
+                                    city: '',
+                                    cityRegion: ''
                                   });
                                   setStateDropdownOpen(false);
                                 }}
                                 className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${
-                                  formData.stateCode === state.isoCode ? 'bg-[#5D2A8B]/10' : ''
+                                  formData.stateProvince === state.name ? 'bg-[#5D2A8B]/10' : ''
                                 }`}
                               >
                                 <div className="flex items-center justify-between">
-                                  <div>
-                                    <div className="font-medium">{state.name}</div>
-                                    <div className="text-xs text-gray-500">{state.isoCode}</div>
-                                  </div>
-                                  {formData.stateCode === state.isoCode && (
+                                  <div className="font-medium">{state.name}</div>
+                                  {formData.stateProvince === state.name && (
                                     <div className="w-2 h-2 bg-[#5D2A8B] rounded-full"></div>
                                   )}
                                 </div>
@@ -569,35 +489,49 @@ const CreateCityRegionPage = () => {
                       )}
                     </div>
 
-                    {/* Always visible Add More State button */}
+                    {/* Other/Add manually option */}
                     <div className="mt-2">
                       <button
                         type="button"
-                        onClick={() => setShowAddState(!showAddState)}
+                        onClick={() => setShowManualState(!showManualState)}
                         className="w-full flex items-center justify-center gap-2 px-3 py-2 text-[#5D2A8B] hover:bg-[#5D2A8B]/10 rounded-lg border border-dashed border-[#5D2A8B]"
                       >
                         <Plus className="w-4 h-4" />
-                        Add More States
+                        Other (Add manually)
                       </button>
                     </div>
 
-                    {showAddState && (
+                    {showManualState && (
                       <div className="mt-3 p-4 border rounded-lg bg-blue-50">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Add New State for {selectedCountry?.name}
+                          Add State/Province Manually
                         </label>
                         <div className="flex gap-2">
                           <input
                             type="text"
                             className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                            placeholder="Enter state name..."
-                            value={newState}
-                            onChange={(e) => setNewState(e.target.value)}
+                            placeholder="Enter state/province name..."
+                            value={manualState}
+                            onChange={(e) => setManualState(e.target.value)}
                             autoFocus
                           />
                           <button
                             type="button"
-                            onClick={handleAddNewState}
+                            onClick={() => {
+                              if (!manualState.trim()) {
+                                alert('Please enter a state/province name');
+                                return;
+                              }
+                              setFormData({
+                                ...formData,
+                                stateProvince: manualState,
+                                lga: '',
+                                city: '',
+                                cityRegion: ''
+                              });
+                              setShowManualState(false);
+                              setManualState('');
+                            }}
                             className="px-4 py-2 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d]"
                           >
                             Add
@@ -605,8 +539,8 @@ const CreateCityRegionPage = () => {
                           <button
                             type="button"
                             onClick={() => {
-                              setShowAddState(false);
-                              setNewState('');
+                              setShowManualState(false);
+                              setManualState('');
                             }}
                             className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                           >
@@ -619,138 +553,88 @@ const CreateCityRegionPage = () => {
                 )}
               </div>
 
-              {/* 3. LGA Field */}
-              <div ref={lgaRef} className="relative">
+              {/* 3. LGA Field - MANUAL ENTRY ONLY */}
+              <div className="relative">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  3. LGA (Local Government Area)
+                   LGA (Local Government Area) - Optional
                 </label>
                 
-                {!formData.stateCode ? (
+                {!formData.stateProvince ? (
                   <div className="p-4 bg-gray-50 rounded-lg text-gray-500 text-center">
                     Please select a state first
                   </div>
                 ) : (
                   <>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLgaDropdownOpen(!lgaDropdownOpen);
-                          setCountryDropdownOpen(false);
-                          setStateDropdownOpen(false);
-                          setCityDropdownOpen(false);
-                          setRegionDropdownOpen(false);
-                        }}
-                        className="w-full flex items-center justify-between p-3 border rounded-lg hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Building className="w-5 h-5 text-gray-400" />
-                          {formData.lga ? (
-                            <span>{formData.lga}</span>
-                          ) : (
-                            <span className="text-gray-500">Select LGA...</span>
-                          )}
-                        </div>
-                        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${lgaDropdownOpen ? 'transform rotate-180' : ''}`} />
-                      </button>
+                    <div className="space-y-3">
+                      {/* Manual input for LGA */}
+                      <div>
+                        <input
+                          type="text"
+                          className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                          placeholder="Enter LGA name (if applicable)..."
+                          value={formData.lga}
+                          onChange={(e) => setFormData(prev => ({ ...prev, lga: e.target.value }))}
+                        />
+                        <p className="text-sm text-gray-500 mt-2">
+                          This field is optional. Enter LGA if it exists for this location.
+                        </p>
+                      </div>
 
-                      {lgaDropdownOpen && (
-                        <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-80 overflow-hidden">
-                          <div className="p-2 border-b">
-                            <div className="relative">
-                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                              <input
-                                type="text"
-                                placeholder="Search LGAs..."
-                                className="w-full pl-9 pr-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-[#5D2A8B]"
-                                value={lgaSearch}
-                                onChange={(e) => setLgaSearch(e.target.value)}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </div>
-                          </div>
+                      {/* Alternative: Add LGA button */}
+                      {!formData.lga && (
+                        <button
+                          type="button"
+                          onClick={() => setShowManualLGA(!showManualLGA)}
+                          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-[#5D2A8B] hover:bg-[#5D2A8B]/10 rounded-lg border border-dashed border-[#5D2A8B]"
+                        >
+                          <Building className="w-4 h-4" />
+                          Add LGA Manually
+                        </button>
+                      )}
 
-                          <div className="overflow-y-auto max-h-60">
-                            {filteredLgas.map((lga) => (
-                              <button
-                                key={lga}
-                                type="button"
-                                onClick={() => {
-                                  setFormData(prev => ({ ...prev, lga }));
-                                  setLgaDropdownOpen(false);
-                                }}
-                                className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${
-                                  formData.lga === lga ? 'bg-[#5D2A8B]/10' : ''
-                                }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="font-medium">{lga}</div>
-                                  {formData.lga === lga && (
-                                    <div className="w-2 h-2 bg-[#5D2A8B] rounded-full"></div>
-                                  )}
-                                </div>
-                              </button>
-                            ))}
-                            
-                            {filteredLgas.length === 0 && (
-                              <div className="px-3 py-2 text-gray-500 text-center">
-                                {lgas.length === 0 ? 'No LGAs found for this state' : 'No results match your search'}
-                              </div>
-                            )}
+                      {showManualLGA && (
+                        <div className="p-4 border rounded-lg bg-blue-50">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Add LGA for {formData.stateProvince}
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
+                              placeholder="Enter LGA name..."
+                              value={manualLGA}
+                              onChange={(e) => setManualLGA(e.target.value)}
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!manualLGA.trim()) {
+                                  alert('Please enter an LGA name');
+                                  return;
+                                }
+                                setFormData(prev => ({ ...prev, lga: manualLGA }));
+                                setShowManualLGA(false);
+                                setManualLGA('');
+                              }}
+                              className="px-4 py-2 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d]"
+                            >
+                              Add
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowManualLGA(false);
+                                setManualLGA('');
+                              }}
+                              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                            >
+                              Cancel
+                            </button>
                           </div>
                         </div>
                       )}
                     </div>
-
-                    {/* Always visible Add More LGA button */}
-                    <div className="mt-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowAddLga(!showAddLga)}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 text-[#5D2A8B] hover:bg-[#5D2A8B]/10 rounded-lg border border-dashed border-[#5D2A8B]"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Add More LGAs
-                      </button>
-                    </div>
-
-                    {showAddLga && (
-                      <div className="mt-3 p-4 border rounded-lg bg-blue-50">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Add New LGA for {selectedState?.name}
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                            placeholder="Enter LGA name..."
-                            value={newLga}
-                            onChange={(e) => setNewLga(e.target.value)}
-                            autoFocus
-                          />
-                          <button
-                            type="button"
-                            onClick={handleAddNewLga}
-                            className="px-4 py-2 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d]"
-                          >
-                            Add
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowAddLga(false);
-                              setNewLga('');
-                            }}
-                            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                        <p className="text-sm text-gray-500 mt-2">
-                          Enter manually if LGA doesn't exist
-                        </p>
-                      </div>
-                    )}
                   </>
                 )}
               </div>
@@ -758,10 +642,10 @@ const CreateCityRegionPage = () => {
               {/* 4. City Field */}
               <div ref={cityRef} className="relative">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  4. City <span className="text-red-500">*</span>
+                   City <span className="text-red-500">*</span>
                 </label>
                 
-                {!formData.stateCode ? (
+                {!formData.stateProvince ? (
                   <div className="p-4 bg-gray-50 rounded-lg text-gray-500 text-center">
                     Please select a state first
                   </div>
@@ -774,15 +658,13 @@ const CreateCityRegionPage = () => {
                           setCityDropdownOpen(!cityDropdownOpen);
                           setCountryDropdownOpen(false);
                           setStateDropdownOpen(false);
-                          setLgaDropdownOpen(false);
-                          setRegionDropdownOpen(false);
                         }}
                         className="w-full flex items-center justify-between p-3 border rounded-lg hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
                       >
                         <div className="flex items-center gap-3">
                           <Building className="w-5 h-5 text-gray-400" />
-                          {formData.cityName ? (
-                            <span>{formData.cityName}</span>
+                          {formData.city ? (
+                            <span>{formData.city}</span>
                           ) : (
                             <span className="text-gray-500">Select city...</span>
                           )}
@@ -812,16 +694,16 @@ const CreateCityRegionPage = () => {
                                 key={`${city.countryCode}-${city.stateCode}-${city.name}`}
                                 type="button"
                                 onClick={() => {
-                                  setFormData(prev => ({ ...prev, cityName: city.name, region: '' }));
+                                  setFormData(prev => ({ ...prev, city: city.name, cityRegion: '' }));
                                   setCityDropdownOpen(false);
                                 }}
                                 className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${
-                                  formData.cityName === city.name ? 'bg-[#5D2A8B]/10' : ''
+                                  formData.city === city.name ? 'bg-[#5D2A8B]/10' : ''
                                 }`}
                               >
                                 <div className="flex items-center justify-between">
                                   <div className="font-medium">{city.name}</div>
-                                  {formData.cityName === city.name && (
+                                  {formData.city === city.name && (
                                     <div className="w-2 h-2 bg-[#5D2A8B] rounded-full"></div>
                                   )}
                                 </div>
@@ -838,35 +720,43 @@ const CreateCityRegionPage = () => {
                       )}
                     </div>
 
-                    {/* Always visible Add More City button */}
+                    {/* Other/Add manually option */}
                     <div className="mt-2">
                       <button
                         type="button"
-                        onClick={() => setShowAddCity(!showAddCity)}
+                        onClick={() => setShowManualCity(!showManualCity)}
                         className="w-full flex items-center justify-center gap-2 px-3 py-2 text-[#5D2A8B] hover:bg-[#5D2A8B]/10 rounded-lg border border-dashed border-[#5D2A8B]"
                       >
                         <Plus className="w-4 h-4" />
-                        Add More Cities
+                        Other (Add manually)
                       </button>
                     </div>
 
-                    {showAddCity && (
+                    {showManualCity && (
                       <div className="mt-3 p-4 border rounded-lg bg-blue-50">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Add New City for {selectedState?.name}
+                          Add City Manually
                         </label>
                         <div className="flex gap-2">
                           <input
                             type="text"
                             className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
                             placeholder="Enter city name..."
-                            value={newCity}
-                            onChange={(e) => setNewCity(e.target.value)}
+                            value={manualCity}
+                            onChange={(e) => setManualCity(e.target.value)}
                             autoFocus
                           />
                           <button
                             type="button"
-                            onClick={handleAddNewCity}
+                            onClick={() => {
+                              if (!manualCity.trim()) {
+                                alert('Please enter a city name');
+                                return;
+                              }
+                              setFormData(prev => ({ ...prev, city: manualCity, cityRegion: '' }));
+                              setShowManualCity(false);
+                              setManualCity('');
+                            }}
                             className="px-4 py-2 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d]"
                           >
                             Add
@@ -874,8 +764,8 @@ const CreateCityRegionPage = () => {
                           <button
                             type="button"
                             onClick={() => {
-                              setShowAddCity(false);
-                              setNewCity('');
+                              setShowManualCity(false);
+                              setManualCity('');
                             }}
                             className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                           >
@@ -888,13 +778,13 @@ const CreateCityRegionPage = () => {
                 )}
               </div>
 
-              {/* 5. City Region Field - MANUAL ENTRY with Add More */}
-              <div ref={regionRef} className="relative">
+              {/* 5. City Region Field - MANUAL ENTRY ONLY */}
+              <div className="relative">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  5. City Region 
+                  City Region - Optional
                 </label>
                 
-                {!formData.cityName ? (
+                {!formData.city ? (
                   <div className="p-4 bg-gray-50 rounded-lg text-gray-500 text-center">
                     Please select a city first
                   </div>
@@ -906,119 +796,52 @@ const CreateCityRegionPage = () => {
                         <input
                           type="text"
                           className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                          placeholder="Enter region name (e.g., Lekki, VI, Yaba)..."
-                          value={formData.region}
-                          onChange={(e) => setFormData(prev => ({ ...prev, region: e.target.value }))}
+                          placeholder="Enter region/area within the city (e.g., GRA, Lekki, Yaba)..."
+                          value={formData.cityRegion}
+                          onChange={(e) => setFormData(prev => ({ ...prev, cityRegion: e.target.value }))}
                         />
                         <p className="text-sm text-gray-500 mt-2">
-                          Enter the specific area within the city
+                          This field is optional. Enter specific area within the city.
                         </p>
                       </div>
 
-                      {/* Or select from existing regions (if any) */}
-                      {regions.length > 0 && (
-                        <div className="mt-2">
-                          <div className="text-sm text-gray-600 mb-2">Or select from existing regions:</div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setRegionDropdownOpen(!regionDropdownOpen);
-                              setCountryDropdownOpen(false);
-                              setStateDropdownOpen(false);
-                              setLgaDropdownOpen(false);
-                              setCityDropdownOpen(false);
-                            }}
-                            className="w-full flex items-center justify-between p-3 border rounded-lg hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                          >
-                            <div className="flex items-center gap-3">
-                              <Layers className="w-5 h-5 text-gray-400" />
-                              {formData.region ? (
-                                <span>{formData.region}</span>
-                              ) : (
-                                <span className="text-gray-500">Select existing region...</span>
-                              )}
-                            </div>
-                            <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${regionDropdownOpen ? 'transform rotate-180' : ''}`} />
-                          </button>
-
-                          {regionDropdownOpen && (
-                            <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-80 overflow-hidden">
-                              <div className="p-2 border-b">
-                                <div className="relative">
-                                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                  <input
-                                    type="text"
-                                    placeholder="Search regions..."
-                                    className="w-full pl-9 pr-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-[#5D2A8B]"
-                                    value={regionSearch}
-                                    onChange={(e) => setRegionSearch(e.target.value)}
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="overflow-y-auto max-h-60">
-                                {filteredRegions.map((region) => (
-                                  <button
-                                    key={region}
-                                    type="button"
-                                    onClick={() => {
-                                      setFormData(prev => ({ ...prev, region }));
-                                      setRegionDropdownOpen(false);
-                                    }}
-                                    className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${
-                                      formData.region === region ? 'bg-[#5D2A8B]/10' : ''
-                                    }`}
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <div className="font-medium">{region}</div>
-                                      {formData.region === region && (
-                                        <div className="w-2 h-2 bg-[#5D2A8B] rounded-full"></div>
-                                      )}
-                                    </div>
-                                  </button>
-                                ))}
-                                
-                                {filteredRegions.length === 0 && (
-                                  <div className="px-3 py-2 text-gray-500 text-center">
-                                    No regions found
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Add More Region button */}
-                      <div className="mt-2">
+                      {/* Alternative: Add Region button */}
+                      {!formData.cityRegion && (
                         <button
                           type="button"
-                          onClick={() => setShowAddRegion(!showAddRegion)}
+                          onClick={() => setShowManualRegion(!showManualRegion)}
                           className="w-full flex items-center justify-center gap-2 px-3 py-2 text-[#5D2A8B] hover:bg-[#5D2A8B]/10 rounded-lg border border-dashed border-[#5D2A8B]"
                         >
-                          <Plus className="w-4 h-4" />
-                          Add More Regions
+                          <Layers className="w-4 h-4" />
+                          Add Region Manually
                         </button>
-                      </div>
+                      )}
 
-                      {showAddRegion && (
-                        <div className="mt-3 p-4 border rounded-lg bg-blue-50">
+                      {showManualRegion && (
+                        <div className="p-4 border rounded-lg bg-blue-50">
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Add New Region for {formData.cityName}
+                            Add Region for {formData.city}
                           </label>
                           <div className="flex gap-2">
                             <input
                               type="text"
                               className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
                               placeholder="Enter region name..."
-                              value={newRegion}
-                              onChange={(e) => setNewRegion(e.target.value)}
+                              value={manualRegion}
+                              onChange={(e) => setManualRegion(e.target.value)}
                               autoFocus
                             />
                             <button
                               type="button"
-                              onClick={handleAddNewRegion}
+                              onClick={() => {
+                                if (!manualRegion.trim()) {
+                                  alert('Please enter a region name');
+                                  return;
+                                }
+                                setFormData(prev => ({ ...prev, cityRegion: manualRegion }));
+                                setShowManualRegion(false);
+                                setManualRegion('');
+                              }}
                               className="px-4 py-2 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d]"
                             >
                               Add
@@ -1026,8 +849,8 @@ const CreateCityRegionPage = () => {
                             <button
                               type="button"
                               onClick={() => {
-                                setShowAddRegion(false);
-                                setNewRegion('');
+                                setShowManualRegion(false);
+                                setManualRegion('');
                               }}
                               className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                             >
@@ -1042,23 +865,23 @@ const CreateCityRegionPage = () => {
               </div>
 
               {/* Summary */}
-              {(formData.countryCode || formData.stateCode || formData.lga || formData.cityName || formData.region) && (
+              {(formData.country || formData.stateProvince || formData.lga || formData.city || formData.cityRegion) && (
                 <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <h3 className="font-medium text-blue-700 mb-3 flex items-center gap-2">
                     <Layers className="w-4 h-4" />
                     Selected Region Summary
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {selectedCountry && (
+                    {formData.country && (
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-gray-600">Country</span>
-                        <span className="font-medium">{selectedCountry.name}</span>
+                        <span className="font-medium">{formData.country}</span>
                       </div>
                     )}
-                    {selectedState && (
+                    {formData.stateProvince && (
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-gray-600">State/Province</span>
-                        <span className="font-medium">{selectedState.name}</span>
+                        <span className="font-medium">{formData.stateProvince}</span>
                       </div>
                     )}
                     {formData.lga && (
@@ -1067,16 +890,16 @@ const CreateCityRegionPage = () => {
                         <span className="font-medium">{formData.lga}</span>
                       </div>
                     )}
-                    {formData.cityName && (
+                    {formData.city && (
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-gray-600">City</span>
-                        <span className="font-medium">{formData.cityName}</span>
+                        <span className="font-medium">{formData.city}</span>
                       </div>
                     )}
-                    {formData.region && (
+                    {formData.cityRegion && (
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-gray-600">City Region</span>
-                        <span className="font-medium">{formData.region}</span>
+                        <span className="font-medium">{formData.cityRegion}</span>
                       </div>
                     )}
                   </div>
@@ -1097,7 +920,7 @@ const CreateCityRegionPage = () => {
               <button
                 type="submit"
                 className="px-4 py-2 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d] disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={loading || !formData.countryCode || !formData.stateCode || !formData.cityName}
+                disabled={loading || !formData.country || !formData.stateProvince || !formData.city}
               >
                 {loading ? 'Creating...' : 'Create City Region'}
               </button>

@@ -1,74 +1,96 @@
+
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import SubscriptionService, { SubscriptionPackage } from '@/services/subscriptionService';
 
-const ViewSubscriptionPage = () => {
-  const { id } = useParams();
+const ViewSubscriptionPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const router = useRouter();
   const [packageData, setPackageData] = useState<SubscriptionPackage | null>(null);
+  const [id, setId] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Get params.id using React.use() pattern for Next.js 15
   useEffect(() => {
-    console.log('Params ID:', id);
+    const getParams = async () => {
+      const resolvedParams = await params;
+      setId(resolvedParams.id);
+    };
+    getParams();
+  }, [params]);
+
+  useEffect(() => {
     if (id) {
       loadPackageData();
-    } else {
-      setError('Package ID is missing from URL');
-      setLoading(false);
     }
   }, [id]);
 
   const loadPackageData = async () => {
     try {
-      if (!id) {
-        setError('Package ID is required');
-        setLoading(false);
-        return;
-      }
-      
-      // Handle the case where id might be an array
-      const packageId = Array.isArray(id) ? id[0] : id;
-      
-      if (!packageId) {
-        setError('Package ID is required');
-        setLoading(false);
-        return;
-      }
-      
       setLoading(true);
       setError(null);
-      console.log('Attempting to load package with ID:', packageId);
-      const foundPackage = await SubscriptionService.getSubscriptionPackageById(packageId);
-      console.log('Loaded package:', foundPackage);
+      const foundPackage = await SubscriptionService.getSubscriptionPackageById(id);
       setPackageData(foundPackage);
     } catch (err) {
-      console.error('Error in loadPackageData:', err);
       setError(err instanceof Error ? err.message : 'Failed to load subscription package');
+      console.error('Error loading package:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
+  const goBack = () => {
+    router.push('/super-admin/subscription');
+  };
+
+  const handleEdit = () => {
+    if (packageData?.id) {
+      router.push(`/super-admin/subscription/edit/${packageData.id}`);
+    }
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Not set';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return 'Invalid Date';
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  if (loading && !packageData) {
     return (
-      <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
-        <style jsx>{`
-          @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
-          .manrope { font-family: 'Manrope', sans-serif; }
-        `}</style>
-        
-        <div className="mb-6">
-          <button 
-            onClick={() => router.back()}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 mb-4"
-          >
-            ← Back
-          </button>
-          <h1 className="text-2xl font-bold text-gray-800">Loading Package</h1>
-          <p className="text-gray-600 mt-2">Please wait while we load the subscription package details.</p>
+      <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <button 
+              onClick={goBack}
+              className="text-gray-600 hover:text-gray-900 mb-6"
+            >
+              ← Back to List
+            </button>
+            
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Loading Package</h1>
+              <p className="text-gray-600">Please wait while we load the subscription package details.</p>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -76,27 +98,27 @@ const ViewSubscriptionPage = () => {
 
   if (error) {
     return (
-      <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
-        <style jsx>{`
-          @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
-          .manrope { font-family: 'Manrope', sans-serif; }
-        `}</style>
-        
-        <div className="mb-6">
-          <button 
-            onClick={() => router.back()}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 mb-4"
-          >
-            ← Back
-          </button>
-          <h1 className="text-2xl font-bold text-gray-800">Error Loading Package</h1>
-          <p className="text-gray-600 mt-2">{error}</p>
-          <button 
-            onClick={loadPackageData}
-            className="mt-4 px-4 py-2 bg-[#5D2A8B] text-white rounded-md hover:bg-[#4a216e]"
-          >
-            Retry
-          </button>
+      <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <button 
+              onClick={goBack}
+              className="text-gray-600 hover:text-gray-900 mb-6"
+            >
+              ← Back to List
+            </button>
+            
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Error Loading Package</h1>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <button 
+                onClick={loadPackageData}
+                className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-900 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -104,137 +126,215 @@ const ViewSubscriptionPage = () => {
 
   if (!packageData) {
     return (
-      <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
-        <style jsx>{`
-          @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
-          .manrope { font-family: 'Manrope', sans-serif; }
-        `}</style>
-        
-        <div className="mb-6">
-          <button 
-            onClick={() => router.back()}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 mb-4"
-          >
-            ← Back
-          </button>
-          <h1 className="text-2xl font-bold text-gray-800">Package Not Found</h1>
-          <p className="text-gray-600 mt-2">The subscription package you're looking for doesn't exist.</p>
+      <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <button 
+              onClick={goBack}
+              className="text-gray-600 hover:text-gray-900 mb-6"
+            >
+              ← Back to List
+            </button>
+            
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Package Not Found</h1>
+              <p className="text-gray-600">The subscription package doesn't exist.</p>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
-      <style jsx>{`
-        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
-        .manrope { font-family: 'Manrope', sans-serif; }
-      `}</style>
-      
-      <div className="mb-6">
-        <button 
-          onClick={() => router.back()}
-          className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 mb-4"
-        >
-          Back
-        </button>
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">View Subscription Package</h1>
-            <p className="text-gray-600">Detailed information about {packageData.packageName}</p>
-          </div>
+    <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+           
           <button 
-            onClick={() => router.push(`/super-admin/subscription/edit/${packageData.id}`)}
-            className="px-4 py-2 bg-[#5D2A8B] hover:bg-[#4a216e] text-white rounded-lg transition-colors"
+            onClick={goBack}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
           >
-            Edit Package
+            Back
           </button>
-        </div>
-      </div>
+         
+       
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">View Subscription Package</h1>
+             
+            </div>
+            
+            
+          </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Package Details</h2>
+          {/* Status Badge */}
+          <div className="mb-8">
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+              packageData.status === 'active' 
+                ? 'bg-green-100 text-green-800' 
+                : 'bg-red-100 text-red-800'
+            }`}>
+              Status: {packageData.status.charAt(0).toUpperCase() + packageData.status.slice(1)}
+            </span>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+          {/* Basic Information Section */}
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Package Name</label>
-                <p className="text-lg font-medium text-gray-900">{packageData.packageName}</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Package Title</label>
+                <p className="text-gray-900">{packageData.title}</p>
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Services</label>
-                <p className="text-gray-900">{packageData.services}</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <p className="text-gray-900 whitespace-pre-line">{packageData.description}</p>
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Description</label>
-                <p className="text-gray-900">{packageData.description}</p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
-                <span className={`px-2 py-1 text-xs rounded-full ${
-                  packageData.status === 'active' 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {packageData.status}
-                </span>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Subscriber Count</label>
-                <p className="text-lg font-medium text-gray-900">{packageData.subscriberCount}</p>
-              </div>
+
+              {packageData.note && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Note</label>
+                  <p className="text-gray-900">{packageData.note}</p>
+                </div>
+              )}
+
+              {packageData.services && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Services Included</label>
+                  <p className="text-gray-900">{packageData.services}</p>
+                </div>
+              )}
             </div>
           </div>
-          
-          <div>
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Pricing & Validity</h2>
+
+          {/* Pricing Section */}
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Pricing</h2>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Promo Code</label>
-                <p className="text-lg font-medium text-gray-900">{packageData.promoCode || 'N/A'}</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Subscription Price</label>
+                <p className="text-xl font-semibold text-gray-900">{formatCurrency(packageData.price)}</p>
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Promo Period</label>
-                <p className="text-lg font-medium text-gray-900">
-                  {packageData.promoStartDate ? `${packageData.promoStartDate} to ${packageData.promoEndDate || 'N/A'}` : 'N/A'}
-                </p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Pricing</label>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span>Monthly:</span>
-                      <span className="font-medium">₦{packageData.monthlyPrice}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Quarterly:</span>
-                      <span className="font-medium">₦{packageData.quarterlyPrice}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Yearly:</span>
-                      <span className="font-medium">₦{packageData.yearlyPrice}</span>
-                    </div>
+
+              {(packageData.monthlyPrice || packageData.quarterlyPrice || packageData.yearlyPrice) && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Alternative Pricing</label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {packageData.monthlyPrice && packageData.monthlyPrice > 0 && (
+                      <div className="p-3 border border-gray-200 rounded">
+                        <p className="text-sm text-gray-600">Monthly</p>
+                        <p className="text-lg font-medium text-gray-900">{formatCurrency(packageData.monthlyPrice)}</p>
+                      </div>
+                    )}
+                    
+                    {packageData.quarterlyPrice && packageData.quarterlyPrice > 0 && (
+                      <div className="p-3 border border-gray-200 rounded">
+                        <p className="text-sm text-gray-600">Quarterly</p>
+                        <p className="text-lg font-medium text-gray-900">{formatCurrency(packageData.quarterlyPrice)}</p>
+                      </div>
+                    )}
+                    
+                    {packageData.yearlyPrice && packageData.yearlyPrice > 0 && (
+                      <div className="p-3 border border-gray-200 rounded">
+                        <p className="text-sm text-gray-600">Yearly</p>
+                        <p className="text-lg font-medium text-gray-900">{formatCurrency(packageData.yearlyPrice)}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Setup Date</label>
-                <p className="text-lg font-medium text-gray-900">{packageData.setupDate}</p>
-              </div>
+              )}
             </div>
           </div>
+
+          {/* Features Section */}
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Features</h2>
+            
+            {packageData.features && packageData.features.length > 0 ? (
+              <div className="space-y-2">
+                {packageData.features.map((feature, index) => (
+                  <div key={index} className="flex items-start">
+                    <span className="text-gray-900 mr-2">•</span>
+                    <span className="text-gray-900">{feature}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-600">No features added to this package</p>
+            )}
+          </div>
+
+          {/* Timeline Section */}
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Timeline</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Created Date</label>
+                <p className="text-gray-900">{formatDate(packageData.createdAt)}</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Last Updated</label>
+                <p className="text-gray-900">{formatDate(packageData.updatedAt)}</p>
+              </div>
+
+              {packageData.createdBy && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Created By</label>
+                  <p className="text-gray-900">{packageData.createdBy}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Promotion Section */}
+          {(packageData.promoStartDate || packageData.promoEndDate || packageData.promoCode) && (
+            <div className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Promotion Details</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {packageData.promoCode && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Promo Code</label>
+                    <p className="text-gray-900 font-medium">{packageData.promoCode}</p>
+                  </div>
+                )}
+
+                {packageData.promoStartDate && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Promo Start Date</label>
+                    <p className="text-gray-900">{formatDate(packageData.promoStartDate)}</p>
+                  </div>
+                )}
+
+                {packageData.promoEndDate && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Promo End Date</label>
+                    <p className="text-gray-900">{formatDate(packageData.promoEndDate)}</p>
+                  </div>
+                )}
+
+                {packageData.setupDate && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Setup Date</label>
+                    <p className="text-gray-900">{formatDate(packageData.setupDate)}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-        
+
+        {/* Action Buttons */}
        
       </div>
     </div>

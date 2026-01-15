@@ -30,7 +30,6 @@ import PasswordModal from '@/app/components/PasswordModal';
 import { useRouter } from 'next/navigation';
 import { AdminUserService, AdminUser } from '@/services/AdminUserService';
 import { HttpService } from '@/services/HttpService';
-import { OneTimeCodeService } from '@/services/OneTimeCodeService';
 
 interface User {
   id: string;
@@ -325,34 +324,46 @@ const UsersManagementPage = () => {
     }
   };
 
-  // Handle reset password - open modal for password reset
+  // Handle password change - navigate to change password page
   const handleChangePassword = (userId: string) => {
-    setPasswordModal({
-      isOpen: true,
-      password: '',
-      userId: userId
-    });
+    router.push(`/admin/users/change-password/${userId}`);
   };
 
-  // Handle reset password - open modal for password reset
+  // Handle reset password - generate new password and show it in modal
   const handleResetPassword = async (userId: string) => {
     try {
-      // Open the modal with empty state initially
-      setPasswordModal({
-        isOpen: true,
-        password: '',
-        userId: userId
-      });
+      const adminUserService = new AdminUserService();
+      const response = await adminUserService.updateAdminUserPassword(userId, { generateNew: true });
+      
+      if (response.success && response.data?.generatedPassword) {
+        setPasswordModal({
+          isOpen: true,
+          password: response.data.generatedPassword,
+          userId: userId
+        });
+        
+        toast({ 
+          title: 'Password Generated', 
+          description: response.data.message || 'Password has been generated successfully',
+          variant: 'default'
+        });
+      } else {
+        toast({ 
+          title: 'Password Reset', 
+          description: response.data?.message || 'Password has been reset successfully',
+          variant: 'default'
+        });
+      }
+      
+      closeActionModal();
     } catch (error: any) {
-      console.error('Error opening reset password modal:', error);
+      console.error('Error resetting password:', error);
       toast({ 
         title: 'Error', 
-        description: error.message || 'Failed to open reset password modal',
+        description: error.message || 'Failed to reset password',
         variant: 'destructive'
       });
     }
-    
-    closeActionModal();
   };
 
   // Handle generate custom ID
@@ -391,48 +402,6 @@ const UsersManagementPage = () => {
       password: '',
       userId: null
     });
-  };
-
-  // Handle password confirmation (both manual entry and generated)
-  const handlePasswordConfirm = async (password: string, generateNew: boolean) => {
-    if (!passwordModal.userId) return;
-    
-    try {
-      const adminUserService = new AdminUserService();
-      
-      let response;
-      
-      if (generateNew) {
-        // If generating, call the API to generate a new password on the backend
-        response = await adminUserService.updateAdminUserPassword(passwordModal.userId, { generateNew: true });
-      } else {
-        // If manual entry, send the provided password
-        response = await adminUserService.updateAdminUserPassword(passwordModal.userId, { password, generateNew: false });
-      }
-      
-      if (response.success) {
-        toast({ 
-          title: 'Success', 
-          description: response.data?.message || 'Password updated successfully',
-          variant: 'default'
-        });
-      } else {
-        toast({ 
-          title: 'Error', 
-          description: response.data?.message || 'Failed to update password',
-          variant: 'destructive'
-        });
-      }
-    } catch (error: any) {
-      console.error('Error updating password:', error);
-      toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to update password',
-        variant: 'destructive'
-      });
-    }
-    
-    closePasswordModal();
   };
 
   // Handle page change
@@ -504,8 +473,6 @@ const UsersManagementPage = () => {
       });
     }
   };
-  
-
 
   const handleSendWelcomeEmail = async (userId: string) => {
     try {
@@ -697,38 +664,33 @@ const UsersManagementPage = () => {
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
         .manrope { font-family: 'Manrope', sans-serif; }
         
-        /* Custom scrollbar - always visible */
-        .table-container::-webkit-scrollbar {
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+          height: 8px;
           width: 8px;
         }
-        .table-container::-webkit-scrollbar-track {
+        .custom-scrollbar::-webkit-scrollbar-track {
           background: #f1f1f1;
           border-radius: 4px;
         }
-        .table-container::-webkit-scrollbar-thumb {
+        .custom-scrollbar::-webkit-scrollbar-thumb {
           background: #c1c1c1;
           border-radius: 4px;
-          min-height: 20px; /* Ensure thumb is not too long */
         }
-        .table-container::-webkit-scrollbar-thumb:hover {
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: #a1a1a1;
         }
         
         /* Table container with fixed height for scroll */
         .table-container {
           max-height: calc(100vh - 300px);
-          overflow-y: scroll; /* Always show scrollbar */
+          overflow-y: auto;
         }
         
         @media (min-width: 768px) {
           .table-container {
             max-height: calc(100vh - 280px);
           }
-        }
-        
-        /* Ensure proper spacing when modals are open */
-        .table-content-area {
-          padding-bottom: 20px;
         }
       `}</style>
 
@@ -810,98 +772,106 @@ const UsersManagementPage = () => {
           ) : (
             <>
               <div className="table-container">
-                <div className="table-content-area">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50 sticky top-0 z-10">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50 sticky top-0 z-10">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        First Name
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Last Name
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Email
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Phone Number
+                      </th>
+                      
+                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                         User ID
+                      </th>
+                      
+                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredUsers.length === 0 ? (
                       <tr>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          First Name
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Last Name
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Email
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Phone Number
-                        </th>
-                                
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                           User ID
-                        </th>
-                                
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
+                        <td colSpan={9} className="px-6 py-12 text-center">
+                          <div className="flex flex-col items-center justify-center text-gray-500">
+                           
+                            <p className="text-lg font-medium">No users found</p>
+                            <p className="text-sm mt-1">Try adjusting your search or filter</p>
+                          </div>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredUsers.length === 0 ? (
-                        <tr>
-                          <td colSpan={9} className="px-6 py-12 text-center">
-                            <div className="flex flex-col items-center justify-center text-gray-500">
-                                      
-                              <p className="text-lg font-medium">No users found</p>
-                              <p className="text-sm mt-1">Try adjusting your search or filter</p>
+                    ) : (
+                      filteredUsers.map((user) => (
+                        <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-150">
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-semibold text-gray-900">{user.firstName}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-semibold text-gray-900">{user.lastName}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm text-gray-900">{user.email}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              {user.phoneNumber ? (
+                                <>
+                                  <Phone className="w-4 h-4 text-gray-500" />
+                                  <span className="text-sm text-gray-900">{user.phoneNumber}</span>
+                                </>
+                              ) : (
+                                <span className="text-sm text-gray-400">Not provided</span>
+                              )}
+                            </div>
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-gray-900">{user.customerUserId}</div>
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            <StatusBadgeDisplay status={user.status} />
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {/* Change Password Button */}
+                              <button
+                                onClick={() => handleChangePassword(user.id)}
+                                className="flex items-center gap-1 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200"
+                                title="Change Password"
+                              >
+                                
+                                <span>Change Password</span>
+                              </button>
+                              
+                              <button
+                                ref={(el) => {
+                                  actionButtonRefs.current[user.id] = el;
+                                }}
+                                onClick={(e) => handleActionClick(user.id, e)}
+                                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                                title="More actions"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </button>
                             </div>
                           </td>
                         </tr>
-                      ) : (
-                        filteredUsers.map((user) => (
-                          <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-150">
-                            <td className="px-6 py-4">
-                              <div className="text-sm font-semibold text-gray-900">{user.firstName}</div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="text-sm font-semibold text-gray-900">{user.lastName}</div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="text-sm text-gray-900">{user.email}</div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                {user.phoneNumber ? (
-                                  <>
-                                    <Phone className="w-4 h-4 text-gray-500" />
-                                    <span className="text-sm text-gray-900">{user.phoneNumber}</span>
-                                  </>
-                                ) : (
-                                  <span className="text-sm text-gray-400">Not provided</span>
-                                )}
-                              </div>
-                            </td>
-                                    
-                            <td className="px-6 py-4">
-                              <div className="text-sm font-medium text-gray-900">{user.customerUserId}</div>
-                            </td>
-                                    
-                            <td className="px-6 py-4">
-                              <StatusBadgeDisplay status={user.status} />
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <button
-                                  ref={(el) => {
-                                    actionButtonRefs.current[user.id] = el;
-                                  }}
-                                  onClick={(e) => handleActionClick(user.id, e)}
-                                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-                                  title="More actions"
-                                >
-                                  <MoreVertical className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
               
               {/* Pagination */}
@@ -955,10 +925,8 @@ const UsersManagementPage = () => {
           onArchiveUser={() => handleArchiveUser(actionModal.userId!)}
           onSendWelcomeEmail={() => handleSendWelcomeEmail(actionModal.userId!)}
           onSetActive={() => handleSetActive(actionModal.userId!)}
-
           currentUserStatus={users.find(u => u.id === actionModal.userId)?.status}
           position={actionModal.position}
-          windowHeight={typeof window !== 'undefined' ? window.innerHeight : 800}
         />
       )}
       
@@ -967,9 +935,8 @@ const UsersManagementPage = () => {
         isOpen={passwordModal.isOpen}
         onClose={closePasswordModal}
         password={passwordModal.password}
-        onConfirm={handlePasswordConfirm}
-        title="Reset Password"
-        message="Enter a new password or generate one automatically:"
+        title="Password Generated"
+        message="The new password has been generated successfully:"
       />
       
       {/* Delete Confirmation Modal */}

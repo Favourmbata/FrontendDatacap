@@ -17,14 +17,16 @@ const SubscriptionList = () => {
       const mockSubscriptions: SubscriptionPackage[] = [
         {
           id: '1',
-          packageName: 'Basic Plan',
+          title: 'Basic Plan',
+          description: 'Basic subscription package',
+          price: 5000,
+          features: ['Feature 1', 'Feature 2'],
           services: 'Basic Services',
           monthlyPrice: 5000,
           quarterlyPrice: 14000,
           yearlyPrice: 50000,
           setupDate: '2024-01-15',
           status: 'active',
-          description: 'Basic subscription package',
           subscriberCount: 25,
           createdAt: '2024-01-15T10:30:00Z',
           updatedAt: '2024-01-15T10:30:00Z',
@@ -32,14 +34,16 @@ const SubscriptionList = () => {
         },
         {
           id: '2',
-          packageName: 'Premium Plan',
+          title: 'Premium Plan',
+          description: 'Premium subscription package',
+          price: 10000,
+          features: ['Feature 1', 'Feature 2', 'Advanced Feature'],
           services: 'Premium Services',
           monthlyPrice: 10000,
           quarterlyPrice: 28000,
           yearlyPrice: 100000,
           setupDate: '2024-02-20',
           status: 'active',
-          description: 'Premium subscription package',
           subscriberCount: 15,
           createdAt: '2024-02-20T14:45:00Z',
           updatedAt: '2024-02-20T14:45:00Z',
@@ -78,8 +82,8 @@ const SubscriptionList = () => {
   };
 
   const filteredSubscriptions = subscriptions.filter(sub =>
-    sub.packageName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sub.services.toLowerCase().includes(searchTerm.toLowerCase())
+    sub.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sub.services?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -153,16 +157,16 @@ const SubscriptionList = () => {
               filteredSubscriptions.map((subscription) => (
                 <tr key={subscription.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{subscription.packageName}</div>
+                    <div className="text-sm font-medium text-gray-900">{subscription.title}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{subscription.services}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      <div>Monthly: ₦{subscription.monthlyPrice.toLocaleString()}</div>
-                      <div>Quarterly: ₦{subscription.quarterlyPrice.toLocaleString()}</div>
-                      <div>Yearly: ₦{subscription.yearlyPrice.toLocaleString()}</div>
+                      <div>Monthly: ₦{(subscription.monthlyPrice || 0).toLocaleString()}</div>
+                      <div>Quarterly: ₦{(subscription.quarterlyPrice || 0).toLocaleString()}</div>
+                      <div>Yearly: ₦{(subscription.yearlyPrice || 0).toLocaleString()}</div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
