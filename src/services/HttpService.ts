@@ -77,11 +77,17 @@ export class HttpService {
     return this.handleResponse<T>(response);
   }
 
-  async deleteData<T>(endpoint: string): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+  async deleteData<T>(endpoint: string, data?: any): Promise<T> {
+    const options: RequestInit = {
       method: 'DELETE',
       headers: this.getHeaders(),
-    });
+    };
+    
+    if (data) {
+      options.body = JSON.stringify(data);
+    }
+    
+    const response = await fetch(`${this.baseUrl}${endpoint}`, options);
     return this.handleResponse<T>(response);
   }
 
@@ -130,9 +136,9 @@ export class HttpService {
     return httpService.putData<T>(data, endpoint);
   }
 
-  static async delete<T>(endpoint: string): Promise<T> {
+  static async delete<T>(endpoint: string, data?: any): Promise<T> {
     const httpService = new HttpService();
-    return httpService.deleteData<T>(endpoint);
+    return httpService.deleteData<T>(endpoint, data);
   }
 
   static async patch<T>(endpoint: string, data: any): Promise<T> {

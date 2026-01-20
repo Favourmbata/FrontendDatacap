@@ -17,6 +17,9 @@ import {
   Clock,
 } from "lucide-react"
 import useSubscriptionPackages from '@/api/hooks/useSubscriptionPackages';
+import PaymentService from '@/services/PaymentService';
+import { useAuth } from '@/api/hooks/useAuth'; // Assuming we have an auth hook for user data
+import { useAuthContext, User } from '@/AuthContext';
 
 interface APIService {
   _id: string;
@@ -41,6 +44,7 @@ interface APISubscriptionPackage {
   createdAt: string;
   updatedAt: string;
   services: APIService[];
+  maxUsers?: number;
 }
 
 interface Service {
@@ -50,93 +54,56 @@ interface Service {
 }
 
 interface SubscriptionPackage {
-  id: string
-  packageName: string
-  description: string
-  monthlyPrice: number
-  quarterlyPrice: number
-  yearlyPrice: number
-  features: string[]
-  services: Service[]
+  id: string;
+  packageName: string;
+  description: string;
+  monthlyPrice: number;
+  quarterlyPrice: number;
+  yearlyPrice: number;
+  features: string[];
+  services: Service[];
+  maxUsers?: number;
+  finalPriceAfterDiscount?: number;
+  totalServiceCost?: number;
 }
 
-interface OrganizationDetails {
-  type: "registered" | "unregistered"
-  visibility: "public" | "private"
-  verifiedBadge: boolean
-  businessRegistrationNumber?: string
-  ownerIdentificationType?: "international-passport" | "nin"
-  ownerDocumentNumber?: string
-  professionalTrade?: {
-    associationName?: string
-    membershipId?: string
-    certificateFile?: File
-  }
-  products?: Array<{
-    id: string
-    name: string
-    description: string
-    price: number
-    platformChargePercent: number
-    actualPrice: number
-    discount: number
-    discountedActualPrice: number
-    images: File[]
-    video?: File
-  }>
-  locations?: Array<{
-    id: string
-    address: string
-    openingTime: string
-    closingTime: string
-    availability: boolean
-  }>
-  services?: Array<{
-    id: string
-    name: string
-    numberOfUsers: number
-  }>
-}
+// Using the User interface from AuthContext
+// export interface User {
+//   id: string;
+//   email: string;
+//   fullName: string;
+//   phoneNumber: string | null;
+//   role: string;
+//   isAdmin: boolean;
+//   isVerified: boolean;
+//   createdAt: string;
+//   updatedAt: string;
+// }
 
 const SubscriptionPage: React.FC = () => {
   const { packages: apiPackages, loading, error } = useSubscriptionPackages();
+  const authContext = useAuthContext();
+  
+  
+  const user = authContext.user as User || null; // Get user data from auth context
   const [selectedPackages, setSelectedPackages] = useState<Record<string, "monthly" | "quarterly" | "yearly">>({})
   const [totalAmount, setTotalAmount] = useState(0)
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false)
-  const [organizationDetails, setOrganizationDetails] = useState<OrganizationDetails>({
-    type: "registered",
-    visibility: "private",
-    verifiedBadge: false,
-    professionalTrade: {},
-    products: [],
-    locations: [],
-    services: [],
-  })
+  const [userLimitError, setUserLimitError] = useState<string | null>(null)
+  const [packageUserCounts, setPackageUserCounts] = useState<Record<string, number>>({})
 
   // Map API packages to our local format
   const packages: SubscriptionPackage[] = apiPackages?.map(pkg => {
-    // Extract pricing based on services
-    let monthlyPrice = pkg.finalPriceAfterDiscount || pkg.totalServiceCost || 0;
-    let quarterlyPrice = pkg.finalPriceAfterDiscount || pkg.totalServiceCost || 0;
-    let yearlyPrice = pkg.finalPriceAfterDiscount || pkg.totalServiceCost || 0;
-    
-    // If the package has services with specific durations, use those prices
-    if (pkg.services && pkg.services.length > 0) {
-      pkg.services.forEach(service => {
-        switch(service.duration) {
-          case 'monthly':
-            monthlyPrice = service.price;
-            break;
-          case 'quarterly':
-            quarterlyPrice = service.price;
-            break;
-          case 'yearly':
-            yearlyPrice = service.price;
-            break;
-        }
-      });
-    }
+    // Use the pricing as provided by the API
+    // finalPriceAfterDiscount is what the user should pay after discount
+    // totalServiceCost is the original price before discount
+    const monthlyPrice = pkg.finalPriceAfterDiscount !== undefined && pkg.finalPriceAfterDiscount !== 0 ? 
+      pkg.finalPriceAfterDiscount : pkg.totalServiceCost || 0;
+    const quarterlyPrice = pkg.finalPriceAfterDiscount !== undefined && pkg.finalPriceAfterDiscount !== 0 ? 
+      pkg.finalPriceAfterDiscount : pkg.totalServiceCost || 0;
+    const yearlyPrice = pkg.finalPriceAfterDiscount !== undefined && pkg.finalPriceAfterDiscount !== 0 ? 
+      pkg.finalPriceAfterDiscount : pkg.totalServiceCost || 0;
     
     return {
       id: pkg._id,
@@ -150,7 +117,10 @@ const SubscriptionPage: React.FC = () => {
         id: service._id || service.serviceId,
         name: service.serviceName,
         numberOfUsers: 1 // Default to 1, can be adjusted by user
-      })) || []
+      })) || [],
+      maxUsers: pkg.maxUsers,
+      finalPriceAfterDiscount: pkg.finalPriceAfterDiscount,
+      totalServiceCost: pkg.totalServiceCost
     };
   }) || [];
 
@@ -186,171 +156,117 @@ const SubscriptionPage: React.FC = () => {
     })
   }
 
-  const handleOrganizationDetailsChange = (field: keyof OrganizationDetails, value: any) => {
-    setOrganizationDetails((prev) => {
-      const updated = { ...prev, [field]: value }
-
-      if (field === "type" && value === "unregistered") {
-        updated.verifiedBadge = false
-        updated.businessRegistrationNumber = ""
-        updated.ownerIdentificationType = undefined
-        updated.ownerDocumentNumber = ""
-      }
-
-      if (field === "visibility" && value === "private") {
-        updated.verifiedBadge = false
-      }
-
-      if (field === "ownerIdentificationType") {
-        updated.ownerDocumentNumber = ""
-      }
-
-      return updated
-    })
-  }
-
-  const addProduct = () => {
-    const newProduct = {
-      id: Date.now().toString(),
-      name: "",
-      description: "",
-      price: 0,
-      platformChargePercent: 0,
-      actualPrice: 0,
-      discount: 0,
-      discountedActualPrice: 0,
-      images: [],
-      video: undefined,
-    }
-    setOrganizationDetails((prev) => ({
-      ...prev,
-      products: [...(prev.products || []), newProduct],
-    }))
-  }
-
-  const updateProduct = (productId: string, field: string, value: any) => {
-    setOrganizationDetails((prev) => ({
-      ...prev,
-      products: (prev.products || []).map((p) =>
-        p.id === productId
-          ? {
-              ...p,
-              [field]: value,
-              actualPrice:
-                field === "price" || field === "platformChargePercent"
-                  ? (value || p.price) +
-                    ((value || p.price) * (field === "platformChargePercent" ? value : p.platformChargePercent)) / 100
-                  : p.actualPrice,
-              discountedActualPrice:
-                field === "discount"
-                  ? (p.actualPrice || 0) - ((p.actualPrice || 0) * (value || p.discount)) / 100
-                  : p.discountedActualPrice,
-            }
-          : p,
-      ),
-    }))
-  }
-
-  const removeProduct = (productId: string) => {
-    setOrganizationDetails((prev) => ({
-      ...prev,
-      products: (prev.products || []).filter((p) => p.id !== productId),
-    }))
-  }
-
-  const addLocation = () => {
-    const newLocation = {
-      id: Date.now().toString(),
-      address: "",
-      openingTime: "10:00",
-      closingTime: "17:00",
-      availability: true,
-    }
-    setOrganizationDetails((prev) => ({
-      ...prev,
-      locations: [...(prev.locations || []), newLocation],
-    }))
-  }
-
-  const updateLocation = (locationId: string, field: string, value: any) => {
-    setOrganizationDetails((prev) => ({
-      ...prev,
-      locations: (prev.locations || []).map((l) => (l.id === locationId ? { ...l, [field]: value } : l)),
-    }))
-  }
-
-  const removeLocation = (locationId: string) => {
-    setOrganizationDetails((prev) => ({
-      ...prev,
-      locations: (prev.locations || []).filter((l) => l.id !== locationId),
-    }))
-  }
-
-  const addService = () => {
-    const newService = {
-      id: Date.now().toString(),
-      name: "",
-      numberOfUsers: 0,
-    }
-    setOrganizationDetails((prev) => ({
-      ...prev,
-      services: [...(prev.services || []), newService],
-    }))
-  }
-
-  const updateService = (serviceId: string, field: string, value: any) => {
-    setOrganizationDetails((prev) => ({
-      ...prev,
-      services: (prev.services || []).map((s) =>
-        s.id === serviceId
-          ? {
-              ...s,
-              [field]: value,
-            }
-          : s,
-      ),
-    }))
-  }
-
-  const removeService = (serviceId: string) => {
-    setOrganizationDetails((prev) => ({
-      ...prev,
-      services: (prev.services || []).filter((s) => s.id !== serviceId),
-    }))
-  }
-
   const handlePayment = async () => {
     if (Object.keys(selectedPackages).length === 0) {
-      alert("Please select at least one package to proceed with payment")
-      return
+      alert("Please select at least one package to proceed with payment");
+      return;
     }
 
-    if (organizationDetails.type === "registered" && !organizationDetails.businessRegistrationNumber?.trim()) {
-      alert("Please enter your business registration number")
-      return
+    // Get the first selected package for payment initialization
+    const [firstPackageId, subscriptionDuration] = Object.entries(selectedPackages)[0];
+    
+    // Double-check that user is authenticated
+    const currentUser = authContext.user;
+    if (!authContext.token) {
+      alert("User not authenticated. Please log in.");
+      // Force a refresh of auth state
+      window.location.reload();
+      return;
     }
-
-    if (organizationDetails.type === "registered") {
-      if (!organizationDetails.ownerIdentificationType) {
-        alert("Please select a means of identification for business owner verification")
-        return
+    
+    // If currentUser is not available from context, try to extract from token
+    let paymentUserData = currentUser;
+    if (!currentUser || !currentUser.email || !currentUser.fullName) {
+      // Try to get user data from localStorage if context doesn't have complete data
+      if (typeof window !== 'undefined') {
+        const storedUserStr = localStorage.getItem('user');
+        if (storedUserStr) {
+          try {
+            const storedUser = JSON.parse(storedUserStr);
+            if (storedUser && storedUser.email && storedUser.fullName) {
+              paymentUserData = storedUser;
+            }
+          } catch (e) {
+            console.error('Error parsing stored user data:', e);
+          }
+        }
       }
-      if (!organizationDetails.ownerDocumentNumber?.trim()) {
-        alert("Please enter your identification document number")
-        return
-      }
+    }
+    
+    // Final check if we have required user data
+    if (!paymentUserData || !paymentUserData.email || !paymentUserData.fullName) {
+      console.error('Required user fields missing after all attempts:', {
+        currentUser: currentUser,
+        paymentUserData: paymentUserData
+      });
+      alert("User profile is incomplete. Please ensure your profile has email and name.");
+      return;
     }
 
-    setIsProcessingPayment(true)
+    setIsProcessingPayment(true);
+    
+    try {
+      // Prepare payment initialization request
+      const selectedPackage = packages.find(p => p.id === firstPackageId);
+      
+      // Get the number of users from the state for this package
+      const numberOfUsers = packageUserCounts[firstPackageId] || selectedPackage?.maxUsers || 1;
+      
+      // Validate number of users against maxUsers
+      if (selectedPackage?.maxUsers && numberOfUsers > selectedPackage.maxUsers) {
+        setUserLimitError(`Number of users (${numberOfUsers}) exceeds the maximum allowed (${selectedPackage.maxUsers}) for this package.`);
+        setIsProcessingPayment(false);
+        return;
+      }
+      
+      // Clear any previous user limit error
+      setUserLimitError(null);
+      
+      // Determine the amount to charge based on discount availability
+      const baseAmount = getBillingPrice(selectedPackage!, subscriptionDuration);
+      let amountToCharge = baseAmount;
+      
+      // Check if the package has a discount
+      if (selectedPackage?.finalPriceAfterDiscount !== undefined && 
+          selectedPackage?.finalPriceAfterDiscount > 0 && 
+          selectedPackage?.finalPriceAfterDiscount < baseAmount) {
+        // Use discounted price if available and it's less than the base amount
+        amountToCharge = selectedPackage.finalPriceAfterDiscount;
+      } else if (selectedPackage?.totalServiceCost !== undefined && selectedPackage?.totalServiceCost > 0) {
+        // Fallback to total service cost if no discount is applied
+        amountToCharge = selectedPackage.totalServiceCost;
+      }
+      
+      const paymentRequest = {
+        userId: paymentUserData?.id as string, // Use the id from the User interface
+        userType: 'organization' as const, // Could be dynamic based on user type
+        packageId: firstPackageId,
+        subscriptionDuration,
+        amount: amountToCharge, // Use the appropriate price based on discount
+        maxUsers: numberOfUsers, // Use the number of users entered by the user
+        email: paymentUserData?.email || '',
+        name: paymentUserData?.fullName || '',
+        phone: paymentUserData?.phoneNumber || ''
+      };
+      
 
-    setTimeout(() => {
-      setShowPaymentSuccess(true)
-      setIsProcessingPayment(false)
-
-      setTimeout(() => {
-        alert("Payment successful! Redirecting to dashboard...")
-      }, 1000)
-    }, 2000)
+      
+      // Initialize payment with Flutterwave
+      const response = await PaymentService.initializePayment(paymentRequest);
+      
+      if (response.success) {
+        // Redirect to payment link
+        window.location.href = response.data.paymentLink;
+      } else {
+        alert(`Payment initialization failed: ${response.message}`);
+        setIsProcessingPayment(false);
+      }
+    } catch (error) {
+      console.error('Error initializing payment:', error);
+      alert('An error occurred while initializing payment. Please try again.');
+    } finally {
+      setIsProcessingPayment(false);
+    }
   }
 
   const getBillingPrice = (pkg: SubscriptionPackage, billingCycle: "monthly" | "quarterly" | "yearly") => {
@@ -432,20 +348,6 @@ const SubscriptionPage: React.FC = () => {
             >
               2
             </div>
-            <span className="text-sm font-medium px-2">Organization</span>
-            <div className="w-16 h-0.5 bg-gray-300"></div>
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-                Object.keys(selectedPackages).length > 0 ? "bg-purple-600 text-white" : "bg-gray-300 text-gray-600"
-              }`}
-            >
-              3
-            </div>
-            <span className="text-sm font-medium px-2">Services</span>
-            <div className="w-16 h-0.5 bg-gray-300"></div>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center font-semibold bg-gray-300 text-gray-600">
-              4
-            </div>
             <span className="text-sm font-medium px-2">Payment</span>
           </div>
         </div>
@@ -478,18 +380,42 @@ const SubscriptionPage: React.FC = () => {
                 </select>
               </div>
 
+              <p className="text-gray-700 mb-6 text-sm">{pkg.description}</p>
+
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Number of Users</label>
                 <input
+                  name={`numberOfUsers-${pkg.id}`}
                   type="number"
                   min="1"
-                  defaultValue="1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                  placeholder="Enter number of users"
+                  max={pkg.maxUsers || 10}
+                  defaultValue={pkg.maxUsers || 1}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm ${
+                    packageUserCounts[pkg.id] && pkg.maxUsers && packageUserCounts[pkg.id] > pkg.maxUsers 
+                      ? 'border-red-500' 
+                      : 'border-gray-300'
+                  }`}
+                  placeholder={`Enter number of users (up to ${pkg.maxUsers || 10})`}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 1;
+                    setPackageUserCounts(prev => ({
+                      ...prev,
+                      [pkg.id]: value
+                    }));
+                    
+                    // Real-time validation
+                    if (pkg.maxUsers && value > pkg.maxUsers) {
+                      setUserLimitError(`Number of users (${value}) exceeds the maximum allowed (${pkg.maxUsers}) for this package.`);
+                    } else {
+                      // Clear error if it was for this package
+                      if (userLimitError && selectedPackages[pkg.id]) {
+                        setUserLimitError(null);
+                      }
+                    }
+                  }}
                 />
+                <p className="mt-1 text-xs text-gray-500">Maximum allowed: {pkg.maxUsers || 1} users</p>
               </div>
-
-              <p className="text-gray-700 mb-6 text-sm">{pkg.description}</p>
 
               <div className="mb-6">
                 <h4 className="font-semibold text-gray-900 mb-3">Services:</h4>
@@ -535,579 +461,14 @@ const SubscriptionPage: React.FC = () => {
           ))}
         </div>
 
-        {Object.keys(selectedPackages).length > 0 && (
-          <div className="mb-8 bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <div className="flex items-center mb-6">
-              <Building className="w-6 h-6 text-purple-600 mr-2" />
-              <h2 className="text-xl font-bold text-gray-900">Step 2: Organization Details</h2>
-            </div>
 
-            <div className="space-y-6">
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-3">1. Type of Business:</h3>
-                <div className="flex gap-6">
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="organizationType"
-                      value="registered"
-                      checked={organizationDetails.type === "registered"}
-                      onChange={(e) => handleOrganizationDetailsChange("type", e.target.value)}
-                      className="w-4 h-4 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="ml-2 text-gray-700">Registered</span>
-                  </label>
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="organizationType"
-                      value="unregistered"
-                      checked={organizationDetails.type === "unregistered"}
-                      onChange={(e) => handleOrganizationDetailsChange("type", e.target.value)}
-                      className="w-4 h-4 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="ml-2 text-gray-700">Unregistered</span>
-                  </label>
-                </div>
-              </div>
-
-              {organizationDetails.type === "registered" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    2. Registration Number (From government) *
-                  </label>
-                  <input
-                    type="text"
-                    value={organizationDetails.businessRegistrationNumber || ""}
-                    onChange={(e) => handleOrganizationDetailsChange("businessRegistrationNumber", e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Enter your business registration number"
-                  />
-                  <p className="text-sm text-gray-500 mt-1">* Required for registered businesses</p>
-                </div>
-              )}
-
-              {organizationDetails.type === "registered" && (
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">3. Business Owner's Verification</h3>
-
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Select means of identification *
-                    </label>
-                    <div className="flex gap-6">
-                      <label className="flex items-center cursor-pointer">
-                        <input
-                          type="radio"
-                          name="identificationType"
-                          value="international-passport"
-                          checked={organizationDetails.ownerIdentificationType === "international-passport"}
-                          onChange={(e) => handleOrganizationDetailsChange("ownerIdentificationType", e.target.value)}
-                          className="w-4 h-4 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span className="ml-2 text-gray-700">International Passport</span>
-                      </label>
-                      <label className="flex items-center cursor-pointer">
-                        <input
-                          type="radio"
-                          name="identificationType"
-                          value="nin"
-                          checked={organizationDetails.ownerIdentificationType === "nin"}
-                          onChange={(e) => handleOrganizationDetailsChange("ownerIdentificationType", e.target.value)}
-                          className="w-4 h-4 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span className="ml-2 text-gray-700">NIN (National Identity Number)</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {organizationDetails.ownerIdentificationType && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Enter Document Number *</label>
-                      <input
-                        type="text"
-                        value={organizationDetails.ownerDocumentNumber || ""}
-                        onChange={(e) => handleOrganizationDetailsChange("ownerDocumentNumber", e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        placeholder={
-                          organizationDetails.ownerIdentificationType === "international-passport"
-                            ? "Enter your International Passport number"
-                            : "Enter your NIN"
-                        }
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-3">
-                  {organizationDetails.type === "registered" ? "4." : "2."} Make my organization's profile visible to
-                  the public
-                </h3>
-                <div className="flex gap-6">
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="visibility"
-                      value="public"
-                      checked={organizationDetails.visibility === "public"}
-                      onChange={(e) => handleOrganizationDetailsChange("visibility", e.target.value)}
-                      className="w-4 h-4 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="ml-2 text-gray-700">Yes</span>
-                  </label>
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="visibility"
-                      value="private"
-                      checked={organizationDetails.visibility === "private"}
-                      onChange={(e) => handleOrganizationDetailsChange("visibility", e.target.value)}
-                      className="w-4 h-4 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="ml-2 text-gray-700">No</span>
-                  </label>
-                </div>
-                <p className="text-sm text-gray-500 mt-2 italic">
-                  Note: Visibility of your organization's profile to the public showcases your products & services and
-                  increases revenue generation.
-                </p>
-              </div>
-
-              {organizationDetails.visibility === "public" && (
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">
-                    {organizationDetails.type === "registered" ? "5." : "3."} Do you want to be verified organisation to
-                    gain prospective customers trust and get more preferential patronage?
-                  </h3>
-                  <div className="flex gap-6">
-                    <label className="flex items-center cursor-pointer">
-                      <input
-                        type="radio"
-                        name="verifiedBadge"
-                        checked={organizationDetails.verifiedBadge === true}
-                        onChange={() => handleOrganizationDetailsChange("verifiedBadge", true)}
-                        className="w-4 h-4 text-purple-600 focus:ring-purple-500"
-                      />
-                      <span className="ml-2 text-gray-700">Yes</span>
-                    </label>
-                    <label className="flex items-center cursor-pointer">
-                      <input
-                        type="radio"
-                        name="verifiedBadge"
-                        checked={organizationDetails.verifiedBadge === false}
-                        onChange={() => handleOrganizationDetailsChange("verifiedBadge", false)}
-                        className="w-4 h-4 text-purple-600 focus:ring-purple-500"
-                      />
-                      <span className="ml-2 text-gray-700">No</span>
-                    </label>
-                  </div>
-
-                  {organizationDetails.verifiedBadge && (
-                    <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="flex items-start mb-3">
-                        <ShieldCheck className="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <h4 className="font-semibold text-blue-900">Verification Benefits</h4>
-                          <p className="text-sm text-blue-800 mt-1">
-                            A verified badge helps build trust with customers and increases your organization's
-                            credibility.
-                            {organizationDetails.type === "registered" &&
-                              " Your registration number and owner verification will be used for the verification process."}
-                          </p>
-                        </div>
-                      </div>
-
-                      {organizationDetails.type === "unregistered" && (
-                        <div className="mt-3 p-3 bg-yellow-50 rounded border border-yellow-200">
-                          <p className="text-sm text-yellow-900">
-                            <strong>Note:</strong> To receive a verified badge, you need to have a registered business.
-                            Please select "Registered" business type above and provide your registration number.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {Object.keys(selectedPackages).length > 0 && (
-          <div className="mb-8 bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Step 3: Services & Users</h2>
-              <button
-                onClick={addService}
-                className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Service
-              </button>
-            </div>
-
-            {organizationDetails.services && organizationDetails.services.length > 0 ? (
-              <div className="space-y-4">
-                {organizationDetails.services.map((service, index) => (
-                  <div key={service.id} className="p-4 border border-gray-200 rounded-lg">
-                    <div className="flex justify-between items-start mb-4">
-                      <h3 className="font-semibold text-gray-900">Service {index + 1}</h3>
-                      <button onClick={() => removeService(service.id)} className="text-red-500 hover:text-red-700">
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Service Name *</label>
-                        <input
-                          type="text"
-                          value={service.name}
-                          onChange={(e) => updateService(service.id, "name", e.target.value)}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                          placeholder="Enter service name"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Number of Users *</label>
-                        <input
-                          type="number"
-                          value={service.numberOfUsers}
-                          onChange={(e) => updateService(service.id, "numberOfUsers", Number(e.target.value))}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                          placeholder="Enter number of users"
-                          min="0"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 border border-dashed border-gray-300 rounded-lg">
-                <p className="text-gray-500">No services added yet. Click "Add Service" to get started.</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {Object.keys(selectedPackages).length > 0 && (
-          <div className="mb-8 bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Step 4: Professional Trade Association (Optional)</h2>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Name of Professional/Trade Association
-                </label>
-                <input
-                  type="text"
-                  value={organizationDetails.professionalTrade?.associationName || ""}
-                  onChange={(e) =>
-                    setOrganizationDetails((prev) => ({
-                      ...prev,
-                      professionalTrade: {
-                        ...prev.professionalTrade,
-                        associationName: e.target.value,
-                      },
-                    }))
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="e.g., Chamber of Commerce, Professional Association"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Membership ID (Optional)</label>
-                <input
-                  type="text"
-                  value={organizationDetails.professionalTrade?.membershipId || ""}
-                  onChange={(e) =>
-                    setOrganizationDetails((prev) => ({
-                      ...prev,
-                      professionalTrade: {
-                        ...prev.professionalTrade,
-                        membershipId: e.target.value,
-                      },
-                    }))
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Enter your membership ID"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Upload Membership Certificate or ID
-                </label>
-                <div className="flex items-center justify-center w-full">
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                      <p className="text-sm text-gray-500">
-                        <span className="font-semibold">Click to upload</span> or drag and drop
-                      </p>
-                      <p className="text-xs text-gray-500">PDF, JPG, PNG (Max 5MB)</p>
-                    </div>
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => {
-                        if (e.target.files?.[0]) {
-                          setOrganizationDetails((prev) => ({
-                            ...prev,
-                            professionalTrade: {
-                              ...prev.professionalTrade,
-                              certificateFile: e.target.files![0],
-                            },
-                          }))
-                        }
-                      }}
-                    />
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {Object.keys(selectedPackages).length > 0 && (
-          <div className="mb-8 bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Step 5: Gallery (Optional)</h2>
-              <button
-                onClick={addProduct}
-                className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Product
-              </button>
-            </div>
-
-            {organizationDetails.products && organizationDetails.products.length > 0 ? (
-              <div className="space-y-6">
-                {organizationDetails.products.map((product, index) => (
-                  <div key={product.id} className="p-4 border border-gray-200 rounded-lg">
-                    <div className="flex justify-between items-start mb-4">
-                      <h3 className="font-semibold text-gray-900">Product {index + 1}</h3>
-                      <button onClick={() => removeProduct(product.id)} className="text-red-500 hover:text-red-700">
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
-                        <input
-                          type="text"
-                          value={product.name}
-                          onChange={(e) => updateProduct(product.id, "name", e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                          placeholder="Enter product name"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
-                        <input
-                          type="text"
-                          value={product.description}
-                          onChange={(e) => updateProduct(product.id, "description", e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                          placeholder="Enter product description"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Price *</label>
-                        <input
-                          type="number"
-                          value={product.price}
-                          onChange={(e) => updateProduct(product.id, "price", Number(e.target.value))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Platform Charge %</label>
-                        <input
-                          type="number"
-                          value={product.platformChargePercent}
-                          onChange={(e) => updateProduct(product.id, "platformChargePercent", Number(e.target.value))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                          placeholder="0"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Actual Price (Auto)</label>
-                        <input
-                          type="number"
-                          value={product.actualPrice}
-                          disabled
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Discount %</label>
-                        <input
-                          type="number"
-                          value={product.discount}
-                          onChange={(e) => updateProduct(product.id, "discount", Number(e.target.value))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                          placeholder="0"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Discounted Actual Price (Auto)
-                        </label>
-                        <input
-                          type="number"
-                          value={product.discountedActualPrice}
-                          disabled
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Product Images {organizationDetails.type === "registered" ? "(10 max)" : "(3 max)"}
-                      </label>
-                      <div className="flex items-center justify-center w-full">
-                        <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                          <div className="flex flex-col items-center justify-center pt-2 pb-2">
-                            <Upload className="w-6 h-6 text-gray-400 mb-1" />
-                            <p className="text-xs text-gray-500">Click to upload images</p>
-                          </div>
-                          <input type="file" className="hidden" multiple accept="image/*" />
-                        </label>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Note: Unverified firms can upload 3 images max, verified firms can upload 10 images max
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Product Video (Optional)</label>
-                      <div className="flex items-center justify-center w-full">
-                        <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                          <div className="flex flex-col items-center justify-center pt-2 pb-2">
-                            <Upload className="w-6 h-6 text-gray-400 mb-1" />
-                            <p className="text-xs text-gray-500">Click to upload video</p>
-                          </div>
-                          <input type="file" className="hidden" accept="video/*" />
-                        </label>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">Max 3MB per video</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 border border-dashed border-gray-300 rounded-lg">
-                <p className="text-gray-500">No products added yet. Click "Add Product" to get started.</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {Object.keys(selectedPackages).length > 0 && (
-          <div className="mb-8 bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Step 6: Availability & Location (Optional)</h2>
-              <button
-                onClick={addLocation}
-                className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Location
-              </button>
-            </div>
-
-            {organizationDetails.locations && organizationDetails.locations.length > 0 ? (
-              <div className="space-y-6">
-                {organizationDetails.locations.map((location, index) => (
-                  <div key={location.id} className="p-4 border border-gray-200 rounded-lg">
-                    <div className="flex justify-between items-start mb-4">
-                      <h3 className="font-semibold text-gray-900 flex items-center">
-                        <Clock className="w-4 h-4 mr-2 text-purple-600" />
-                        Location {index + 1}
-                      </h3>
-                      <button onClick={() => removeLocation(location.id)} className="text-red-500 hover:text-red-700">
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Address *</label>
-                        <input
-                          type="text"
-                          value={location.address}
-                          onChange={(e) => updateLocation(location.id, "address", e.target.value)}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          placeholder="Enter business location address"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Opening Time *</label>
-                          <input
-                            type="time"
-                            value={location.openingTime}
-                            onChange={(e) => updateLocation(location.id, "openingTime", e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Closing Time *</label>
-                          <input
-                            type="time"
-                            value={location.closingTime}
-                            onChange={(e) => updateLocation(location.id, "closingTime", e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={location.availability}
-                            onChange={(e) => updateLocation(location.id, "availability", e.target.checked)}
-                            className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
-                          />
-                          <span className="ml-2 text-sm font-medium text-gray-700">Currently Open/Available</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 border border-dashed border-gray-300 rounded-lg">
-                <p className="text-gray-500">No locations added yet. Click "Add Location" to get started.</p>
-              </div>
-            )}
-          </div>
-        )}
 
         {Object.keys(selectedPackages).length === 0 && (
           <div className="mb-8 bg-blue-50 rounded-xl border border-blue-200 p-8 text-center">
             <Package className="w-16 h-16 text-blue-600 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-blue-900 mb-2">No Packages Selected</h3>
             <p className="text-blue-800">
-              Please select at least one package above to proceed with organization setup and payment.
+              Please select at least one package above to proceed with payment.
             </p>
           </div>
         )}
@@ -1126,6 +487,12 @@ const SubscriptionPage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {userLimitError && (
+              <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+                <strong>Error:</strong> {userLimitError}
+              </div>
+            )}
 
             <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

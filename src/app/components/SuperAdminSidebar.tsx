@@ -187,8 +187,30 @@ export const SuperAdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) =
     { 
       id: 'payments', 
       name: 'Payments', 
-      route: '/super-admin/payments', 
+      route: '/super-admin/payments/all', // Default to all payments
       icon: <CreditCard className="w-6 h-6 text-[#dcdcdc]" />,
+      subItems: [
+        {
+          id: 'all-payments',
+          name: 'All Payments',
+          route: '/super-admin/payments/all' // Route for viewing all payments
+        },
+        {
+          id: 'pending-payments',
+          name: 'Pending Payments',
+          route: '/super-admin/payments/pending' // Route for pending payments
+        },
+        {
+          id: 'completed-payments',
+          name: 'Completed Payments',
+          route: '/super-admin/payments/completed' // Route for completed payments
+        },
+        {
+          id: 'failed-payments',
+          name: 'Failed Payments',
+          route: '/super-admin/payments/failed' // Route for failed payments
+        }
+      ]
     },
     { 
       id: 'industry', 

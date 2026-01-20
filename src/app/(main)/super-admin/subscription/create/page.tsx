@@ -40,11 +40,22 @@ const CreateSubscriptionPage = () => {
       industries: string[];
       categories: string[];
     };
+    maxUsers: number;
     calculatedPrice: number; // Auto-calculated based on selected services
   }
   
   const [availableServices, setAvailableServices] = useState<ServiceOption[]>([]);
   const [loadingServices, setLoadingServices] = useState<boolean>(true);
+  
+  // State for dropdowns with search functionality
+  const [showIndustriesDropdown, setShowIndustriesDropdown] = useState<boolean>(false);
+  const [industriesSearch, setIndustriesSearch] = useState<string>('');
+  const [showCategoriesDropdown, setShowCategoriesDropdown] = useState<boolean>(false);
+  const [categoriesSearch, setCategoriesSearch] = useState<string>('');
+  
+  // Available options for dropdowns
+  const allIndustries = ['Fashion', 'Technology', 'Healthcare', 'Education', 'Finance', 'Retail', 'Manufacturing', 'Transportation', 'Hospitality', 'Real Estate'];
+  const allCategories = ['Basic', 'Professional', 'Enterprise', 'Startup', 'Premium', 'Standard', 'Essential', 'Advanced'];
 
   const [formData, setFormData] = useState<ExtendedSubscriptionData>({
     title: '',
@@ -62,7 +73,8 @@ const CreateSubscriptionPage = () => {
       industries: [],
       categories: []
     },
-    calculatedPrice: 0
+    calculatedPrice: 0,
+    maxUsers: 1,
   });
     
   // Load available services
@@ -167,6 +179,12 @@ const CreateSubscriptionPage = () => {
     return null;
   };
 
+  const validateMaxUsers = (maxUsers: number): string | null => {
+    if (maxUsers <= 0) return 'Maximum users must be greater than 0';
+    if (maxUsers > 10000) return 'Maximum users cannot exceed 10,000';
+    return null;
+  };
+
   const validateApplyTo = (applyTo: { individual: boolean; industries: string[]; categories: string[] }): string | null => {
     // ApplyTo is not required, so always return null
     return null;
@@ -184,6 +202,21 @@ const CreateSubscriptionPage = () => {
     const featuresError = validateFeatures(formData.features);
     if (featuresError) errors.features = featuresError;
     
+    // Validate services
+    if (formData.services.length === 0) {
+      errors.services = 'At least one service is required';
+    } else {
+      // Validate each service has required fields
+      formData.services.forEach((service, index) => {
+        if (!service.id) {
+          errors[`service-${index}`] = `Service ${index + 1} must have a valid service ID`;
+        }
+        if (!service.selectedCycle) {
+          errors[`service-${index}`] = `Service ${index + 1} must have a duration selected`;
+        }
+      });
+    }
+    
     // Validate new fields
     const promoCodeError = validatePromoCode(formData.promoCode);
     if (promoCodeError) errors.promoCode = promoCodeError;
@@ -193,6 +226,9 @@ const CreateSubscriptionPage = () => {
     
     const promoDatesError = validatePromoDates(formData.promoStartDate, formData.promoEndDate);
     if (promoDatesError) errors.promoDates = promoDatesError;
+    
+    const maxUsersError = validateMaxUsers(formData.maxUsers);
+    if (maxUsersError) errors.maxUsers = maxUsersError;
     
     // ApplyTo is not required, so no validation needed
     // const applyToError = validateApplyTo(formData.applyTo);
@@ -278,8 +314,8 @@ const CreateSubscriptionPage = () => {
       setLoading(true);
       setError(null);
       
-      // Calculate total price based on selected services
-      const totalPrice = formData.services.reduce((sum, service) => {
+      // Calculate total service cost based on selected cycles
+      const totalServiceCost = formData.services.reduce((sum, service) => {
         if (service.selectedCycle === 'monthly') return sum + service.monthlyPrice;
         if (service.selectedCycle === 'quarterly') return sum + service.quarterlyPrice;
         return sum + service.yearlyPrice;
@@ -287,9 +323,9 @@ const CreateSubscriptionPage = () => {
       
       // Apply discount if applicable
       const discountAmount = formData.discountPercentage 
-        ? (totalPrice * formData.discountPercentage) / 100 
+        ? (totalServiceCost * formData.discountPercentage) / 100 
         : 0;
-      const finalPrice = totalPrice - discountAmount;
+      const finalPriceAfterDiscount = totalServiceCost - discountAmount;
       
       // Prepare data for API submission - only include fields expected by the API
       const formattedData: CreateSubscriptionPackageData = {
@@ -297,17 +333,24 @@ const CreateSubscriptionPage = () => {
         description: formData.description,
         services: formData.services.map(service => ({
           serviceId: service.id,
-          duration: service.selectedCycle
+          serviceName: service.name,
+          duration: service.selectedCycle,
+          price: service.selectedCycle === 'monthly' ? service.monthlyPrice : 
+                 service.selectedCycle === 'quarterly' ? service.quarterlyPrice : 
+                 service.yearlyPrice
         })),
+        totalServiceCost: totalServiceCost,
         promoCode: formData.promoCode,
         discountPercentage: formData.discountPercentage,
         promoStartDate: formData.promoStartDate,
         promoEndDate: formData.promoEndDate,
+        discountAmount: discountAmount,
+        finalPriceAfterDiscount: finalPriceAfterDiscount,
         features: formData.features,
+        maxUsers: formData.maxUsers,
         note: formData.note,
-        // Don't include applyTo in the payload as it's not required
-        // applyTo: formData.applyTo,
-        price: finalPrice, // Final calculated price after discount
+        isActive: true,
+        createdBy: "", // This will be set by the backend
       };
       
       // Create package using service
@@ -327,6 +370,28 @@ const CreateSubscriptionPage = () => {
   const goBack = () => {
     router.back();
   };
+  
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Close industries dropdown if clicked outside
+      if (showIndustriesDropdown && !target.closest('.industries-dropdown-container')) {
+        setShowIndustriesDropdown(false);
+      }
+      
+      // Close categories dropdown if clicked outside
+      if (showCategoriesDropdown && !target.closest('.categories-dropdown-container')) {
+        setShowCategoriesDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showIndustriesDropdown, showCategoriesDropdown]);
 
   // Format price display
   const formatCurrency = (amount: number) => {
@@ -498,11 +563,16 @@ const CreateSubscriptionPage = () => {
                                 <p className="text-sm font-medium">₦{service.yearlyPrice.toLocaleString()}</p>
                               </div>
                             </div>
+                            {fieldErrors[`service-${index}`] && (
+                              <p className="mt-2 text-sm text-red-600">{fieldErrors[`service-${index}`]}</p>
+                            )}
                           </div>
                           
                           <div className="flex flex-col md:flex-row md:items-center gap-3">
                             <select 
-                              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                              className={`px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-600 focus:border-transparent ${
+                                fieldErrors[`service-${index}`] ? 'border-red-500' : 'border-gray-300'
+                              }`}
                               value={service.selectedCycle}
                               onChange={(e) => {
                                 const newServices = [...formData.services];
@@ -511,6 +581,14 @@ const CreateSubscriptionPage = () => {
                                   ...prev,
                                   services: newServices
                                 }));
+                                // Clear error when user updates selection
+                                if (fieldErrors[`service-${index}`]) {
+                                  setFieldErrors(prev => {
+                                    const newErrors = { ...prev };
+                                    delete newErrors[`service-${index}`];
+                                    return newErrors;
+                                  });
+                                }
                               }}
                             >
                               <option value="monthly">Monthly</option>
@@ -548,6 +626,9 @@ const CreateSubscriptionPage = () => {
                       </div>
                     </div>
                   </div>
+                )}
+                {fieldErrors.services && (
+                  <p className="mt-2 text-sm text-red-600">{fieldErrors.services}</p>
                 )}
               </div>
             </div>
@@ -675,6 +756,40 @@ const CreateSubscriptionPage = () => {
             </div>
 
             {/* Note Section */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Maximum Users
+              </label>
+              <input
+                type="number"
+                name="maxUsers"
+                value={formData.maxUsers}
+                onChange={(e) => {
+                  const value = Math.max(1, parseInt(e.target.value) || 1);
+                  setFormData(prev => ({ ...prev, maxUsers: value }));
+                  if (fieldErrors.maxUsers) {
+                    setFieldErrors(prev => {
+                      const newErrors = { ...prev };
+                      delete newErrors.maxUsers;
+                      return newErrors;
+                    });
+                  }
+                }}
+                min="1"
+                max="10000"
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-colors ${
+                  fieldErrors.maxUsers ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="Enter maximum number of users"
+              />
+              {fieldErrors.maxUsers && (
+                <p className="mt-2 text-sm text-red-600">{fieldErrors.maxUsers}</p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                Maximum number of users allowed for this subscription
+              </p>
+            </div>
+
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Additional Notes (Optional)
@@ -864,35 +979,79 @@ const CreateSubscriptionPage = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     Industries
                   </label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {['Fashion', 'Technology', 'Healthcare', 'Education', 'Finance'].map(industry => (
-                      <label key={industry} className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.applyTo.industries.includes(industry)}
-                          onChange={(e) => {
-                            const isChecked = e.target.checked;
-                            let newIndustries;
-                            
-                            if (isChecked) {
-                              newIndustries = [...formData.applyTo.industries, industry];
-                            } else {
-                              newIndustries = formData.applyTo.industries.filter(i => i !== industry);
-                            }
-                            
-                            setFormData(prev => ({
-                              ...prev,
-                              applyTo: {
-                                ...prev.applyTo,
-                                industries: newIndustries
-                              }
-                            }));
-                          }}
-                          className="h-4 w-4 text-purple-600 rounded focus:ring-purple-600"
-                        />
-                        <span className="text-gray-700">{industry}</span>
-                      </label>
-                    ))}
+                  <div className="relative industries-dropdown-container">
+                    <button
+                      type="button"
+                      onClick={() => setShowIndustriesDropdown(!showIndustriesDropdown)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent text-left flex justify-between items-center"
+                    >
+                      <span>
+                        {formData.applyTo.industries.length === 0
+                          ? 'Select industries...'
+                          : `${formData.applyTo.industries.length} industry${formData.applyTo.industries.length !== 1 ? 's' : ''} selected`}
+                      </span>
+                      <svg 
+                        className={`w-5 h-5 text-gray-400 transition-transform ${showIndustriesDropdown ? 'rotate-180' : ''}`}
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    
+                    {showIndustriesDropdown && (
+                      <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          <div className="p-2 border-b border-gray-200">
+                            <input
+                              type="text"
+                              placeholder="Search industries..."
+                              value={industriesSearch}
+                              onChange={(e) => setIndustriesSearch(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                          <div className="max-h-48 overflow-y-auto">
+                            {allIndustries
+                              .filter(industry => 
+                                industry.toLowerCase().includes(industriesSearch.toLowerCase())
+                              )
+                              .map(industry => (
+                                <label 
+                                  key={industry} 
+                                  className="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={formData.applyTo.industries.includes(industry)}
+                                    onChange={(e) => {
+                                      const isChecked = e.target.checked;
+                                      
+                                      let newIndustries;
+                                      
+                                      if (isChecked) {
+                                        newIndustries = [...formData.applyTo.industries, industry];
+                                      } else {
+                                        newIndustries = formData.applyTo.industries.filter(i => i !== industry);
+                                      }
+                                      
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        applyTo: {
+                                          ...prev.applyTo,
+                                          industries: newIndustries
+                                        }
+                                      }));
+                                    }}
+                                    className="h-4 w-4 text-purple-600 rounded focus:ring-purple-600 mr-3"
+                                  />
+                                  <span className="text-gray-700">{industry}</span>
+                                </label>
+                              ))}
+                          </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -901,35 +1060,78 @@ const CreateSubscriptionPage = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     Categories
                   </label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {['Basic', 'Professional', 'Enterprise', 'Startup'].map(category => (
-                      <label key={category} className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.applyTo.categories.includes(category)}
-                          onChange={(e) => {
-                            const isChecked = e.target.checked;
-                            let newCategories;
-                            
-                            if (isChecked) {
-                              newCategories = [...formData.applyTo.categories, category];
-                            } else {
-                              newCategories = formData.applyTo.categories.filter(c => c !== category);
-                            }
-                            
-                            setFormData(prev => ({
-                              ...prev,
-                              applyTo: {
-                                ...prev.applyTo,
-                                categories: newCategories
-                              }
-                            }));
-                          }}
-                          className="h-4 w-4 text-purple-600 rounded focus:ring-purple-600"
-                        />
-                        <span className="text-gray-700">{category}</span>
-                      </label>
-                    ))}
+                  <div className="relative categories-dropdown-container">
+                    <button
+                      type="button"
+                      onClick={() => setShowCategoriesDropdown(!showCategoriesDropdown)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent text-left flex justify-between items-center"
+                    >
+                      <span>
+                        {formData.applyTo.categories.length === 0
+                          ? 'Select categories...'
+                          : `${formData.applyTo.categories.length} category${formData.applyTo.categories.length !== 1 ? 's' : ''} selected`}
+                      </span>
+                      <svg 
+                        className={`w-5 h-5 text-gray-400 transition-transform ${showCategoriesDropdown ? 'rotate-180' : ''}`}
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    
+                    {showCategoriesDropdown && (
+                      <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          <div className="p-2 border-b border-gray-200">
+                            <input
+                              type="text"
+                              placeholder="Search categories..."
+                              value={categoriesSearch}
+                              onChange={(e) => setCategoriesSearch(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                          <div className="max-h-48 overflow-y-auto">
+                            {allCategories
+                              .filter(category => 
+                                category.toLowerCase().includes(categoriesSearch.toLowerCase())
+                              )
+                              .map(category => (
+                                <label 
+                                  key={category} 
+                                  className="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={formData.applyTo.categories.includes(category)}
+                                    onChange={(e) => {
+                                      const isChecked = e.target.checked;
+                                      let newCategories;
+                                      
+                                      if (isChecked) {
+                                        newCategories = [...formData.applyTo.categories, category];
+                                      } else {
+                                        newCategories = formData.applyTo.categories.filter(c => c !== category);
+                                      }
+                                      
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        applyTo: {
+                                          ...prev.applyTo,
+                                          categories: newCategories
+                                        }
+                                      }));
+                                    }}
+                                    className="h-4 w-4 text-purple-600 rounded focus:ring-purple-600 mr-3"
+                                  />
+                                  <span className="text-gray-700">{category}</span>
+                                </label>
+                              ))}
+                          </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

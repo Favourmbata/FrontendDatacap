@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Building,
   ShieldCheck,
@@ -10,7 +10,15 @@ import {
   User,
   FileText,
   Send,
+  AlertCircle,
+  Plus,
+  MapPin,
+  Users,
 } from "lucide-react";
+import OrganizationProfileService, { OrganizationProfile, LocationData } from "@/services/OrganizationProfileService";
+import { Country, State, City } from 'country-state-city';
+import SearchableLocationForm from "@/app/components/SearchableLocationForm";
+
 
 interface OrganizationDetails {
   type: "registered" | "unregistered";
@@ -26,16 +34,129 @@ interface OrganizationDetails {
   };
 }
 
+interface MessageModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+}
+
 const VerificationBadgeSubscriptionPage: React.FC = () => {
+  const [workflowStep, setWorkflowStep] = useState<'locations' | 'location-form'>('locations');
+  const [hasProfile, setHasProfile] = useState(false);
+  
   const [organizationDetails, setOrganizationDetails] = useState<OrganizationDetails>({
-    type: "registered",
-    visibility: "private",
-    verifiedBadge: false,
+    type: "unregistered", // Default to unregistered
+    visibility: "private", // Default to private (isPublicProfile: false)
+    verifiedBadge: false,  // Default to unverified (verificationStatus: unverified)
     professionalTrade: {},
   });
 
+  const [locations, setLocations] = useState<any[]>([]);
+  const [currentLocation, setCurrentLocation] = useState<any>(null);
+  const [profileInfo, setProfileInfo] = useState<{ businessType: 'registered' | 'unregistered'; isPublicProfile: boolean; verificationStatus: 'verified' | 'unverified' } | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  
+  // State for delete confirmation modal
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    locationIndex: null as number | null,
+    locationName: ''
+  });
+  
+  // Country-State-City data
+  const [countries, setCountries] = useState<any[]>([]);
+  const [states, setStates] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+  const [lgas, setLgas] = useState<any[]>([]);
+  const [cityRegions, setCityRegions] = useState<any[]>([]);
+  const [showOtherCityInput, setShowOtherCityInput] = useState(false);
+  const [showOtherLGAInput, setShowOtherLGAInput] = useState(false);
+  const [showOtherCityRegionInput, setShowOtherCityRegionInput] = useState(false);
+  const [otherCityValue, setOtherCityValue] = useState('');
+  const [otherCityRegionValue, setOtherCityRegionValue] = useState('');
+  
+  // State for cascading dropdown loading indicators
+  const [loadingStates, setLoadingStates] = useState(false);
+  const [loadingLgas, setLoadingLgas] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [loadingCityRegions, setLoadingCityRegions] = useState(false);
+  
+  // State for filtered options
+  const [statesForCountry, setStatesForCountry] = useState<any[]>([]);
+  const [lgasForState, setLgasForState] = useState<any[]>([]);
+  const [citiesForLga, setCitiesForLga] = useState<any[]>([]);
+  const [cityRegionsForCity, setCityRegionsForCity] = useState<any[]>([]);
+  
+  // Initialize country data
+  useEffect(() => {
+    setCountries(Country.getAllCountries());
+  }, []);
+
+  const organizationProfileService = new OrganizationProfileService();
+
+  // Load organization profile and locations on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Load profile
+        const profileResponse = await organizationProfileService.getProfile();
+        if (profileResponse.success && profileResponse.data) {
+          const profile = profileResponse.data.profile;
+          setOrganizationDetails(prev => ({
+            ...prev,
+            type: profile.businessType,
+            visibility: profile.isPublicProfile ? "public" : "private",
+            verifiedBadge: profile.verificationStatus === "verified"
+          }));
+          setProfileInfo({
+            businessType: profile.businessType,
+            isPublicProfile: profile.isPublicProfile || false,
+            verificationStatus: profile.verificationStatus
+          });
+          setHasProfile(true);
+        
+          setWorkflowStep('locations');
+         
+          if ('locations' in profileResponse.data.profile && Array.isArray(profileResponse.data.profile.locations)) {
+            // Ensure each location has a properly initialized gallery property
+            const locationsWithGallery = profileResponse.data.profile.locations.map(location => ({
+              ...location,
+              gallery: location.gallery || { images: [], videos: [] }
+            }));
+            setLocations(locationsWithGallery);
+          }
+        } else {
+          
+          setHasProfile(false);
+          setWorkflowStep('locations');
+        }
+
+     
+        const locationsResponse = await organizationProfileService.getAllLocations();
+        if (locationsResponse.success && locationsResponse.data) {
+          // Ensure each location has a properly initialized gallery property
+          const locationsWithGallery = locationsResponse.data.locations.map(location => ({
+            ...location,
+            gallery: location.gallery || { images: [], videos: [] }
+          }));
+          setLocations(locationsWithGallery);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+       
+        setHasProfile(false);
+        setWorkflowStep('locations');
+      }
+    };
+    
+    loadData();
+  }, []);
 
   const handleOrganizationDetailsChange = (field: keyof OrganizationDetails, value: any) => {
     setOrganizationDetails((prev) => {
@@ -60,26 +181,548 @@ const VerificationBadgeSubscriptionPage: React.FC = () => {
     });
   };
 
-  const handleVerificationRequest = async () => {
-    if (organizationDetails.type === "registered" && !organizationDetails.businessRegistrationNumber?.trim()) {
-      alert("Please enter your business registration number");
+  const handleProfileSubmit = async () => {
+   
+    if (!organizationDetails.type) {
+      setErrorMessage('Business type is a required field');
       return;
     }
 
-    // Owner identification is now optional, so no validation needed
-
     setIsProcessing(true);
+    setErrorMessage('');
+    setSuccessMessage('');
 
-    // Simulate API call
-    setTimeout(() => {
-      setShowSuccess(true);
+    try {
+      
+      const profileData: OrganizationProfile = {
+        businessType: organizationDetails.type as 'registered' | 'unregistered',
+        isPublicProfile: organizationDetails.visibility === "public",
+        verificationStatus: organizationDetails.verifiedBadge ? "verified" : "unverified",
+      };
+
+      
+      const response = await organizationProfileService.createOrUpdateProfile(profileData);
+      
+      if (response.success) {
+        setSuccessMessage('Organization profile updated successfully!');
+        setHasProfile(true); // Update the hasProfile state
+        setWorkflowStep('locations'); // Return to locations view after successful profile creation
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        setErrorMessage(response.message || 'Failed to update organization profile');
+      }
+    } catch (error: any) {
+      console.error('Error updating organization profile:', error);
+      setErrorMessage(error.message || 'An unexpected error occurred');
+    } finally {
       setIsProcessing(false);
-
-      setTimeout(() => {
-        alert("Verification request submitted successfully! Our team will review your application within 3-5 business days.");
-      }, 1000);
-    }, 2000);
+    }
   };
+
+  const uploadFilesAndGetUrls = async (files: (string | File)[]): Promise<string[]> => {
+    const urls: string[] = [];
+    
+    for (const file of files) {
+      if (typeof file === 'string') {
+        // Already a URL, add directly
+        urls.push(file);
+      } else {
+        // It's a File object, need to upload to Cloudinary
+        try {
+          // Convert File to data URL first
+          const reader = new FileReader();
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          
+          // Upload to Cloudinary and get the secure URL
+          // We'll need to create a temporary solution since we can't import CloudinaryUploadService directly
+          // In a real implementation, we would use the actual Cloudinary service
+          // For now, we'll use a direct fetch to Cloudinary API
+          // Determine if it's an image or video to use the appropriate Cloudinary endpoint
+          const isImage = file.type.startsWith('image/');
+          const uploadEndpoint = isImage 
+            ? 'https://api.cloudinary.com/v1_1/disz21zwr/image/upload'
+            : 'https://api.cloudinary.com/v1_1/disz21zwr/video/upload';
+          
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('upload_preset', 'vestradat_preset'); // Using the preset from the service
+          
+          const cloudinaryResponse = await fetch(uploadEndpoint, {
+            method: 'POST',
+            body: formData,
+          });
+          
+          const result = await cloudinaryResponse.json();
+          
+          if (result.secure_url) {
+            urls.push(result.secure_url);
+          } else {
+            console.error('Cloudinary upload failed:', result);
+            // Fallback to data URL if upload fails
+            urls.push(dataUrl);
+          }
+        } catch (error) {
+          console.error('Error uploading file:', error);
+          // If upload fails, we'll skip this file
+          continue;
+        }
+      }
+    }
+    
+    return urls;
+  };
+
+  const handleLocationSubmit = async () => {
+    if (!currentLocation) {
+      setErrorMessage('Please fill in location details');
+      return;
+    }
+  
+    setIsProcessing(true);
+    setFieldErrors({}); // Clear previous field errors before submission
+  
+    try {
+      // Prepare the location data with uploaded URLs
+      let processedLocation = { ...currentLocation };
+                
+      // Process images
+      if (currentLocation.gallery && currentLocation.gallery.images && currentLocation.gallery.images.length > 0) {
+        const imageUrls = await uploadFilesAndGetUrls(currentLocation.gallery.images);
+        processedLocation = {
+          ...processedLocation,
+          gallery: {
+            ...(processedLocation.gallery || {}),
+            images: imageUrls
+          }
+        };
+      }
+                
+      // Process videos
+      if (currentLocation.gallery && currentLocation.gallery.videos && currentLocation.gallery.videos.length > 0) {
+        const videoUrls = await uploadFilesAndGetUrls(currentLocation.gallery.videos);
+        processedLocation = {
+          ...processedLocation,
+          gallery: {
+            ...(processedLocation.gallery || {}),
+            videos: videoUrls
+          }
+        };
+      }
+        
+      let response;
+      if (editingIndex !== null) {
+        // Update existing location
+        response = await organizationProfileService.updateLocation(editingIndex, processedLocation);
+      } else {
+        // Add new location
+        response = await organizationProfileService.addLocation(processedLocation);
+      }
+        
+      if (response.success) {
+        // Update the locations from the response
+        if (response.data && response.data.profile && response.data.profile.locations) {
+          // Ensure each location has a properly initialized gallery property
+          const locationsWithGallery = response.data.profile.locations.map(location => ({
+            ...location,
+            gallery: location.gallery || { images: [], videos: [] }
+          }));
+          setLocations(locationsWithGallery);
+        } else {
+          // Fallback to refetching the profile
+          const profileResponse = await organizationProfileService.getProfile();
+          if (profileResponse.success && profileResponse.data && profileResponse.data.profile && profileResponse.data.profile.locations) {
+            // Ensure each location has a properly initialized gallery property
+            const locationsWithGallery = profileResponse.data.profile.locations.map(location => ({
+              ...location,
+              gallery: location.gallery || { images: [], videos: [] }
+            }));
+            setLocations(locationsWithGallery);
+          }
+        }
+          
+        if (editingIndex !== null) {
+          setSuccessMessage('Location updated successfully!');
+          // After successful update, return to locations view
+          setCurrentLocation(null);
+          setEditingIndex(null);
+          setWorkflowStep('locations');
+        } else {
+          setSuccessMessage('Location added successfully!');
+            
+          // Return to locations view
+          setCurrentLocation(null);
+          setEditingIndex(null);
+          setWorkflowStep('locations');
+        }
+          
+        setErrorMessage('');
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        // When success is false, prioritize displaying the detailed error message
+        if (response.error) {
+          // Parse validation errors from the response error field
+          if (typeof response.error === 'string' && response.error.includes('validation failed')) {
+            const fieldErrors: Record<string, string> = {};
+              
+            // Extract field-specific errors from the validation error message
+            if (response.error.includes('street: Path `street` is required')) {
+              fieldErrors.street = 'Street is required';
+            }
+            if (response.error.includes('houseNumber: Path `houseNumber` is required')) {
+              fieldErrors.houseNumber = 'House number is required';
+            }
+            if (response.error.includes('brandName: Path `brandName` is required')) {
+              fieldErrors.brandName = 'Brand name is required';
+            }
+            if (response.error.includes('country: Path `country` is required')) {
+              fieldErrors.country = 'Country is required';
+            }
+            if (response.error.includes('state: Path `state` is required')) {
+              fieldErrors.state = 'State is required';
+            }
+            if (response.error.includes('city: Path `city` is required')) {
+              fieldErrors.city = 'City is required';
+            }
+              
+            setFieldErrors(fieldErrors);
+              
+            // Always display the detailed error message when validation fails
+            setErrorMessage(response.error);
+          } else {
+            // For non-validation errors, clear field errors and show the error message
+            setFieldErrors({});
+            setErrorMessage(response.error);
+          }
+        } else {
+          // If no error field, fall back to message
+          setFieldErrors({});
+          setErrorMessage(response.message || 'Failed to save location');
+        }
+          
+        setSuccessMessage('');
+      }
+    } catch (error: any) {
+      console.error('Error saving location:', error);
+        
+      // Check if there's response data with error information
+      if (error.response) {
+        const errorData = error.response.data;
+          
+        // Handle validation errors
+        if (errorData?.error) {
+          // Check if it's a validation error
+          if (typeof errorData.error === 'string' && errorData.error.includes('validation failed')) {
+            const fieldErrors: Record<string, string> = {};
+              
+            // Extract field-specific errors from the validation error message
+            if (errorData.error.includes('street: Path `street` is required')) {
+              fieldErrors.street = 'Street is required';
+            }
+            if (errorData.error.includes('houseNumber: Path `houseNumber` is required')) {
+              fieldErrors.houseNumber = 'House number is required';
+            }
+            if (errorData.error.includes('brandName: Path `brandName` is required')) {
+              fieldErrors.brandName = 'Brand name is required';
+            }
+            if (errorData.error.includes('country: Path `country` is required')) {
+              fieldErrors.country = 'Country is required';
+            }
+            if (errorData.error.includes('state: Path `state` is required')) {
+              fieldErrors.state = 'State is required';
+            }
+            if (errorData.error.includes('city: Path `city` is required')) {
+              fieldErrors.city = 'City is required';
+            }
+              
+            setFieldErrors(fieldErrors);
+              
+            // Set a general error message prioritizing the detailed error message
+            if (Object.keys(fieldErrors).length === 0) {
+              setErrorMessage(errorData.error || errorData.message || 'Failed to save location');
+            } else {
+              // Show the detailed error message which contains more specific information
+              setErrorMessage(errorData.error || 'Please fix the highlighted fields');
+            }
+          } else {
+            // For non-validation errors, clear field errors and show general error
+            setFieldErrors({});
+            setErrorMessage(errorData.message || errorData.error || 'An unexpected error occurred');
+          }
+        } else if (errorData?.message) {
+          // Check if it's a validation error in the message
+          const message = errorData.message;
+          if (typeof message === 'string' && message.includes('validation failed')) {
+            const fieldErrors: Record<string, string> = {};
+              
+            // Extract field-specific errors from the validation error message
+            if (message.includes('street: Path `street` is required')) {
+              fieldErrors.street = 'Street is required';
+            }
+            if (message.includes('houseNumber: Path `houseNumber` is required')) {
+              fieldErrors.houseNumber = 'House number is required';
+            }
+            if (message.includes('brandName: Path `brandName` is required')) {
+              fieldErrors.brandName = 'Brand name is required';
+            }
+            if (message.includes('country: Path `country` is required')) {
+              fieldErrors.country = 'Country is required';
+            }
+            if (message.includes('state: Path `state` is required')) {
+              fieldErrors.state = 'State is required';
+            }
+            if (message.includes('city: Path `city` is required')) {
+              fieldErrors.city = 'City is required';
+            }
+              
+            setFieldErrors(fieldErrors);
+              
+            // Set a general error message prioritizing the detailed error message
+            if (Object.keys(fieldErrors).length === 0) {
+              setErrorMessage(errorData.error || message || 'Failed to save location');
+            } else {
+              // Show the detailed error message which contains more specific information
+              setErrorMessage(errorData.error || message || 'Please fix the highlighted fields');
+            }
+          } else {
+            // For non-validation errors, clear field errors and show general error
+            setFieldErrors({});
+            setErrorMessage(message || 'An unexpected error occurred');
+          }
+            
+          // Check if this is a verification requirement message
+          if (errorData.requiresVerification) {
+            // Optionally redirect to subscription page or show upgrade option
+          }
+        } else {
+          // If there's response but no recognizable error format, use status text or generic message
+          setFieldErrors({});
+          setErrorMessage(`Server Error (${error.response.status}): ${error.response.statusText || 'An error occurred'}`);
+        }
+      } else {
+        // For network errors or other non-response errors
+        setFieldErrors({});
+        setErrorMessage(error.message || 'Network error or An unexpected error occurred');
+      }
+      setSuccessMessage('');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleAddLocation = () => {
+    setWorkflowStep('location-form');
+    // Initialize a new location
+    const newLocation = {
+      locationType: 'headquarters',
+      brandName: '',
+      country: '',
+      state: '',
+      lga: '',
+      city: '',
+      cityRegion: '',
+      houseNumber: '',
+      street: '',
+      landmark: '',
+      buildingColor: '',
+      buildingType: '',
+      cityRegionFee: undefined,
+      gallery: { images: [], videos: [] },
+    };
+    setCurrentLocation(newLocation);
+    setEditingIndex(null);
+  };
+  
+  const handleLocationChange = (field: keyof LocationData, value: any) => {
+    if (currentLocation) {
+      setCurrentLocation({
+        ...currentLocation,
+        [field]: value
+      });
+    }
+  };
+  
+
+  
+
+  
+
+  
+
+  
+  const handleStateChange = async (countryName: string) => {
+    setLoadingStates(true);
+    try {
+      const selectedCountry = countries.find(c => c.name === countryName);
+      if (selectedCountry) {
+        const countryStates = State.getStatesOfCountry(selectedCountry.isoCode);
+        setStatesForCountry(countryStates);
+      }
+    } catch (error) {
+      console.error('Error loading states:', error);
+    } finally {
+      setLoadingStates(false);
+    }
+  };
+  
+  const handleLgaChange = async (stateName: string) => {
+    setLoadingLgas(true);
+    try {
+      // In a real app, you'd fetch LGAs from an API
+      // For now, we'll use a more general approach or allow manual entry
+      // The component already supports 'Other' functionality for manual entry
+      setLgasForState([]); // Reset to empty, let the user use 'Other' functionality
+    } catch (error) {
+      console.error('Error loading LGAs:', error);
+    } finally {
+      setLoadingLgas(false);
+    }
+  };
+  
+  const handleCityChange = async (lga: string) => {
+    setLoadingCities(true);
+    try {
+      // In a real app, you'd fetch cities from an API based on LGA
+      // For now, we'll use the 'Other' functionality in the component
+      setCitiesForLga([]); // Reset to empty, let the user use 'Other' functionality
+    } catch (error) {
+      console.error('Error loading cities:', error);
+    } finally {
+      setLoadingCities(false);
+    }
+  };
+  
+  const handleCityRegionChange = async (city: string) => {
+    setLoadingCityRegions(true);
+    try {
+      // In a real app, you'd fetch city regions from an API based on city
+      // For now, we'll use the 'Other' functionality in the component
+      setCityRegionsForCity([]); // Reset to empty, let the user use 'Other' functionality
+    } catch (error) {
+      console.error('Error loading city regions:', error);
+    } finally {
+      setLoadingCityRegions(false);
+    }
+  };
+
+  const handleEditLocation = (index: number) => {
+    setWorkflowStep('location-form');
+    // For editing, load the specific location
+    const locationToEdit = locations[index];
+    // Create a location with the existing data, ensuring all fields are present
+    const completeLocation = {
+      locationType: locationToEdit.locationType || 'headquarters',
+      brandName: locationToEdit.brandName || '',
+      country: locationToEdit.country || '',
+      state: locationToEdit.state || '',
+      lga: locationToEdit.lga || '',
+      city: locationToEdit.city || '',
+      cityRegion: locationToEdit.cityRegion || '',
+      houseNumber: locationToEdit.houseNumber || '',
+      street: locationToEdit.street || '',
+      landmark: locationToEdit.landmark || '',
+      buildingColor: locationToEdit.buildingColor || '',
+      buildingType: locationToEdit.buildingType || '',
+      cityRegionFee: locationToEdit.cityRegionFee,
+      gallery: locationToEdit.gallery || { images: [], videos: [] },
+    };
+    setCurrentLocation(completeLocation);
+    setEditingIndex(index);
+  };
+
+  const handleDeleteLocation = (index: number) => {
+    // Show delete confirmation modal
+    const locationToDelete = locations[index];
+    setDeleteModal({
+      isOpen: true,
+      locationIndex: index,
+      locationName: locationToDelete.brandName || `Location ${index + 1}`
+    });
+  };
+  
+  // Confirm delete location
+  const confirmDeleteLocation = async () => {
+    if (deleteModal.locationIndex !== null) {
+      setIsProcessing(true);
+      try {
+        const response = await organizationProfileService.deleteLocation(deleteModal.locationIndex);
+        if (response.success) {
+          // Refetch the profile to get updated locations
+          const profileResponse = await organizationProfileService.getProfile();
+          if (profileResponse.success && profileResponse.data && profileResponse.data.profile && profileResponse.data.profile.locations) {
+            // Ensure each location has a properly initialized gallery property
+            const locationsWithGallery = profileResponse.data.profile.locations.map(location => ({
+              ...location,
+              gallery: location.gallery || { images: [], videos: [] }
+            }));
+            setLocations(locationsWithGallery);
+          }
+          setSuccessMessage('Location deleted successfully!');
+          setErrorMessage('');
+          // Clear success message after 3 seconds
+          setTimeout(() => setSuccessMessage(''), 3000);
+        } else {
+          setErrorMessage(response.message || 'Failed to delete location');
+          setSuccessMessage('');
+        }
+      } catch (error: any) {
+        console.error('Error deleting location:', error);
+        setErrorMessage(error.message || 'An unexpected error occurred');
+        setSuccessMessage('');
+      } finally {
+        setIsProcessing(false);
+        // Close the modal
+        setDeleteModal({
+          isOpen: false,
+          locationIndex: null,
+          locationName: ''
+        });
+      }
+    }
+  };
+
+  // Load organization profile and locations on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Load profile
+        const profileResponse = await organizationProfileService.getProfile();
+        if (profileResponse.success && profileResponse.data) {
+          const profile = profileResponse.data.profile;
+          setOrganizationDetails(prev => ({
+            ...prev,
+            type: profile.businessType,
+            visibility: profile.isPublicProfile ? "public" : "private",
+            verifiedBadge: profile.verificationStatus === "verified"
+          }));
+        }
+
+        // Load locations from profile response
+        if (profileResponse.success && profileResponse.data && profileResponse.data.profile) {
+          const profile = profileResponse.data.profile;
+          if (profile.locations && Array.isArray(profile.locations)) {
+            // Ensure each location has a properly initialized gallery property
+            const locationsWithGallery = profile.locations.map(location => ({
+              ...location,
+              gallery: location.gallery || { images: [], videos: [] }
+            }));
+            setLocations(locationsWithGallery);
+          } else {
+            setLocations([]);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    };
+    
+    loadData();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -88,464 +731,231 @@ const VerificationBadgeSubscriptionPage: React.FC = () => {
         * { font-family: 'Manrope', sans-serif; }
       `}</style>
 
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div className="flex items-center">
-            <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">
-              DC
-            </div>
-            <div className="ml-4">
-              <h1 className="text-xl font-bold text-gray-900">Verification Badge Subscription</h1>
-              <p className="text-sm text-gray-600">Get verified to build trust with customers</p>
-            </div>
-          </div>
-          <span className="text-gray-500 text-sm">Admin Dashboard</span>
+      
+
+      <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
+        
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Organization Management</h2>
+          <p className="text-gray-600">
+            {workflowStep === 'locations' && 'View and manage your organization locations.'}
+            {workflowStep === 'location-form' && 'Add or edit organization location details.'}
+          </p>
         </div>
-      </header>
+        
+        
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Page Header */}
-        <div className="mb-10">
-          <div className="flex items-center mb-4">
-            <ShieldCheck className="w-10 h-10 text-purple-600 mr-3" />
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Organization Verification</h1>
-              <p className="text-gray-600 mt-1">
-                Apply for a verified badge to increase credibility and gain customer trust
-              </p>
-            </div>
-          </div>
 
-          <div className="bg-gradient-to-r from-purple-100 to-indigo-100 rounded-xl p-6 border border-purple-200">
-            <div className="flex items-start">
-              <CheckCircle className="w-6 h-6 text-purple-600 mr-3 mt-1 flex-shrink-0" />
-              <div>
-                <h3 className="font-semibold text-purple-900 text-lg mb-2">Benefits of Verification</h3>
-                <ul className="text-purple-800 space-y-1">
-                  <li>• Builds trust with prospective customers</li>
-                  <li>• Increases preferential patronage</li>
-                  <li>• Enhances organization credibility</li>
-                  <li>• Shows authenticity and professionalism</li>
-                  <li>• Higher visibility in search results</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Organization Details Form */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-8">
-          <div className="flex items-center mb-6">
-            <Building className="w-6 h-6 text-purple-600 mr-2" />
-            <h2 className="text-xl font-bold text-gray-900">Organization Details</h2>
-          </div>
-
-          <div className="space-y-8">
-            {/* Business Type */}
-            <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
-              <h3 className="font-semibold text-gray-900 mb-4 text-lg flex items-center">
-                <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm mr-2">
-                  1
-                </span>
-                Type of Business:
-              </h3>
-              <div className="flex gap-6">
-                <label className="flex items-center cursor-pointer p-3 bg-white rounded-lg border border-gray-300 hover:border-purple-400 hover:bg-purple-50 transition-colors flex-1 max-w-xs">
-                  <input
-                    type="radio"
-                    name="organizationType"
-                    value="registered"
-                    checked={organizationDetails.type === "registered"}
-                    onChange={(e) => handleOrganizationDetailsChange("type", e.target.value)}
-                    className="w-5 h-5 text-purple-600 focus:ring-purple-500"
-                  />
-                  <div className="ml-3">
-                    <span className="text-gray-700 font-medium">Registered</span>
-                    <p className="text-sm text-gray-500 mt-1">Business is officially registered with government</p>
-                  </div>
-                </label>
-                <label className="flex items-center cursor-pointer p-3 bg-white rounded-lg border border-gray-300 hover:border-purple-400 hover:bg-purple-50 transition-colors flex-1 max-w-xs">
-                  <input
-                    type="radio"
-                    name="organizationType"
-                    value="unregistered"
-                    checked={organizationDetails.type === "unregistered"}
-                    onChange={(e) => handleOrganizationDetailsChange("type", e.target.value)}
-                    className="w-5 h-5 text-purple-600 focus:ring-purple-500"
-                  />
-                  <div className="ml-3">
-                    <span className="text-gray-700 font-medium">Unregistered</span>
-                    <p className="text-sm text-gray-500 mt-1">Business is not officially registered</p>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            {/* Registration Number for Registered Businesses */}
-            {organizationDetails.type === "registered" && (
-              <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
-                <h3 className="font-semibold text-gray-900 mb-4 text-lg flex items-center">
-                  <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm mr-2">
-                    2
-                  </span>
-                  Registration Number (From government) *
-                </h3>
-                <div>
-                  <input
-                    type="text"
-                    value={organizationDetails.businessRegistrationNumber || ""}
-                    onChange={(e) => handleOrganizationDetailsChange("businessRegistrationNumber", e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-lg"
-                    placeholder="Enter your business registration number"
-                  />
-                  <p className="text-sm text-gray-500 mt-2">* Required for registered businesses. This number will be verified.</p>
-                </div>
-              </div>
-            )}
-
-            {/* Business Owner's Verification for Registered Businesses */}
-            {organizationDetails.type === "registered" && (
-              <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
-                <h3 className="font-semibold text-gray-900 mb-4 text-lg flex items-center">
-                  <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm mr-2">
-                    3
-                  </span>
-                  Business Owner's Verification (Optional)
-                </h3>
-
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Select means of identification
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <label className="flex items-center cursor-pointer p-4 bg-white rounded-lg border border-gray-300 hover:border-purple-400 hover:bg-purple-50 transition-colors">
-                      <input
-                        type="radio"
-                        name="identificationType"
-                        value="international-passport"
-                        checked={organizationDetails.ownerIdentificationType === "international-passport"}
-                        onChange={(e) => handleOrganizationDetailsChange("ownerIdentificationType", e.target.value)}
-                        className="w-5 h-5 text-purple-600 focus:ring-purple-500"
-                      />
-                      <div className="ml-3">
-                        <span className="text-gray-700 font-medium">International Passport</span>
-                        <p className="text-sm text-gray-500 mt-1">Valid passport for identification</p>
-                      </div>
-                    </label>
-                    <label className="flex items-center cursor-pointer p-4 bg-white rounded-lg border border-gray-300 hover:border-purple-400 hover:bg-purple-50 transition-colors">
-                      <input
-                        type="radio"
-                        name="identificationType"
-                        value="nin"
-                        checked={organizationDetails.ownerIdentificationType === "nin"}
-                        onChange={(e) => handleOrganizationDetailsChange("ownerIdentificationType", e.target.value)}
-                        className="w-5 h-5 text-purple-600 focus:ring-purple-500"
-                      />
-                      <div className="ml-3">
-                        <span className="text-gray-700 font-medium">NIN (National Identity Number)</span>
-                        <p className="text-sm text-gray-500 mt-1">National identity card number</p>
-                      </div>
-                    </label>
-                    <label className="flex items-center cursor-pointer p-4 bg-white rounded-lg border border-gray-300 hover:border-purple-400 hover:bg-purple-50 transition-colors">
-                      <input
-                        type="radio"
-                        name="identificationType"
-                        value="none"
-                        checked={organizationDetails.ownerIdentificationType === "none"}
-                        onChange={(e) => handleOrganizationDetailsChange("ownerIdentificationType", e.target.value)}
-                        className="w-5 h-5 text-purple-600 focus:ring-purple-500"
-                      />
-                      <div className="ml-3">
-                        <span className="text-gray-700 font-medium">Skip Owner Verification</span>
-                        <p className="text-sm text-gray-500 mt-1">Do not provide owner identification</p>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-                {organizationDetails.ownerIdentificationType && 
-                 organizationDetails.ownerIdentificationType !== "none" && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Enter Document Number</label>
-                    <input
-                      type="text"
-                      value={organizationDetails.ownerDocumentNumber || ""}
-                      onChange={(e) => handleOrganizationDetailsChange("ownerDocumentNumber", e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder={
-                        organizationDetails.ownerIdentificationType === "international-passport"
-                          ? "Enter your International Passport number"
-                          : "Enter your NIN"
-                      }
-                    />
-                    <p className="text-sm text-gray-500 mt-2">
-                      This information is used for verification purposes only and kept confidential.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Profile Visibility */}
-            <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
-              <h3 className="font-semibold text-gray-900 mb-4 text-lg flex items-center">
-                <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm mr-2">
-                  {organizationDetails.type === "registered" ? "4" : "2"}
-                </span>
-                Make my organization's profile visible to the public
-              </h3>
-              <div className="flex gap-6">
-                <label className="flex items-center cursor-pointer p-4 bg-white rounded-lg border border-gray-300 hover:border-purple-400 hover:bg-purple-50 transition-colors flex-1 max-w-xs">
-                  <input
-                    type="radio"
-                    name="visibility"
-                    value="public"
-                    checked={organizationDetails.visibility === "public"}
-                    onChange={(e) => handleOrganizationDetailsChange("visibility", e.target.value)}
-                    className="w-5 h-5 text-purple-600 focus:ring-purple-500"
-                  />
-                  <div className="ml-3">
-                    <span className="text-gray-700 font-medium">Yes</span>
-                    <p className="text-sm text-gray-500 mt-1">Profile will be publicly visible</p>
-                  </div>
-                </label>
-                <label className="flex items-center cursor-pointer p-4 bg-white rounded-lg border border-gray-300 hover:border-purple-400 hover:bg-purple-50 transition-colors flex-1 max-w-xs">
-                  <input
-                    type="radio"
-                    name="visibility"
-                    value="private"
-                    checked={organizationDetails.visibility === "private"}
-                    onChange={(e) => handleOrganizationDetailsChange("visibility", e.target.value)}
-                    className="w-5 h-5 text-purple-600 focus:ring-purple-500"
-                  />
-                  <div className="ml-3">
-                    <span className="text-gray-700 font-medium">No</span>
-                    <p className="text-sm text-gray-500 mt-1">Profile will remain private</p>
-                  </div>
-                </label>
-              </div>
-              <p className="text-sm text-gray-500 mt-3 italic">
-                Note: Visibility of your organization's profile to the public showcases your products & services and
-                increases revenue generation.
-              </p>
-            </div>
-
-            {/* Verified Badge Option */}
-            {organizationDetails.visibility === "public" && (
-              <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
-                <h3 className="font-semibold text-gray-900 mb-4 text-lg flex items-center">
-                  <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm mr-2">
-                    {organizationDetails.type === "registered" ? "5" : "3"}
-                  </span>
-                  Do you want to be verified organisation to gain prospective customers trust and get more preferential patronage?
-                </h3>
-                <div className="flex gap-6">
-                  <label className="flex items-center cursor-pointer p-4 bg-white rounded-lg border border-gray-300 hover:border-purple-400 hover:bg-purple-50 transition-colors flex-1 max-w-xs">
-                    <input
-                      type="radio"
-                      name="verifiedBadge"
-                      checked={organizationDetails.verifiedBadge === true}
-                      onChange={() => handleOrganizationDetailsChange("verifiedBadge", true)}
-                      className="w-5 h-5 text-purple-600 focus:ring-purple-500"
-                    />
-                    <div className="ml-3">
-                      <span className="text-gray-700 font-medium">Yes</span>
-                      <p className="text-sm text-gray-500 mt-1">Apply for verification badge</p>
-                    </div>
-                  </label>
-                  <label className="flex items-center cursor-pointer p-4 bg-white rounded-lg border border-gray-300 hover:border-purple-400 hover:bg-purple-50 transition-colors flex-1 max-w-xs">
-                    <input
-                      type="radio"
-                      name="verifiedBadge"
-                      checked={organizationDetails.verifiedBadge === false}
-                      onChange={() => handleOrganizationDetailsChange("verifiedBadge", false)}
-                      className="w-5 h-5 text-purple-600 focus:ring-purple-500"
-                    />
-                    <div className="ml-3">
-                      <span className="text-gray-700 font-medium">No</span>
-                      <p className="text-sm text-gray-500 mt-1">Skip verification for now</p>
-                    </div>
-                  </label>
-                </div>
-
-                {organizationDetails.verifiedBadge && (
-                  <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="flex items-start mb-3">
-                      <ShieldCheck className="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <h4 className="font-semibold text-blue-900">Verification Process</h4>
-                        <p className="text-sm text-blue-800 mt-1">
-                          A verified badge helps build trust with customers and increases your organization's
-                          credibility.
-                          {organizationDetails.type === "registered" &&
-                            " Your registration number and owner verification will be used for the verification process."}
-                        </p>
-                        <ul className="text-sm text-blue-800 mt-2 space-y-1">
-                          <li>• Verification typically takes 3-5 business days</li>
-                          <li>• You'll be notified once verification is complete</li>
-                          <li>• Verification badge appears on your profile</li>
-                        </ul>
-                      </div>
-                    </div>
-
-                    {organizationDetails.type === "unregistered" && (
-                      <div className="mt-3 p-3 bg-yellow-50 rounded border border-yellow-200">
-                        <p className="text-sm text-yellow-900">
-                          <strong>Note:</strong> To receive a verified badge, you need to have a registered business.
-                          Please select "Registered" business type above and provide your registration number.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Professional Trade Association (Optional) */}
-            <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
-              <h3 className="font-semibold text-gray-900 mb-4 text-lg flex items-center">
-                <User className="w-5 h-5 text-purple-600 mr-2" />
-                Professional Trade Association (Optional)
-              </h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Name of Professional/Trade Association
-                  </label>
-                  <input
-                    type="text"
-                    value={organizationDetails.professionalTrade?.associationName || ""}
-                    onChange={(e) =>
-                      setOrganizationDetails((prev) => ({
-                        ...prev,
-                        professionalTrade: {
-                          ...prev.professionalTrade,
-                          associationName: e.target.value,
-                        },
-                      }))
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="e.g., Chamber of Commerce, Professional Association"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Membership ID (Optional)</label>
-                  <input
-                    type="text"
-                    value={organizationDetails.professionalTrade?.membershipId || ""}
-                    onChange={(e) =>
-                      setOrganizationDetails((prev) => ({
-                        ...prev,
-                        professionalTrade: {
-                          ...prev.professionalTrade,
-                          membershipId: e.target.value,
-                        },
-                      }))
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Enter your membership ID"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Upload Membership Certificate or ID (Optional)
-                  </label>
-                  <div className="flex items-center justify-center w-full">
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                        <p className="text-sm text-gray-500">
-                          <span className="font-semibold">Click to upload</span> or drag and drop
-                        </p>
-                        <p className="text-xs text-gray-500">PDF, JPG, PNG (Max 5MB)</p>
-                      </div>
-                      <input
-                        type="file"
-                        className="hidden"
-                        onChange={(e) => {
-                          if (e.target.files?.[0]) {
-                            setOrganizationDetails((prev) => ({
-                              ...prev,
-                              professionalTrade: {
-                                ...prev.professionalTrade,
-                                certificateFile: e.target.files![0],
-                              },
-                            }));
-                          }
-                        }}
-                      />
-                    </label>
-                  </div>
-                  {organizationDetails.professionalTrade?.certificateFile && (
-                    <div className="mt-2 flex items-center text-sm text-green-600">
-                      <FileText className="w-4 h-4 mr-1" />
-                      {organizationDetails.professionalTrade.certificateFile.name}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Submit Button Section */}
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <div className="flex justify-end">
-                <button
-                  onClick={handleVerificationRequest}
-                  disabled={isProcessing || !organizationDetails.verifiedBadge}
-                  className={`flex items-center justify-center px-8 py-3 rounded-lg font-semibold text-white transition-colors ${
-                    isProcessing
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : !organizationDetails.verifiedBadge
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-purple-600 hover:bg-purple-700"
-                  }`}
-                >
-                  {isProcessing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-5 h-5 mr-2" />
-                      Submit Verification Request
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {!organizationDetails.verifiedBadge && (
-                <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <p className="text-sm text-yellow-800 text-center">
-                    Please select "Yes" for verification badge to enable submission
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {showSuccess && (
-          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-8">
-            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-              <div className="flex items-center">
-                <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
-                <div>
-                  <p className="font-medium text-green-800">Verification request submitted successfully!</p>
-                  <p className="text-sm text-green-700 mt-1">
-                    Our team will review your application within 3-5 business days. You'll receive an email notification once your verification is complete.
-                  </p>
-                </div>
-              </div>
+        {/* Display success and error messages */}
+        {successMessage && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center text-green-800">
+              <CheckCircle className="w-5 h-5 mr-2" />
+              <span>{successMessage}</span>
             </div>
           </div>
         )}
-
         
-      </main>
+        {errorMessage && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center text-red-800">
+              <AlertCircle className="w-5 h-5 mr-2" />
+              <span>{errorMessage}</span>
+            </div>
+          </div>
+        )}
+        
+        {/* Render location form or locations table based on workflowStep */}
+        <div className="mb-8">
+          {/* Actions outside the container */}
+          <div className="flex justify-between mb-4">
+            <a href="/admin/subscription/profile" className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+              Manage Profile
+            </a>
+          </div>
+                  
+          {/* Single Location Form */}
+          {workflowStep === 'location-form' && (
+            <div className="mb-8">
+              <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-6">
+                <SearchableLocationForm
+                  currentLocation={currentLocation}
+                  editingIndex={editingIndex}
+                  isEditingExistingLocation={editingIndex !== null}
+                  handleLocationChange={handleLocationChange}
+                  handleAddLocation={handleLocationSubmit}
+                  handleAddMoreLocation={() => {}}
+                  handleCancel={() => {
+                    setWorkflowStep('locations');
+                    setCurrentLocation(null);
+                    setEditingIndex(null);
+                    setFieldErrors({});
+                  }}
+                  isProcessing={isProcessing}
+                  fieldErrors={fieldErrors}
+                />
+              </div>
+            </div>
+          )}
+                  
+          {/* Back to Locations Button when in location form */}
+          {workflowStep === 'location-form' && (
+            <div className="mb-6">
+              <button
+                onClick={() => {
+                  setCurrentLocation(null);
+                  setEditingIndex(null);
+                  setWorkflowStep('locations');
+                }}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Back to Locations
+              </button>
+            </div>
+          )}
+                  
+          {/* Locations Table - Only show when not in location form */}
+          {workflowStep === 'locations' && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+              {/* Organization Info Header */}
+              {profileInfo && (
+                <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h3 className="font-semibold text-gray-900 mb-2">Organization Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                    <div><span className="font-medium">Business Type:</span> {profileInfo.businessType}</div>
+                    <div><span className="font-medium">Public Profile:</span> {profileInfo.isPublicProfile ? 'Yes' : 'No'}</div>
+                    <div><span className="font-medium">Verification Status:</span> {profileInfo.verificationStatus}</div>
+                  </div>
+                </div>
+              )}
+
+              <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">State</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LGA</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">City</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">City Region</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Landmark</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Building Type</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business Type</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Public Profile</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verification Status</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {locations.length > 0 ? (
+                    locations.map((location, index) => (
+                      <tr key={index}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${location.locationType === 'headquarters' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
+                            {location.locationType.charAt(0).toUpperCase() + location.locationType.slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{location.brandName}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{location.country}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{location.state}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{location.lga}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{location.city}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{location.cityRegion}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {location.houseNumber} {location.street}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {location.landmark || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {location.buildingType || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {organizationDetails.type}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {organizationDetails.visibility === 'public' ? 'Yes' : 'No'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {organizationDetails.verifiedBadge ? 'Verified' : 'Unverified'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex space-x-4">
+                          <button
+                            onClick={() => handleEditLocation(index)}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteLocation(index)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={14} className="px-6 py-4 text-center text-sm text-gray-500">
+                        No locations added yet. Click "Add New Location" to get started.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Delete Confirmation Modal */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
+          <div className="fixed inset-0" onClick={() => setDeleteModal({isOpen: false, locationIndex: null, locationName: ''})}></div>
+          <div className="relative bg-white rounded-xl shadow-2xl z-50 w-full max-w-md">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Confirm Deletion</h3>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-gray-600">
+                  Are you sure you want to delete <span className="font-semibold">{deleteModal.locationName}</span>? This action cannot be undone.
+                </p>
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setDeleteModal({isOpen: false, locationIndex: null, locationName: ''})}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  disabled={isProcessing}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteLocation}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline-block"></div>
+                      Deleting...
+                    </>
+                  ) : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

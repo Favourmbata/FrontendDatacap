@@ -41,6 +41,7 @@ interface SubscriptionPackage {
   status?: 'active' | 'inactive';
   subscriberCount?: number;
   id?: string;
+  maxUsers?: number;
 }
 
 const useSubscriptionPackages = () => {
@@ -82,6 +83,7 @@ const useSubscriptionPackages = () => {
           updatedDate: pkg.updatedDate,
           status: pkg.status,
           subscriberCount: pkg.subscriberCount,
+          maxUsers: pkg.maxUsers,
         }));
         
         setPackages(transformedPackages);

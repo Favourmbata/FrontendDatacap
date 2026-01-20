@@ -238,15 +238,22 @@ const EditSubscriptionPage = ({ params }: { params: Promise<{ id: string }> }) =
         description: packageData.description,
         features: packageData.features,
         note: packageData.note || '',
-        services: packageData.services || [],
+        services: packageData.services ? packageData.services.map(service => ({
+          serviceId: service.serviceId,
+          serviceName: service.serviceName,
+          duration: service.duration,
+          price: service.price
+        })) : [],
         promoCode: packageData.promoCode,
         discountPercentage: packageData.discountPercentage,
         promoStartDate: packageData.promoStartDate,
         promoEndDate: packageData.promoEndDate,
-        price: packageData.price,
-        totalServiceCost: packageData.totalServiceCost,
-        discountAmount: packageData.discountAmount,
-        finalPriceAfterDiscount: packageData.finalPriceAfterDiscount
+        totalServiceCost: packageData.totalServiceCost || 0,
+        discountAmount: packageData.discountAmount || 0,
+        finalPriceAfterDiscount: packageData.finalPriceAfterDiscount || 0,
+        maxUsers: packageData.maxUsers || 100, // Default value if not set
+        isActive: packageData.isActive !== undefined ? packageData.isActive : true, // Default to active
+        createdBy: packageData.createdBy || 'admin' // Default creator
       };
       
       // Update package using service

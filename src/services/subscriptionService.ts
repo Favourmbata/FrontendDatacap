@@ -33,6 +33,7 @@ export interface SubscriptionPackage {
   status: 'active' | 'inactive';
   isActive?: boolean; // Some APIs use isActive instead of status
   subscriberCount?: number;
+  maxUsers?: number;
   createdAt: string;
   updatedAt: string;
   // Additional fields from API
@@ -59,18 +60,22 @@ export interface CreateSubscriptionPackageData {
   description: string;
   services: Array<{
     serviceId: string;
+    serviceName: string;
     duration: 'monthly' | 'quarterly' | 'yearly';
+    price: number;
   }>;
+  totalServiceCost: number;
   promoCode?: string;
   discountPercentage?: number;
   promoStartDate?: string;
   promoEndDate?: string;
+  discountAmount: number;
+  finalPriceAfterDiscount: number;
   features: string[];
+  maxUsers: number;
   note?: string;
-  price?: number; // Will be calculated automatically
-  totalServiceCost?: number;
-  discountAmount?: number;
-  finalPriceAfterDiscount?: number;
+  isActive: boolean;
+  createdBy: string;
   // Optional field not included in the basic interface
   // applyTo?: {
   //   individual: boolean;
@@ -110,6 +115,7 @@ interface SubscriptionPackageResponse {
       note?: string;
       isActive: boolean;
       createdBy?: string;
+      maxUsers?: number;
       createdAt: string;
       updatedAt: string;
       __v?: number;
@@ -152,6 +158,7 @@ interface SubscriptionPackagesResponse {
       createdAt: string;
       updatedAt: string;
       createdBy?: string;
+      maxUsers?: number;
       __v?: number;
     }>; 
     total: number;
@@ -174,13 +181,13 @@ class SubscriptionService {
       title: pkg.title || '',
       description: pkg.description || '',
       services: Array.isArray(pkg.services) ? pkg.services : [],
-      totalServiceCost: pkg.totalServiceCost,
+      totalServiceCost: pkg.totalServiceCost || pkg.price || 0,
       promoCode: pkg.promoCode,
       discountPercentage: pkg.discountPercentage,
       promoStartDate: pkg.promoStartDate,
       promoEndDate: pkg.promoEndDate,
-      discountAmount: pkg.discountAmount,
-      finalPriceAfterDiscount: pkg.finalPriceAfterDiscount,
+      discountAmount: pkg.discountAmount || 0,
+      finalPriceAfterDiscount: pkg.finalPriceAfterDiscount || pkg.price || 0,
       features: Array.isArray(pkg.features) ? pkg.features : [],
       note: pkg.note,
       price: pkg.price || pkg.finalPriceAfterDiscount || 0,
@@ -192,6 +199,7 @@ class SubscriptionService {
       status: pkg.isActive ? 'active' : 'inactive', // Convert isActive to status
       isActive: pkg.isActive,
       subscriberCount: pkg.subscriberCount,
+      maxUsers: pkg.maxUsers,
       createdAt: pkg.createdAt || new Date().toISOString(),
       updatedAt: pkg.updatedAt || new Date().toISOString(),
       createdBy: pkg.createdBy,
