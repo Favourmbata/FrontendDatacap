@@ -11,6 +11,9 @@ interface InitializePaymentRequest {
   email: string;
   name: string;
   phone?: string;
+  callbackUrl?: string;
+  returnUrl?: string;
+  cancelUrl?: string;
 }
 
 interface InitializePaymentResponse {

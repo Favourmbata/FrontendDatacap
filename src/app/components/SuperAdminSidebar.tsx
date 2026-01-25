@@ -18,7 +18,8 @@ import {
   DollarSign,
   ChevronDown,
   MapPin,
-  ClipboardList
+  ClipboardList,
+  FileCheck
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -207,6 +208,12 @@ export const SuperAdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) =
       name: 'Platform Commission', 
       route: '/super-admin/platform-commission', 
       icon: <DollarSign className="w-6 h-6 text-[#dcdcdc]" />,
+    },
+    { 
+      id: 'data-verification', 
+      name: 'Data Verification', 
+      route: '/super-admin/data-verification', 
+      icon: <FileCheck className="w-6 h-6 text-[#dcdcdc]" />,
     },
   ];
 
