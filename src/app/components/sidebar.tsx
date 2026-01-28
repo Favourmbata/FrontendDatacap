@@ -162,7 +162,7 @@ export const UserSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
         className={`${toggleSidebar()} sidebar-container bg-[#FFFFFF] fixed overflow-y-auto shadow-sm`}
         style={{
           width: '328px',
-          height: '633px',
+          height: '673px',
           top: '80px',
           left: '37px',
           borderRadius: '20px',
@@ -260,7 +260,7 @@ export const UserSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
               className="absolute"
               style={{
                 width: '234px',
-                height: '161px',
+                height: '201px',
                 top: '280px',
                 left: '38px',
                 gap: '40px',
@@ -352,6 +352,48 @@ export const UserSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
                 </div>
               </Link>
 
+              <Link href="/user/body-care">
+                <div 
+                  className="manrope flex items-center cursor-pointer hover:bg-gray-100 relative"
+                  style={{
+                    ...getActiveStyles('/user/body-care'),
+                    ...(isActive('/user/body-care') ? {
+                      padding: '22px 23px'
+                    } : {
+                      width: '170px',
+                      height: '27px',
+                      gap: '12px'
+                    })
+                  }}
+                >
+                  <div 
+                    className="flex items-center"
+                    style={{
+                      gap: '12px'
+                    }}
+                  >
+                    <Image 
+                      src="/Body Streamline Ionic Filled.png" 
+                      alt="Body Care" 
+                      width={24} 
+                      height={24}
+                      className="object-contain"
+                    />
+                    <span 
+                      className="manrope"
+                      style={{
+                        fontWeight: 500,
+                        fontSize: '20px',
+                        lineHeight: '100%',
+                        color: getTextColor('/user/body-care')
+                      }}
+                    >
+                      Body Care
+                    </span>
+                  </div>
+                </div>
+              </Link>
+
               <Link href="/user/questionaire">
                 <div 
                   className="manrope flex items-center cursor-pointer hover:bg-gray-100 relative"
@@ -401,7 +443,7 @@ export const UserSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
             style={{
               width: '105.39px',
               height: '27px',
-              top: '547px',
+              top: '587px',
               left: '38px',
               gap: '12px',
               display: 'flex',

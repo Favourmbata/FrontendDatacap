@@ -32,12 +32,12 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
         return;
       }
 
-      // For organization/admin users, check if they have any subscription
+      // For organization/admin users, check subscription status using the correct API
       if (userRole === 'organisation' || userRole === 'organization' || userRole === 'admin') {
         try {
-          // First try the real API
+          // First try the real API with correct endpoint
           const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}/api/subscriptions/user/${user.id}`,
+            `${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}/api/user-subscriptions/user/${user.id}/status`,
             {
               headers: {
                 'Authorization': `Bearer ${token}`,
@@ -47,13 +47,9 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
           );
 
           if (response.data.success) {
-            const subscriptions = response.data.data.subscriptions || [];
-            // Check if user has any active or completed subscription
-            const hasValidSubscription = subscriptions.some((sub: any) => 
-              sub.status === 'active' || sub.paymentStatus === 'completed'
-            );
-            
-            setHasActiveSubscription(hasValidSubscription);
+            // Use the redirectTo field to determine access
+            const shouldShowSubscription = response.data.data.shouldShowSubscription;
+            setHasActiveSubscription(!shouldShowSubscription);
           } else {
             // Fallback to mock service
             setHasActiveSubscription(mockSubscriptionService.hasActiveSubscription(user.id));

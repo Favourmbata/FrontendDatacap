@@ -215,6 +215,12 @@ export const SuperAdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) =
       route: '/super-admin/data-verification', 
       icon: <FileCheck className="w-6 h-6 text-[#dcdcdc]" />,
     },
+    { 
+      id: 'organization-categories', 
+      name: 'Org Categories', 
+      route: '/super-admin/organization-categories', 
+      icon: <Package className="w-6 h-6 text-[#dcdcdc]" />,
+    },
   ];
 
   // Auto-expand subscription menu if on subscription-related pages

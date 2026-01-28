@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import useSubscriptionPackages from '@/api/hooks/useSubscriptionPackages';
 import PaymentService from '@/services/PaymentService';
+import LocationPaymentService from '@/services/LocationPaymentService';
 import { useAuth } from '@/api/hooks/useAuth'; // Assuming we have an auth hook for user data
 import { useAuthContext, User } from '@/AuthContext';
 import OrganizationProfileService, { OrganizationProfile } from '@/services/OrganizationProfileService';
@@ -110,9 +111,10 @@ const SubscriptionPage: React.FC = () => {
       cityRegion: '',
       houseNumber: '',
       street: '',
-      landmark: '',
-      buildingColor: '',
-      buildingType: '',
+      landmark: undefined, // Optional fields as undefined
+      buildingColor: undefined,
+      buildingType: undefined,
+      cityRegionFee: undefined,
       gallery: {
         images: [],
         videos: []
@@ -151,7 +153,12 @@ const SubscriptionPage: React.FC = () => {
   const [locationSuccess, setLocationSuccess] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   
-  const [currentStep, setCurrentStep] = useState<'packages' | 'profile' | 'locations' | 'payment'>('packages');
+  // Location payment states
+  const [locationPaymentInitializing, setLocationPaymentInitializing] = useState(false);
+  const [locationPaymentError, setLocationPaymentError] = useState<string | null>(null);
+  const [locationPaymentData, setLocationPaymentData] = useState<any>(null);
+  
+  const [currentStep, setCurrentStep] = useState<'packages' | 'profile' | 'locations' | 'location-payment' | 'payment'>('packages');
   
   // State for country data
   const [countries, setCountries] = useState<any[]>([]);
@@ -562,9 +569,15 @@ const SubscriptionPage: React.FC = () => {
       
       if (response.success) {
         setOrgProfileSuccess(true);
-        // Move to locations step after successful profile submission
+        // Move to next step based on profile visibility
         setTimeout(() => {
-          setCurrentStep('locations');
+          if (organizationProfile.isPublicProfile) {
+            // If profile is public, go to locations step
+            setCurrentStep('locations');
+          } else {
+            // If profile is not public, skip locations and go to payment
+            setCurrentStep('payment');
+          }
         }, 1500);
       } else {
         setOrgProfileError(response.message || 'Failed to save organization profile');
@@ -574,6 +587,44 @@ const SubscriptionPage: React.FC = () => {
       setOrgProfileError(error.message || 'An error occurred while saving organization profile');
     } finally {
       setOrgProfileSubmitting(false);
+    }
+  };
+
+  const handleLocationPayment = async () => {
+    setLocationPaymentInitializing(true);
+    setLocationPaymentError(null);
+    
+    try {
+      const currentUser = authContext.user;
+      if (!authContext.token || !currentUser) {
+        setLocationPaymentError("User not authenticated. Please log in.");
+        setLocationPaymentInitializing(false);
+        return;
+      }
+      
+      // Prepare payment data
+      const paymentData = {
+        email: currentUser.email || '',
+        name: currentUser.fullName || '',
+        phone: currentUser.phoneNumber || ''
+      };
+      
+      // Initialize location payment
+      const locationPaymentService = new LocationPaymentService();
+      const response = await locationPaymentService.initializeLocationPayment(paymentData);
+      
+      if (response.success && response.data) {
+        setLocationPaymentData(response.data);
+        // Redirect to payment gateway
+        window.location.href = response.data.paymentLink;
+      } else {
+        setLocationPaymentError(response.message || 'Failed to initialize location payment');
+      }
+    } catch (error: any) {
+      console.error('Error initializing location payment:', error);
+      setLocationPaymentError(error.message || 'An error occurred while initializing location payment');
+    } finally {
+      setLocationPaymentInitializing(false);
     }
   };
 
@@ -648,20 +699,29 @@ const SubscriptionPage: React.FC = () => {
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
                 currentStep === 'locations' ? "bg-purple-600 text-white" : "bg-gray-300 text-gray-600"
-              }`}
+              } ${organizationProfile.isPublicProfile ? '' : 'opacity-50'}`}
             >
               3
             </div>
-            <span className="text-sm font-medium px-2">Locations</span>
-            <div className="w-16 h-0.5 bg-gray-300"></div>
+            <span className={`text-sm font-medium px-2 ${organizationProfile.isPublicProfile ? '' : 'opacity-50'}`}>Locations</span>
+            <div className={`w-16 h-0.5 bg-gray-300 ${organizationProfile.isPublicProfile ? '' : 'opacity-50'}`}></div>
+            <div
+              className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+                currentStep === 'location-payment' ? "bg-purple-600 text-white" : "bg-gray-300 text-gray-600"
+              } ${(organizationProfile.isPublicProfile && organizationProfile.verificationStatus === 'verified') ? '' : 'opacity-50'}`}
+            >
+              4
+            </div>
+            <span className={`text-sm font-medium px-2 ${(organizationProfile.isPublicProfile && organizationProfile.verificationStatus === 'verified') ? '' : 'opacity-50'}`}>Location Payment</span>
+            <div className={`w-16 h-0.5 bg-gray-300 ${(organizationProfile.isPublicProfile && organizationProfile.verificationStatus === 'verified') ? '' : 'opacity-50'}`}></div>
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
                 currentStep === 'payment' ? "bg-purple-600 text-white" : "bg-gray-300 text-gray-600"
               }`}
             >
-              4
+              5
             </div>
-            <span className="text-sm font-medium px-2">Payment</span>
+            <span className="text-sm font-medium px-2">Package Payment</span>
           </div>
         </div>
 
@@ -868,6 +928,25 @@ const SubscriptionPage: React.FC = () => {
                         <span className="ml-2 text-gray-700">No</span>
                       </label>
                     </div>
+                    
+                    {/* Flow Information */}
+                    <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="text-sm text-blue-800">
+                        {organizationProfile.isPublicProfile ? (
+                          <>
+                            <p className="font-medium mb-1">You will proceed to:</p>
+                            <p>1. Profile Setup → 2. Add Locations → 3. Payment</p>
+                            <p className="mt-2 text-xs">Public profiles require location information to be displayed.</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-medium mb-1">You will proceed to:</p>
+                            <p>1. Profile Setup → 2. Payment (Skip Locations)</p>
+                            <p className="mt-2 text-xs">Private profiles do not require location information.</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   
                   {/* Verification Status Selection - Only shown if public profile is Yes */}
@@ -928,11 +1007,99 @@ const SubscriptionPage: React.FC = () => {
                     disabled={orgProfileSubmitting}
                     className={`px-6 py-3 rounded-lg font-semibold text-white ${orgProfileSubmitting ? 'bg-gray-400' : 'bg-purple-600 hover:bg-purple-700'}`}
                   >
-                    {orgProfileSubmitting ? 'Saving...' : 'Continue to Locations'}
+                    {orgProfileSubmitting ? 'Saving...' : 
+                     organizationProfile.isPublicProfile ? 
+                       (organizationProfile.verificationStatus === 'verified' ? 'Continue to Locations & Verification' : 'Continue to Locations') 
+                       : 'Continue to Package Payment'
+                    }
                   </button>
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* Location Payment Section - Step 4 (for verified organizations) */}
+        {currentStep === 'location-payment' && organizationProfile.verificationStatus === 'verified' && (
+          <div className="mt-8 bg-white border border-gray-200 rounded-xl p-6 shadow-sm max-w-4xl mx-auto">
+            <h3 className="text-2xl font-semibold text-gray-900 mb-6">Location Verification Payment</h3>
+            
+            {locationPaymentError && (
+              <div className="mb-6 p-4 bg-red-100 text-red-800 rounded-lg">
+                <p className="font-medium">Error: {locationPaymentError}</p>
+              </div>
+            )}
+            
+            <div className="space-y-6">
+              {/* Locations Summary */}
+              <div className="mb-6">
+                <h4 className="font-medium text-gray-900 mb-3">Locations to Verify</h4>
+                <div className="space-y-3">
+                  {locations.map((location, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <h5 className="font-medium text-gray-900">{location.brandName || `Location ${index + 1}`}</h5>
+                        <p className="text-sm text-gray-600">
+                          {location.city}, {location.state}, {location.country}
+                        </p>
+                        {location.cityRegion && (
+                          <p className="text-sm text-gray-600">
+                            Region: {location.cityRegion}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        {location.cityRegionFee ? (
+                          <p className="font-semibold text-gray-900">₦{location.cityRegionFee.toLocaleString('en-NG')}</p>
+                        ) : (
+                          <p className="text-sm text-gray-500">Fee to be calculated</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Payment Information */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium text-blue-900 mb-2">Payment Information</h4>
+                <ul className="list-disc pl-5 text-sm text-blue-800 space-y-1">
+                  <li>Payment covers verification fees for all locations</li>
+                  <li>Fees are based on city regions and Super Admin pricing</li>
+                  <li>Successful payment grants verified badge status</li>
+                  <li>Allows up to 10 products/images and 2 videos per location</li>
+                </ul>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="mt-8 flex justify-between">
+                <button
+                  onClick={() => setCurrentStep('locations')}
+                  className="px-6 py-3 rounded-lg font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300"
+                >
+                  Back to Locations
+                </button>
+                <button
+                  onClick={handleLocationPayment}
+                  disabled={locationPaymentInitializing}
+                  className={`px-6 py-3 rounded-lg font-semibold text-white flex items-center ${
+                    locationPaymentInitializing ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+                  }`}
+                >
+                  {locationPaymentInitializing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                      Initializing...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-5 h-5 mr-2" />
+                      Pay for Location Verification
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1576,7 +1743,7 @@ const SubscriptionPage: React.FC = () => {
                             value={location.landmark || ''}
                             onChange={(e) => {
                               const newLocations = [...locations];
-                              newLocations[index].landmark = e.target.value;
+                              newLocations[index].landmark = e.target.value || undefined;
                               setLocations(newLocations);
                             }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -1591,7 +1758,7 @@ const SubscriptionPage: React.FC = () => {
                             value={location.buildingColor || ''}
                             onChange={(e) => {
                               const newLocations = [...locations];
-                              newLocations[index].buildingColor = e.target.value;
+                              newLocations[index].buildingColor = e.target.value || undefined;
                               setLocations(newLocations);
                             }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -1608,7 +1775,7 @@ const SubscriptionPage: React.FC = () => {
                             value={location.buildingType || ''}
                             onChange={(e) => {
                               const newLocations = [...locations];
-                              newLocations[index].buildingType = e.target.value;
+                              newLocations[index].buildingType = e.target.value || undefined;
                               setLocations(newLocations);
                             }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -1647,9 +1814,10 @@ const SubscriptionPage: React.FC = () => {
                         cityRegion: '',
                         houseNumber: '',
                         street: '',
-                        landmark: '',
-                        buildingColor: '',
-                        buildingType: '',
+                        landmark: undefined, // Make optional fields undefined instead of empty strings
+                        buildingColor: undefined,
+                        buildingType: undefined,
+                        cityRegionFee: undefined,
                         gallery: {
                           images: [],
                           videos: []
@@ -1712,20 +1880,69 @@ const SubscriptionPage: React.FC = () => {
                       setLocationError(null);
                       
                       try {
+                        // Check if unverified organization is trying to add more than one location
+                        if (organizationProfile.verificationStatus === 'unverified' && locations.length > 1) {
+                          setLocationError('Unverified organizations can only add one location (headquarters). Please subscribe to verified badge to add more locations.');
+                          setLocationSubmitting(false);
+                          return;
+                        }
+                        
+                        // Check if the only location is headquarters for unverified organizations
+                        if (organizationProfile.verificationStatus === 'unverified' && locations.length === 1) {
+                          const headquartersLocation = locations.find(loc => loc.locationType === 'headquarters');
+                          if (!headquartersLocation) {
+                            setLocationError('Unverified organizations must have exactly one headquarters location.');
+                            setLocationSubmitting(false);
+                            return;
+                          }
+                        }
+                        
                         // Save locations to organization profile
                         const orgProfileService = new OrganizationProfileService();
-                        const profileResponse = await orgProfileService.addLocation(locations);
+                        
+                        // Send locations as-is since all required fields are present
+                        // Only apply filtering for unverified organizations
+                        let locationsToSend = locations;
+                        if (organizationProfile.verificationStatus === 'unverified') {
+                          // Even if there are multiple locations in the form, only send the first one
+                          if (locations.length > 0) {
+                            // Take the first location and ensure it's headquarters
+                            const firstLocation = {...locations[0]};
+                            firstLocation.locationType = 'headquarters';
+                            locationsToSend = [firstLocation];
+                          }
+                        }
+                        
+                        console.log('🚀 Organization verification status:', organizationProfile.verificationStatus);
+                        console.log('🚀 Total locations in form:', locations.length);
+                        console.log('🚀 Locations being sent to backend:', locationsToSend);
+                        
+                        const profileResponse = await orgProfileService.addLocation(locationsToSend);
+                        
+                        console.log('🚀 Backend response:', profileResponse);
                         
                         if (profileResponse.success) {
                           setLocationSuccess(true);
                           setTimeout(() => {
-                            setCurrentStep('payment');
+                            // For verified organizations, go to location payment
+                            // For unverified organizations, go to regular package payment
+                            if (organizationProfile.verificationStatus === 'verified') {
+                              setCurrentStep('location-payment');
+                            } else {
+                              setCurrentStep('payment');
+                            }
                           }, 1500);
                         } else {
                           setLocationError(profileResponse.message || 'Failed to save locations');
                         }
                       } catch (error: any) {
+                        console.error('🚨 Error saving locations:', error);
                         setLocationError(error.message || 'An error occurred while saving locations');
+                        
+                        // Handle 500 server errors specifically
+                        if (error.message && error.message.includes('500')) {
+                          setLocationError('Server error occurred. Please try again or contact support.');
+                        }
                       } finally {
                         setLocationSubmitting(false);
                       }
@@ -1733,7 +1950,9 @@ const SubscriptionPage: React.FC = () => {
                     disabled={locationSubmitting}
                     className={`px-6 py-3 rounded-lg font-semibold text-white ${locationSubmitting ? 'bg-gray-400' : 'bg-purple-600 hover:bg-purple-700'}`}
                   >
-                    {locationSubmitting ? 'Saving...' : 'Continue to Payment'}
+                    {locationSubmitting ? 'Saving...' : 
+                     organizationProfile.verificationStatus === 'verified' ? 'Continue to Location Payment' : 'Continue to Package Payment'
+                    }
                   </button>
                 </div>
               </>
@@ -1744,6 +1963,100 @@ const SubscriptionPage: React.FC = () => {
         {/* Payment Section - Step 4 */}
         {currentStep === 'payment' && Object.keys(selectedPackages).length > 0 && (
           <>
+            {/* Card Summary Section */}
+            <div className="mb-8 bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Order Summary</h3>
+                <div className="flex items-center text-sm text-gray-500">
+                  <CheckCircle className="w-4 h-4 mr-1 text-green-500" />
+                  <span>Ready for Payment</span>
+                </div>
+              </div>
+              
+              {/* Selected Packages Summary */}
+              <div className="mb-6">
+                <h4 className="font-medium text-gray-900 mb-3">Selected Packages</h4>
+                <div className="space-y-3">
+                  {Object.entries(selectedPackages).map(([packageId, billingCycle]) => {
+                    const pkg = packages.find(p => p.id === packageId);
+                    if (!pkg) return null;
+                    
+                    const userCount = packageUserCounts[packageId] || pkg.maxUsers || 1;
+                    const price = getBillingPrice(pkg, billingCycle);
+                    
+                    return (
+                      <div key={packageId} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div>
+                          <h5 className="font-medium text-gray-900">{pkg.packageName}</h5>
+                          <p className="text-sm text-gray-600">{billingCycle.charAt(0).toUpperCase() + billingCycle.slice(1)} Plan</p>
+                          <p className="text-sm text-gray-600">{userCount} user{userCount > 1 ? 's' : ''}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-gray-900">₦{Math.round(price).toLocaleString('en-NG')}</p>
+                          <p className="text-sm text-gray-500">{billingCycle}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              {/* Profile Summary */}
+              <div className="mb-6">
+                <h4 className="font-medium text-gray-900 mb-3">Organization Profile</h4>
+                <div className="flex items-center p-4 bg-blue-50 rounded-lg">
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">Profile Visibility</p>
+                    <p className="text-sm text-gray-600">
+                      {organizationProfile.isPublicProfile ? 'Public Profile' : 'Private Profile'}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {organizationProfile.businessType === 'registered' ? 'Registered Business' : 'Unregistered Business'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${organizationProfile.isPublicProfile ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                      {organizationProfile.isPublicProfile ? 'Public' : 'Private'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Locations Summary (if public profile) */}
+              {organizationProfile.isPublicProfile && (
+                <div className="mb-6">
+                  <h4 className="font-medium text-gray-900 mb-3">Locations</h4>
+                  <div className="space-y-2">
+                    {locations.map((location, index) => (
+                      <div key={index} className="flex items-center p-3 bg-gray-50 rounded-lg">
+                        <MapPin className="w-4 h-4 text-gray-400 mr-2" />
+                        <div>
+                          <p className="font-medium text-gray-900">{location.brandName || `Location ${index + 1}`}</p>
+                          <p className="text-sm text-gray-600">
+                            {location.city}, {location.state}, {location.country}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Total Summary */}
+              <div className="border-t border-gray-200 pt-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-lg font-semibold text-gray-900">Total Amount</p>
+                    <p className="text-sm text-gray-500">{Object.keys(selectedPackages).length} package(s)</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-purple-600">₦{Math.round(totalAmount).toLocaleString('en-NG')}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Payment Amount Banner */}
             <div className="mb-8 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl p-6 text-white">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                 <div>

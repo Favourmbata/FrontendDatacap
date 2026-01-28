@@ -139,6 +139,23 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onShow, setShow }) => {
         }
       ]
     },
+    { 
+      id: 'data-verification', 
+      name: 'Data Verification', 
+      icon: <Image src="/File Document Streamline Carbon.png" alt="Data Verification" width={24} height={24} className="object-contain" />,
+      subItems: [
+        {
+          id: 'verification-list',
+          name: 'My Verifications',
+          route: '/staff/data-verification'
+        },
+        {
+          id: 'create-verification',
+          name: 'Create Verification',
+          route: '/staff/data-verification/create'
+        }
+      ]
+    },
   ];
 
   return (

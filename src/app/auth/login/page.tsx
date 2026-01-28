@@ -11,6 +11,7 @@ import Link from "next/link";
 import { toast } from "@/app/components/hooks/use-toast";
 import { routes } from "@/services/apiRoutes";
 import axios from 'axios';
+import UserSubscriptionService from '@/services/UserSubscriptionService';
 
 interface FormValues {
   email: string
@@ -71,7 +72,7 @@ export default function LoginPage() {
       return response.data
     },
 
-    onSuccess: (response) => {
+    onSuccess: async (response) => {
       setApiError(null)
       const data = response.data
       if (data && data.requiresEmailVerification) {
@@ -91,29 +92,53 @@ export default function LoginPage() {
       } else if (data && data.jwtToken && data.user) {
         signIn(data.jwtToken, data.user)
         
-        const userRole = data.user.role?.toLowerCase()
-        
-        console.log('🚀 User role detected:', userRole)
-        
-        if (userRole === 'super_admin') {
-          toast({ 
-            title: "LOGIN SUCCESSFUL!",
-            description: "Welcome to the super admin dashboard!"
-          })
-          router.replace("/super-admin")
-        } else if (userRole === 'organisation' || userRole === 'organization' || userRole === 'admin') {
-          toast({ 
-            title: "LOGIN SUCCESSFUL!",
-            description: "Checking subscription status..."
-          })
-          // The SubscriptionGuard will handle redirecting to subscription if needed
-          router.replace("/admin")
-        } else {
-          toast({ 
-            title: "LOGIN SUCCESSFUL!",
-            description: "Welcome back!"
-          })
-          router.replace("/user")
+        try {
+          // Check subscription status for ALL users (not just admins)
+          const subscriptionResponse = await UserSubscriptionService.getUserSubscriptionStatus(data.user.id);
+          
+          // Route based SOLELY on API response
+          if (subscriptionResponse.data.redirectTo === 'subscription') {
+            toast({ 
+              title: "SUBSCRIPTION NEEDED",
+              description: "Please select a subscription package to continue"
+            });
+            router.replace("/subscription");
+          } else if (subscriptionResponse.data.redirectTo === 'dashboard') {
+            toast({ 
+              title: "LOGIN SUCCESSFUL!",
+              description: "Welcome back! Redirecting to dashboard..."
+            });
+            
+            // Determine dashboard based on user role
+            const userRole = data.user.role?.toLowerCase();
+            if (userRole === 'super_admin') {
+              router.replace("/super-admin");
+            } else if (userRole === 'admin' || userRole === 'organisation' || userRole === 'organization') {
+              router.replace("/admin");
+            } else {
+              router.replace("/user");
+            }
+          } else {
+            // Fallback - use role-based routing
+            const userRole = data.user.role?.toLowerCase();
+            if (userRole === 'super_admin') {
+              router.replace("/super-admin");
+            } else if (userRole === 'admin' || userRole === 'organisation' || userRole === 'organization') {
+              router.replace("/admin");
+            } else {
+              router.replace("/user");
+            }
+          }
+        } catch (subscriptionError: any) {
+          // Fallback: redirect based on role when subscription check fails
+          const userRole = data.user.role?.toLowerCase();
+          if (userRole === 'super_admin') {
+            router.replace("/super-admin");
+          } else if (userRole === 'admin' || userRole === 'organisation' || userRole === 'organization') {
+            router.replace("/subscription"); // Default to subscription for org users
+          } else {
+            router.replace("/user");
+          }
         }
       } else {
         const errorMsg = "Invalid response from server"

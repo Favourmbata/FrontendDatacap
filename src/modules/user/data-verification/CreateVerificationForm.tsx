@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { DataVerificationService } from '@/services/DataVerificationService';
 import { toast } from '@/app/components/hooks/use-toast';
+import { useAuth } from '@/api/hooks/useAuth';
 
 interface FormData {
   country: string;
@@ -76,6 +77,7 @@ interface FormData {
 }
 
 const CreateVerificationForm = () => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState<FormData>({
     country: '',
     state: '',
@@ -197,7 +199,32 @@ const CreateVerificationForm = () => {
         return;
       }
 
-      await DataVerificationService.createVerification(formData);
+      // Get organization name based on selected ID
+      const selectedOrg = await DataVerificationService.getOrganizations();
+      const org = selectedOrg.data.organizations.find((o: any) => o.id === formData.organizationId);
+      
+      // Extract first and last name from user's fullName
+      const userFullName = user?.fullName || '';
+      const nameParts = userFullName.split(' ');
+      const userFirstName = nameParts[0] || '';
+      const userLastName = nameParts.slice(1).join(' ') || '';
+      
+      // Prepare the full verification request with missing required fields
+      const verificationRequest = {
+        ...formData,
+        organizationName: org?.name || '',
+        targetUserId: user?.id || '',
+        targetUserFirstName: userFirstName,
+        targetUserLastName: userLastName,
+        organizationDetails: {
+          name: org?.name || '',
+          attachments: [],
+          headquartersAddress: '',
+          addressAttachments: []
+        }
+      };
+      
+      await DataVerificationService.createVerification(verificationRequest);
       
       toast({
         title: "Success",

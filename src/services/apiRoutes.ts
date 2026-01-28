@@ -87,6 +87,9 @@ deleteSubscriptionPackage: (id: string) => `/api/subscription-packages/${id}`,
 updateSubscriptionStatus: (id: string) => `/api/subscription-packages/${id}/status`,
 exportSubscriptionPackages: (format: 'csv' | 'excel' | 'pdf') => `/api/subscription-packages/export/${format}`,
 
+// User subscription status routes
+getUserSubscriptionStatus: (userId: string) => `/api/user-subscriptions/user/${userId}/status`,
+
 // Service management routes
 createService: () => '/api/services',
 getServices: () => '/api/services',

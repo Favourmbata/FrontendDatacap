@@ -71,13 +71,14 @@ const SubscriptionPage: React.FC = () => {
       <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
         <div className="mb-8">
           <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Subscription Overview</h2>
-              <p className="text-gray-600">View your organization's subscription and profile information</p>
+            <div className="flex items-center space-x-4">
+              <h2 className="text-2xl font-bold text-gray-900">Subscription Overview</h2>
+              <a href="/admin/subscription/profile" className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center">
+                <ShieldCheck className="w-4 h-4 mr-2" />
+                Verify Profile
+              </a>
             </div>
-            <a href="/admin/subscription/profile" className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-              Manage Profile
-            </a>
+            <p className="text-gray-600 hidden md:block">View your organization's subscription and profile information</p>
           </div>
         </div>
 
