@@ -238,10 +238,20 @@ const LocationStep: React.FC<LocationStepProps> = ({
 
       console.log('🔍 Fetching location pricing for:', pricingData);
 
-      // Use the correct endpoint for location fees
-      const response = await httpService.getData<any>(`/api/payment/verified-badge/pricing?country=${encodeURIComponent(pricingData.country)}&state=${encodeURIComponent(pricingData.state)}&city=${encodeURIComponent(pricingData.city)}${pricingData.lga ? `&lga=${encodeURIComponent(pricingData.lga)}` : ''}${pricingData.cityRegion ? `&cityRegion=${encodeURIComponent(pricingData.cityRegion)}` : ''}`);
+      // Build query string
+      const params = new URLSearchParams();
+      params.append('country', pricingData.country);
+      params.append('state', pricingData.state);
+      params.append('city', pricingData.city);
+      if (pricingData.lga) params.append('lga', pricingData.lga);
+      if (pricingData.cityRegion) params.append('cityRegion', pricingData.cityRegion);
 
-      if (response.success && response.data) {
+      // Use public payment pricing endpoint (no auth required)
+      const response = await httpService.getData<any>(`/api/payment/location/pricing?${params.toString()}`);
+
+      console.log('📊 API Response:', response);
+
+      if (response.success && response.data && response.data.fee) {
         console.log('✅ Location pricing response:', response.data);
         return {
           fee: response.data.fee,
@@ -249,19 +259,10 @@ const LocationStep: React.FC<LocationStepProps> = ({
         };
       }
 
-      // Fallback to default pricing if no specific pricing found
-      console.log('⚠️ No specific pricing found, using default');
-      return {
-        fee: 5000, // Default fallback fee
-        source: 'Default System Pricing'
-      };
-    } catch (error) {
+      throw new Error('No pricing available for this location');
+    } catch (error: any) {
       console.error('❌ Error fetching location pricing:', error);
-      // Return default pricing on error
-      return {
-        fee: 5000,
-        source: 'Default System Pricing (Error Fallback)'
-      };
+      throw error;
     }
   };
 
@@ -275,13 +276,18 @@ const LocationStep: React.FC<LocationStepProps> = ({
       try {
         const pricingResult = await getLocationPricing(location);
         
-        // Update the location with the fetched pricing
-        const newLocations = [...locations];
-        newLocations[index].cityRegionFee = pricingResult.fee;
-        newLocations[index].pricingSource = pricingResult.source;
-        setLocations(newLocations);
-        
-        console.log(`💰 Updated pricing for location ${index + 1}: ₦${pricingResult.fee.toLocaleString()} (${pricingResult.source})`);
+        // Validate that we got a valid fee
+        if (pricingResult.fee && typeof pricingResult.fee === 'number') {
+          // Update the location with the fetched pricing
+          const newLocations = [...locations];
+          newLocations[index].cityRegionFee = pricingResult.fee;
+          newLocations[index].pricingSource = pricingResult.source;
+          setLocations(newLocations);
+          
+          console.log(`💰 Updated pricing for location ${index + 1}: ₦${pricingResult.fee.toLocaleString()} (${pricingResult.source})`);
+        } else {
+          console.warn(`⚠️ No valid fee returned for location ${index + 1}`);
+        }
       } catch (error) {
         console.error('Error updating location pricing:', error);
       }
@@ -1030,11 +1036,9 @@ const LocationStep: React.FC<LocationStepProps> = ({
                                             onClick={() => {
                                               const newLocations = [...locations];
                                               newLocations[index].cityRegion = region.name;
-                                              // CRITICAL: Only set fee if it doesn't already exist
-                                              if (!newLocations[index].cityRegionFee) {
-                                                newLocations[index].cityRegionFee = region.fee;
-                                                newLocations[index].pricingSource = `City Region: ${region.name}`;
-                                              }
+                                              // Always update fee when city region is selected
+                                              newLocations[index].cityRegionFee = region.fee;
+                                              newLocations[index].pricingSource = `City Region: ${region.name}`;
                                               setLocations(newLocations);
                                               
                                               // Close dropdown and clear search
@@ -1361,50 +1365,25 @@ const LocationStep: React.FC<LocationStepProps> = ({
         return;
       }
       
-      console.log('🚀 Location being sent to backend:', locationToSend);
+      console.log('✅ Location validated, proceeding to payment step');
+      console.log('⚠️ IMPORTANT: Location will NOT be saved to profile yet');
+      console.log('📦 Location will be created AFTER successful payment');
       
-      // Save location to organization profile
-      const OrganizationProfileServiceModule = await import('@/services/OrganizationProfileService');
-      const orgProfileService = new OrganizationProfileServiceModule.default();
+      // ✅ CORRECT: Don't save location to profile before payment
+      // The location will be passed directly to the combined payment endpoint
+      // and created AFTER successful payment
       
-      const profileResponse = await orgProfileService.addLocation(locationToSend);
+      setLocationSuccess(true);
+      setLocationError(null);
       
-      console.log('🚀 Backend response:', profileResponse);
+      // Navigate to payment step immediately
+      setTimeout(() => {
+        setCurrentStep('payment');
+      }, 500);
       
-      if (profileResponse.success) {
-        setLocationSuccess(true);
-        setLocationError(null);
-        
-        // Navigate to next step after success
-        setTimeout(() => {
-          if (organizationProfile?.verificationStatus === 'verified') {
-            setCurrentStep('location-payment');
-          } else {
-            setCurrentStep('payment');
-          }
-        }, 1500);
-      } else {
-        // Handle backend errors
-        const errorMsg = profileResponse.message || profileResponse.error || 'Failed to save location';
-        setLocationError(errorMsg);
-        setLocationSuccess(false);
-      }
     } catch (error: any) {
-      console.error('🚨 Error saving location:', error);
-      
-      // Handle network errors
-      let errorMessage = 'An error occurred while saving location';
-      if (error.message) {
-        if (error.message.includes('500')) {
-          errorMessage = 'Server error occurred. Please try again or contact support.';
-        } else if (error.message.includes('Network Error')) {
-          errorMessage = 'Network error. Please check your connection and try again.';
-        } else {
-          errorMessage = error.message;
-        }
-      }
-      
-      setLocationError(errorMessage);
+      console.error('🚨 Error validating location:', error);
+      setLocationError(error.message || 'An error occurred while validating location');
       setLocationSuccess(false);
     } finally {
       setLocationSubmitting(false);
@@ -1420,12 +1399,10 @@ const LocationStep: React.FC<LocationStepProps> = ({
   {locationSubmitting ? (
     <>
       <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-      Saving...
+      Validating...
     </>
   ) : (
-    organizationProfile?.verificationStatus === 'verified' 
-      ? 'Continue to Location Payment' 
-      : 'Continue to Package Payment'
+    'Continue to Payment'
   )}
 </button>
               </div>
