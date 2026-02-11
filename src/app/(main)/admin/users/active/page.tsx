@@ -62,6 +62,7 @@ const ActiveUsersPage = () => {
     userName: ''
   });
   const [loading, setLoading] = useState(true);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -152,6 +153,7 @@ const ActiveUsersPage = () => {
     const userToDelete = users.find(user => user.id === deleteModal.userId);
     if (userToDelete) {
       try {
+        setDeleteLoading(true);
         const adminUserService = new AdminUserService();
         await adminUserService.deleteAdminUser(deleteModal.userId);
         
@@ -170,6 +172,8 @@ const ActiveUsersPage = () => {
           description: error.message || 'Failed to delete user',
           variant: 'destructive'
         });
+      } finally {
+        setDeleteLoading(false);
       }
     }
     
@@ -674,7 +678,7 @@ const ActiveUsersPage = () => {
         onClose={() => setDeleteModal({ isOpen: false, userId: null, userName: '' })}
         onConfirm={confirmDeleteUser}
         itemName={deleteModal.userName}
-        itemType="user"
+        loading={deleteLoading}
       />
     </div>
   );

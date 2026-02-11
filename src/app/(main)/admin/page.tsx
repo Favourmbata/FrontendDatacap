@@ -5,11 +5,14 @@ import { MeasurementTopNav } from '@/app/components/MeasurementTopNav';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { AdminMeasurementService } from '@/services/AdminMeasurementService';
+import UserSubscriptionService from '@/services/UserSubscriptionService';
 import { toast } from '@/app/components/hooks/use-toast';
 import { User, Users, BarChart3, UserCheck, Key, Archive, XCircle } from 'lucide-react';
+import { useAuthContext } from '@/AuthContext';
 
 const AdminDashboard = () => {
   const router = useRouter();
+  const { user } = useAuthContext();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -42,7 +45,22 @@ const AdminDashboard = () => {
   // Fetch dashboard statistics
   useEffect(() => {
     const fetchDashboardStats = async () => {
+      // Don't make API call if we're already loading (prevents multiple calls)
+      if (loading) return;
+      
+      setLoading(true);
+      
       try {
+        // First check if user has active subscription
+        if (user?.id) {
+          const hasSubscription = await UserSubscriptionService.hasActiveSubscription(user.id);
+          if (!hasSubscription) {
+            // Let SubscriptionGuard handle the redirection
+            setLoading(false);
+            return;
+          }
+        }
+        
         const measurementService = new AdminMeasurementService();
         const response = await measurementService.getDashboardStats();
         
@@ -59,26 +77,32 @@ const AdminDashboard = () => {
           });
         } else {
           console.error('Dashboard stats API returned unsuccessful response:', response);
-          toast({ 
-            title: 'Error', 
-            description: response.data?.message || 'Failed to fetch dashboard statistics',
-            variant: 'destructive'
-          });
+          // Don't show toast for subscription-related errors as SubscriptionGuard handles redirection
+          if (!response.data?.message?.includes('subscription')) {
+            toast({ 
+              title: 'Error', 
+              description: response.data?.message || 'Failed to fetch dashboard statistics',
+              variant: 'destructive'
+            });
+          }
         }
       } catch (error: any) {
         console.error('Error fetching dashboard stats:', error);
-        toast({ 
-          title: 'Error', 
-          description: error.message || 'Failed to fetch dashboard statistics',
-          variant: 'destructive'
-        });
+        // Don't show toast for subscription-related errors as SubscriptionGuard handles redirection
+        if (!error.message?.includes('subscription') && !error.message?.includes('Active subscription required')) {
+          toast({ 
+            title: 'Error', 
+            description: error.message || 'Failed to fetch dashboard statistics',
+            variant: 'destructive'
+          });
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchDashboardStats();
-  }, []);
+  }, [user?.id]);
 
   const handleCreateNew = (type: string) => {
     // Navigate to respective creation pages

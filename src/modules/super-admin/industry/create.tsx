@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Save } from 'lucide-react';
 import { MessageModal } from '@/app/components/MessageModal';
+import IndustryService from '@/services/industryService';
+import { toast } from 'react-toastify';
 
 interface IndustryFormData {
   name: string;
@@ -18,6 +20,7 @@ const IndustryCreate = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -50,25 +53,43 @@ const IndustryCreate = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
       return;
     }
 
-    // In a real app, this would call an API to create the industry
-    console.log('Creating industry:', formData);
-    
-    // Show success message
-    setModalMessage('Industry created successfully!');
-    setShowSuccessModal(true);
+    setLoading(true);
+    try {
+      // Call API to create the industry
+      const result = await IndustryService.createIndustry({
+        name: formData.name,
+        description: formData.description,
+      });
+      
+      console.log('Industry created:', result);
+      
+      // Show success message
+      setModalMessage('Industry created successfully!');
+      setShowSuccessModal(true);
+    } catch (error: any) {
+      console.error('Error creating industry:', error);
+      setModalMessage(error.message || 'Failed to create industry');
+      setShowErrorModal(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSuccessClose = () => {
     setShowSuccessModal(false);
     // Redirect to industry list page
     window.location.href = '/super-admin/industry';
+  };
+
+  const handleErrorClose = () => {
+    setShowErrorModal(false);
   };
 
   return (
@@ -139,10 +160,23 @@ const IndustryCreate = () => {
               </button>
               <button
                 type="submit"
-                className="w-full sm:w-auto flex items-center justify-center px-6 py-2 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d] transition-colors duration-200 font-medium"
+                disabled={loading}
+                className="w-full sm:w-auto flex items-center justify-center px-6 py-2 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d] transition-colors duration-200 font-medium disabled:opacity-50"
               >
-                <Save className="w-5 h-5 mr-2" />
-                Create Industry
+                {loading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5 mr-2" />
+                    Create Industry
+                  </>
+                )}
               </button>
             </div>
           </form>
@@ -155,6 +189,14 @@ const IndustryCreate = () => {
         message={modalMessage}
         type="success"
         onClose={handleSuccessClose}
+      />
+
+      <MessageModal
+        isOpen={showErrorModal}
+        title="Error"
+        message={modalMessage}
+        type="error"
+        onClose={handleErrorClose}
       />
     </div>
   );

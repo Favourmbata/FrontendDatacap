@@ -1,3 +1,15 @@
+console.log('apiRoutes: File initialization started');
+console.log('apiRoutes: Module loading started');
+console.log('apiRoutes: Module loading started');
+console.log('apiRoutes: File initialization started');
+console.log('apiRoutes: Module initialization started');
+console.log('apiRoutes: File loading started');
+console.log('apiRoutes: Module loading started');
+console.log('apiRoutes: File execution started');
+console.log('apiRoutes: Module execution started');
+console.log('apiRoutes: Starting file execution');
+console.log('apiRoutes: Initializing routes object');
+
 export const routes = {
   // User profile routes
   getUserProfile: () => '/api/auth/profile',
@@ -160,6 +172,15 @@ deleteService: (id: string) => `/api/services/${id}`,
   
   scanMeasurements: () => '/api/measurements/scan',
   
+  // Gallery management routes
+  gallery: {
+    base: '/api/admin/gallery',
+    item: (id: string) => `/api/admin/gallery/${id}`,
+    uploadImage: (id: string) => `/api/admin/gallery/${id}/upload-image`,
+    uploadVideo: (id: string) => `/api/admin/gallery/${id}/upload-video`,
+    categories: '/api/admin/gallery/categories',
+    mediaUsage: '/api/admin/gallery/media-usage'
+  },
   
     getDefaultPricing: (page?: number, limit?: number, country?: string, state?: string) => {
     let url = '/api/super-admin/default-pricing';
@@ -177,4 +198,23 @@ deleteService: (id: string) => `/api/services/${id}`,
   deleteDefaultPricing: (id: string) => `/api/super-admin/default-pricing/${id}`,
 
 
+
+   getIndustries: (search?: string, status?: 'active' | 'inactive') => {
+    let url = '/api/super-admin/industries';
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (status) params.append('status', status);
+    const paramString = params.toString();
+    return paramString ? `${url}?${paramString}` : url;
+  },
+  getIndustryById: (id: string) => `/api/super-admin/industries/${id}`,
+  createIndustry: () => '/api/super-admin/industries',
+  updateIndustry: (id: string) => `/api/super-admin/industries/${id}`,
+  deleteIndustry: (id: string) => `/api/super-admin/industries/${id}`,
+  updateIndustryStatus: (id: string) => `/api/super-admin/industries/${id}/status`,
+  exportIndustries: (format: 'csv' | 'excel' | 'pdf') => `/api/super-admin/industries/export/${format}`,
+
 };
+
+// Log gallery routes for debugging
+console.log('apiRoutes: Gallery routes defined:', routes.gallery);

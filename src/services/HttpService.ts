@@ -1,3 +1,13 @@
+console.log('HttpService: File initialization started');
+console.log('HttpService: Module loading started');
+console.log('HttpService: File initialization started');
+console.log('HttpService: Module initialization started');
+console.log('HttpService: File loading started');
+console.log('HttpService: Module loading started');
+console.log('HttpService: File execution started');
+console.log('HttpService: Module execution started');
+console.log('HttpService: Starting file execution');
+console.log('HttpService: Initializing service');
 export class HttpService {
   private baseUrl: string;
 
@@ -35,6 +45,17 @@ export class HttpService {
       // Handle specific authentication errors
       if (response.status === 401) {
         throw new Error(errorData.message || 'Authentication required. Please log in again.');
+      }
+      
+      // Handle subscription-related errors
+      if (errorData.message?.includes('subscription') || errorData.message?.includes('Active subscription required')) {
+        // Re-throw subscription errors to let SubscriptionGuard handle them
+        throw new Error(errorData.message);
+      }
+      
+      // Handle 404 errors specifically
+      if (response.status === 404) {
+        throw new Error(`Endpoint not found (${response.url}). Please check if the backend API is running and the endpoint exists.`);
       }
       
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);

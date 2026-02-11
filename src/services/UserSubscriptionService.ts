@@ -1,3 +1,13 @@
+console.log('UserSubscriptionService: File initialization started');
+console.log('UserSubscriptionService: Module loading started');
+console.log('UserSubscriptionService: File initialization started');
+console.log('UserSubscriptionService: Module initialization started');
+console.log('UserSubscriptionService: File loading started');
+console.log('UserSubscriptionService: Module loading started');
+console.log('UserSubscriptionService: File execution started');
+console.log('UserSubscriptionService: Module execution started');
+console.log('UserSubscriptionService: Starting file execution');
+console.log('UserSubscriptionService: Importing dependencies');
 import { HttpService } from './HttpService';
 import { routes } from './apiRoutes';
 

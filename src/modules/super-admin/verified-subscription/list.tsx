@@ -14,6 +14,7 @@ const VerifiedSubscriptionList = () => {
 
   const [subscriptions, setSubscriptions] = useState<VerifiedSubscription[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [deleteModal, setDeleteModal] = useState<{
@@ -440,7 +441,7 @@ const VerifiedSubscriptionList = () => {
         onClose={cancelDeleteSubscription}
         onConfirm={confirmDeleteSubscription}
         itemName={deleteModal.organizationName}
-        itemType="verified subscription"
+        loading={deleteLoading}
       />
 
       {/* Branch Details Modal */}

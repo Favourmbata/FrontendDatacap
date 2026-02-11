@@ -1265,25 +1265,7 @@ const LocationStep: React.FC<LocationStepProps> = ({
                 </button>
                 
               
-                <button
-                  onClick={async () => {
-                    // Calculate pricing for all locations that don't have fees
-                    for (let i = 0; i < locations.length; i++) {
-                      const location = locations[i];
-                      
-                      if (!location.cityRegionFee && location.country && location.state && location.city) {
-                        console.log(`🔄 Calculating pricing for location ${i + 1} (no existing fee)`);
-                        await updateLocationPricing(i);
-                      } else if (location.cityRegionFee) {
-                        console.log(`✅ Location ${i + 1} already has fee: ₦${location.cityRegionFee.toLocaleString()} - skipping`);
-                      }
-                    }
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
-                >
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  Calculate Missing Pricing
-                </button>
+               
               </div>
               
               <div className="mt-8 flex justify-between">
