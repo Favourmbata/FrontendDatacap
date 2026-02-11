@@ -240,36 +240,52 @@ const EditGalleryItemPage = () => {
         if (itemId) {
           const itemResult = await GalleryService.getGalleryItem(token, itemId);
           
-          if (itemResult.success && itemResult.data) {
-            setItem(itemResult.data);
+          if (itemResult.success) {
+            // Handle nested response structure
+            let galleryItemData;
+            if (itemResult.data && 'galleryItem' in itemResult.data) {
+              galleryItemData = (itemResult.data as any).galleryItem;
+            } else {
+              galleryItemData = itemResult.data;
+            }
             
-            // Format dates properly
-            const startDate = itemResult.data.startDate.split('T')[0];
-            const endDate = itemResult.data.endDate.split('T')[0];
-            
-            setFormData({
-              name: itemResult.data.name || '',
-              description: itemResult.data.description,
-              categoryId: itemResult.data.categoryId || '',
-              category: itemResult.data.categoryName || itemResult.data.category,
-              industryId: itemResult.data.industryId || '',
-              itemType: itemResult.data.itemType || 'product',
-              sku: itemResult.data.sku || '',
-              upc: itemResult.data.upc || '',
-              platformUniqueCode: itemResult.data.platformUniqueCode || '',
-              totalAvailableQuantity: itemResult.data.totalAvailableQuantity,
-              priceInDollars: itemResult.data.priceInDollars,
-              discountPercentage: itemResult.data.discountPercentage,
-              upfrontPaymentPercentage: itemResult.data.upfrontPaymentPercentage || 0,
-              platformChargePercentage: itemResult.data.platformChargePercentage,
-              startDate: startDate,
-              startTime: itemResult.data.startTime || '',
-              endDate: endDate,
-              endTime: itemResult.data.endTime || '',
-              visibilityToPublic: itemResult.data.visibilityToPublic,
-              notes: itemResult.data.notes || '',
-              locationIndex: itemResult.data.locationIndex || 0
-            });
+            if (galleryItemData) {
+              setItem(galleryItemData);
+              
+              // Format dates properly with safe checks
+              const startDate = galleryItemData.startDate 
+                ? galleryItemData.startDate.split('T')[0] 
+                : '';
+              const endDate = galleryItemData.endDate 
+                ? galleryItemData.endDate.split('T')[0] 
+                : '';
+              
+              setFormData({
+                name: galleryItemData.name || '',
+                description: galleryItemData.description || '',
+                categoryId: galleryItemData.categoryId || '',
+                category: galleryItemData.categoryName || galleryItemData.category || '',
+                industryId: galleryItemData.industryId || '',
+                itemType: galleryItemData.itemType || 'product',
+                sku: galleryItemData.sku || '',
+                upc: galleryItemData.upc || '',
+                platformUniqueCode: galleryItemData.platformUniqueCode || '',
+                totalAvailableQuantity: galleryItemData.totalAvailableQuantity || 0,
+                priceInDollars: galleryItemData.priceInDollars || 0,
+                discountPercentage: galleryItemData.discountPercentage || 0,
+                upfrontPaymentPercentage: galleryItemData.upfrontPaymentPercentage || 0,
+                platformChargePercentage: galleryItemData.platformChargePercentage || 0,
+                startDate: startDate,
+                startTime: galleryItemData.startTime || '',
+                endDate: endDate,
+                endTime: galleryItemData.endTime || '',
+                visibilityToPublic: galleryItemData.visibilityToPublic !== undefined ? galleryItemData.visibilityToPublic : true,
+                notes: galleryItemData.notes || '',
+                locationIndex: galleryItemData.locationIndex || 0
+              });
+            } else {
+              setErrors({ general: 'Failed to load gallery item' });
+            }
           } else {
             setErrors({ general: 'Failed to load gallery item' });
           }
@@ -1028,7 +1044,7 @@ const EditGalleryItemPage = () => {
               <h3 className="text-lg font-medium text-gray-800 mb-4">Media Upload</h3>
               
               {/* Current Images */}
-              {item.images.length > 0 && (
+              {item.images && item.images.length > 0 && (
                 <div className="mb-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Current Images</h4>
                   <div className="grid grid-cols-3 gap-2 mb-4">
@@ -1046,7 +1062,7 @@ const EditGalleryItemPage = () => {
               )}
 
               {/* Current Videos */}
-              {item.videos.length > 0 && (
+              {item.videos && item.videos.length > 0 && (
                 <div className="mb-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Current Videos</h4>
                   <div className="space-y-2 mb-4">
