@@ -21,6 +21,7 @@ const PickupCenterList = () => {
   const [filteredPickupCenters, setFilteredPickupCenters] = useState<PickupCenter[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<PickupCenter | null>(null);
 
@@ -257,7 +258,7 @@ const PickupCenterList = () => {
         onClose={() => setShowDeleteModal(false)}
         onConfirm={confirmDelete}
         itemName={itemToDelete?.centerName || ''}
-        itemType="pickup center"
+        loading={deleteLoading}
       />
     </div>
   );

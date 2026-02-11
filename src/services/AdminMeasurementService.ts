@@ -126,6 +126,16 @@
 // }
 
 
+console.log('AdminMeasurementService: File initialization started');
+console.log('AdminMeasurementService: Module loading started');
+console.log('AdminMeasurementService: File initialization started');
+console.log('AdminMeasurementService: Module initialization started');
+console.log('AdminMeasurementService: File loading started');
+console.log('AdminMeasurementService: Module loading started');
+console.log('AdminMeasurementService: File execution started');
+console.log('AdminMeasurementService: Module execution started');
+console.log('AdminMeasurementService: Starting file execution');
+console.log('AdminMeasurementService: Importing dependencies');
 import { HttpService } from './HttpService';
 import { routes } from './apiRoutes';
 

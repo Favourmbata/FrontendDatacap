@@ -6,10 +6,15 @@ import { Edit, Trash2, Eye, X } from 'lucide-react';
 interface SuperAdminActionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  onView: () => void;
-  itemName: string;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onView?: () => void;
+  onConfirm?: () => void;
+  itemName?: string;
+  title?: string;
+  message?: string;
+  confirmText?: string;
+  confirmColor?: string;
   position?: { top: number; left: number };
 }
 
@@ -19,7 +24,12 @@ export const SuperAdminActionModal: React.FC<SuperAdminActionModalProps> = ({
   onEdit,
   onDelete,
   onView,
+  onConfirm,
   itemName,
+  title,
+  message,
+  confirmText,
+  confirmColor,
   position
 }) => {
   if (!isOpen) return null;
@@ -53,7 +63,7 @@ export const SuperAdminActionModal: React.FC<SuperAdminActionModalProps> = ({
               className="manrope text-left hover:bg-gray-50 p-2 rounded transition-colors flex items-center gap-2 text-sm text-[#1A1A1A] w-full"
               onClick={(e) => {
                 e.stopPropagation();
-                onView();
+                if (onView) onView();
                 onClose();
               }}
             >
@@ -65,7 +75,7 @@ export const SuperAdminActionModal: React.FC<SuperAdminActionModalProps> = ({
               className="manrope text-left hover:bg-gray-50 p-2 rounded transition-colors flex items-center gap-2 text-sm text-[#1A1A1A] w-full"
               onClick={(e) => {
                 e.stopPropagation();
-                onEdit();
+                if (onEdit) onEdit();
                 onClose();
               }}
             >
@@ -79,7 +89,7 @@ export const SuperAdminActionModal: React.FC<SuperAdminActionModalProps> = ({
               className="manrope text-left hover:bg-gray-50 p-2 rounded transition-colors flex items-center gap-2 text-sm text-[#FF6161] w-full"
               onClick={(e) => {
                 e.stopPropagation();
-                onDelete();
+                if (onDelete) onDelete();
                 onClose();
               }}
             >
@@ -97,50 +107,98 @@ export const SuperAdminActionModal: React.FC<SuperAdminActionModalProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-lg w-full max-w-md">
         <div className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Actions for {itemName}</h2>
-            <button 
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          
-          <div className="space-y-3">
-            <button
-              onClick={onView}
-              className="flex items-center w-full p-3 text-left rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <Eye className="w-5 h-5 text-blue-500 mr-3" />
-              <span className="font-medium">View Details</span>
-            </button>
-            
-            <button
-              onClick={onEdit}
-              className="flex items-center w-full p-3 text-left rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <Edit className="w-5 h-5 text-yellow-500 mr-3" />
-              <span className="font-medium">Edit</span>
-            </button>
-            
-            <button
-              onClick={onDelete}
-              className="flex items-center w-full p-3 text-left rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <Trash2 className="w-5 h-5 text-red-500 mr-3" />
-              <span className="font-medium">Delete</span>
-            </button>
-          </div>
-          
-          <div className="mt-6 flex justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-          </div>
+          {/* Check if it's a confirmation modal */}
+          {title || message ? (
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-800">{title || 'Confirmation'}</h2>
+                <button 
+                  onClick={onClose}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-gray-700">{message}</p>
+              </div>
+              
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => onConfirm && onConfirm()}
+                  className={`px-4 py-2 text-white rounded-lg hover:opacity-90 transition-colors ${
+                    confirmColor === 'green' ? 'bg-green-600 hover:bg-green-700' : 
+                    confirmColor === 'orange' ? 'bg-orange-500 hover:bg-orange-600' : 
+                    'bg-red-600 hover:bg-red-700'
+                  }`}
+                  disabled={!onConfirm}
+                >
+                  {confirmText || 'Confirm'}
+                </button>
+              </div>
+            </>
+          ) : (
+            // Standard action modal
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-800">Actions for {itemName || 'Item'}</h2>
+                <button 
+                  onClick={onClose}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-3">
+                {onView && (
+                  <button
+                    onClick={onView}
+                    className="flex items-center w-full p-3 text-left rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <Eye className="w-5 h-5 text-blue-500 mr-3" />
+                    <span className="font-medium">View Details</span>
+                  </button>
+                )}
+                
+                {onEdit && (
+                  <button
+                    onClick={onEdit}
+                    className="flex items-center w-full p-3 text-left rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <Edit className="w-5 h-5 text-yellow-500 mr-3" />
+                    <span className="font-medium">Edit</span>
+                  </button>
+                )}
+                
+                {onDelete && (
+                  <button
+                    onClick={onDelete}
+                    className="flex items-center w-full p-3 text-left rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <Trash2 className="w-5 h-5 text-red-500 mr-3" />
+                    <span className="font-medium">Delete</span>
+                  </button>
+                )}
+              </div>
+              
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

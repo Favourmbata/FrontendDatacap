@@ -150,6 +150,12 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
       route: "/admin/subscription/packages",
       icon: <Image src="/List Dropdown Streamline Carbon.png" alt="Subscription" width={24} height={24} className="object-contain" />,
     },
+    { 
+      id: 'gallery', 
+      name: 'Gallery Item Management', 
+      route: "/admin/gallery",
+      icon: <Image src="/List Dropdown Streamline Carbon.png" alt="Gallery" width={24} height={24} className="object-contain" />,
+    },
     {
       id: 'role-management',
       name: 'Role Management',

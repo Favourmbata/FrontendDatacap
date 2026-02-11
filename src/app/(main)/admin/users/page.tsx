@@ -945,7 +945,7 @@ const UsersManagementPage = () => {
         onClose={() => setDeleteModal({ isOpen: false, userId: null, userName: '' })}
         onConfirm={confirmDeleteUser}
         itemName={deleteModal.userName}
-        itemType="user"
+        loading={deleteLoading}
       /> */}
     </div>
   );

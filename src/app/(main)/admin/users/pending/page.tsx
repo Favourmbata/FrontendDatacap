@@ -62,6 +62,7 @@ const PendingUsersPage = () => {
     userName: ''
   });
   const [loading, setLoading] = useState(true);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -664,7 +665,7 @@ const PendingUsersPage = () => {
         onClose={() => setDeleteModal({ isOpen: false, userId: null, userName: '' })}
         onConfirm={confirmDeleteUser}
         itemName={deleteModal.userName}
-        itemType="user"
+        loading={deleteLoading}
       />
     </div>
   );

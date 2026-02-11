@@ -14,6 +14,7 @@ interface CombinedPaymentRequest {
     lga?: string;
     city: string;
     cityRegion?: string;
+    cityRegionFee?: number; // Pre-calculated fee from frontend
     brandName: string;
     locationType: 'headquarters' | 'branch';
     houseNumber: string;
@@ -22,6 +23,7 @@ interface CombinedPaymentRequest {
     buildingColor?: string;
     buildingType?: string;
   }>;
+  locationAmount?: number; // Total location amount calculated by frontend
   
   // User details
   userId: string;

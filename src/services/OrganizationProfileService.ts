@@ -52,6 +52,9 @@ export interface ApiResponse<T> {
 }
 
 class OrganizationProfileService {
+  saveMultipleLocations(locations: { locationType: "headquarters" | "branch"; brandName: string; country: string; state: string; lga: string; city: string; cityRegion: string; cityRegionFee?: number; pricingSource?: string; houseNumber: string; street: string; landmark?: string; buildingColor?: string; buildingType?: string; gallery: { images: (string | File)[]; videos: (string | File)[]; }; }[]) {
+    throw new Error("Method not implemented.");
+  }
   private httpService: HttpService;
 
   constructor() {
