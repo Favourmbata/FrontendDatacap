@@ -2,6 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import React, { createContext, useContext, useState } from "react";
+console.log('AuthContext: File initialization started');
+console.log('AuthContext: Module loading started');
+console.log('AuthContext: File initialization started');
+console.log('AuthContext: Module initialization started');
+console.log('AuthContext: File loading started');
+console.log('AuthContext: Module loading started');
+console.log('AuthContext: File execution started');
+console.log('AuthContext: Module execution started');
+console.log('AuthContext: Starting file execution');
+console.log('AuthContext: Importing UserService');
 import { UserService } from './services/UserService';
 
 export interface User {

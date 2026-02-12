@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Mail, Phone, Building2, MapPin, Calendar, Users } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Building2, MapPin, Calendar, Users, ChevronDown } from 'lucide-react';
 import { AdminUserService, CreateUserPayload, CreateUserResponse } from '@/services/AdminUserService';
 import { RoleService, Role } from '@/services/RoleService';
 import { toast } from '@/app/components/hooks/use-toast';
@@ -292,66 +292,57 @@ const CreateUserForm = () => {
             </div>
 
             {/* Role Assignment */}
-            <div>
+                <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <Users className="w-5 h-5" />
                 Assign Role
               </h2>
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                {rolesLoading ? (
-                  <div className="text-center py-8 text-gray-600">Loading roles...</div>
-                ) : roles.length === 0 ? (
-                  <div className="text-center py-8 text-gray-600">No roles available</div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
-                            Select
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Name
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Description
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Permissions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {roles.map((role) => (
-                          <tr 
-                            key={role.id}
-                            className={`cursor-pointer ${selectedRole === role.id ? 'bg-purple-50' : 'hover:bg-gray-50'}`}
-                            onClick={() => setSelectedRole(selectedRole === role.id ? '' : role.id)}
-                          >
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <input
-                                type="radio"
-                                checked={selectedRole === role.id}
-                                onChange={() => setSelectedRole(selectedRole === role.id ? '' : role.id)}
-                                className="h-4 w-4 text-[#5D2A8B] rounded-full focus:ring-[#5D2A8B] border-gray-300"
-                              />
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {role.name}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600">
-                              {role.description}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-500">
-                              {role.permissions.join(', ')}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              <div className="w-full md:w-[49%]">
+                <div className="relative">
+                  <select
+                    value={selectedRole}
+                    onChange={(e) => setSelectedRole(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all appearance-none bg-white"
+                    disabled={rolesLoading}
+                  >
+                    <option value="">Select a role</option>
+                    {roles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                </div>
+                
+                {/* Show role description if selected */}
+                {selectedRole && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h3 className="font-medium text-gray-900 mb-2">Role Details</h3>
+                    {(() => {
+                      const selectedRoleData = roles.find(r => r.id === selectedRole);
+                      return selectedRoleData ? (
+                        <div className="space-y-2">
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">Description:</span> {selectedRoleData.description}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">Permissions:</span> {selectedRoleData.permissions.join(', ')}
+                          </p>
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 )}
               </div>
+              
+              {rolesLoading && (
+                <div className="text-gray-500 text-sm mt-2">Loading roles...</div>
+              )}
+              
+              {!rolesLoading && roles.length === 0 && (
+                <div className="text-gray-500 text-sm mt-2">No roles available</div>
+              )}
             </div>
 
             {/* User IDs Section */}

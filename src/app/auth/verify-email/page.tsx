@@ -41,8 +41,10 @@ function VerifyEmailContent() {
   });
   const [errors, setErrors] = useState<Partial<OtpFormValues>>({});
   const [apiError, setApiError] = useState<string | null>(null);
-  // Changed from 30 seconds to 600 seconds (10 minutes)
-  const [timer, setTimer] = useState<number>(600);
+  // Initialize with default values that will be updated from API response
+  const [timer, setTimer] = useState<number>(600); // 10 minutes default
+  const [maxAttempts, setMaxAttempts] = useState<number>(3);
+  const [remainingAttempts, setRemainingAttempts] = useState<number>(3);
   const [canResend, setCanResend] = useState<boolean>(false);
   const [formattedTime, setFormattedTime] = useState<string>("10:00");
 
@@ -102,6 +104,12 @@ function VerifyEmailContent() {
       } else {
         const errorMsg = response.message || "Failed to verify email";
         setApiError(errorMsg);
+        
+        // Update attempts if available in response
+        if (response.data && response.data.remainingAttempts !== undefined) {
+          setRemainingAttempts(response.data.remainingAttempts);
+        }
+        
         toast({ 
           title: "Verification Failed",
           description: errorMsg,
@@ -131,9 +139,25 @@ function VerifyEmailContent() {
       const { data } = await client.post(routes.resendOtp(), payload);
       return data;
     },
-    onSuccess: () => {
-      // Reset to 10 minutes (600 seconds)
-      setTimer(600);
+    onSuccess: (response) => {
+      // Update timer and attempts from response if available
+      if (response.data) {
+        if (response.data.otpExpiresIn !== undefined) {
+          setTimer(response.data.otpExpiresIn);
+        }
+        if (response.data.maxAttempts !== undefined) {
+          setMaxAttempts(response.data.maxAttempts);
+        }
+        if (response.data.remainingAttempts !== undefined) {
+          setRemainingAttempts(response.data.remainingAttempts);
+        }
+      } else {
+        // Fallback to default values
+        setTimer(600); // 10 minutes
+        setMaxAttempts(3);
+        setRemainingAttempts(3);
+      }
+      
       setCanResend(false);
       toast({ 
         title: "OTP Sent",
@@ -425,6 +449,9 @@ function VerifyEmailContent() {
 
           {/* Resend OTP */}
           <div className="text-center mb-6">
+            <p className="manrope text-sm text-[#6E6E6E] mb-2">
+              Remaining attempts: <span className="font-semibold">{remainingAttempts}/{maxAttempts}</span>
+            </p>
             {!canResend ? (
               <p className="manrope text-sm text-[#6E6E6E]">
                 Resend OTP in {formattedTime}
@@ -652,16 +679,18 @@ function VerifyEmailContent() {
 
             {/* Resend OTP - Flexed */}
             <div 
-              className="flex justify-center mt-4"
+              className="flex flex-col items-center mt-4"
               style={{
-                width: "100%",
-                height: "25px"
+                width: "100%"
               }}
             >
+              <p className="manrope" style={{ color: "#6E6E6E", fontSize: "14px", marginBottom: "8px" }}>
+                Remaining attempts: <span style={{ fontWeight: 600 }}>{remainingAttempts}/{maxAttempts}</span>
+              </p>
               <div className="text-center">
                 {!canResend ? (
                   <p className="manrope" style={{ color: "#6E6E6E", fontSize: "16px" }}>
-                    Resend OTP in <span style={{ color: "#5D2A8B", fontWeight: 500 }}>{formattedTime}</span> minutes
+                    Resend OTP in <span style={{ color: "#5D2A8B", fontWeight: 500 }}>{formattedTime}</span>
                   </p>
                 ) : (
                   <button

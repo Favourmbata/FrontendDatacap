@@ -81,6 +81,15 @@ export interface Organization {
   updatedAt: string;
 }
 
+// types/measurement.ts
+export interface MeasurementSection {
+  sectionName: string;
+  measurements: Array<{
+    bodyPartName: string;
+    size: number;
+  }>;
+}
+
 // types/questionnaire.ts
 export interface QuestionnaireField {
   id: string;

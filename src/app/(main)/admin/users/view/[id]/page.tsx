@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Mail, Phone, Building2, MapPin, Calendar, CheckSquare } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Building2, MapPin, Calendar, CheckSquare, Clock, ChevronDown } from 'lucide-react';
 import { AdminUserService, AdminUser } from '@/services/AdminUserService';
 import { toast } from '@/app/components/hooks/use-toast';
 
@@ -12,6 +12,7 @@ const ViewUserPage = () => {
   const [permissions, setPermissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
+  const [showPermissions, setShowPermissions] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -50,6 +51,34 @@ const ViewUserPage = () => {
     
     fetchUserData();
   }, []);
+
+  // Function to format the created date
+  const formatCreatedDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = new Date(dateString);
+      
+      // Format: Day Month Year, Time
+      const formattedDate = date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+      
+      const formattedTime = date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+      
+      return `${formattedDate} at ${formattedTime}`;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return dateString;
+    }
+  };
 
   if (loading) {
     return (
@@ -155,8 +184,18 @@ const ViewUserPage = () => {
            
                 Account Information
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Created Date
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    <p className="text-gray-900">
+                      {user.createdAt ? formatCreatedDate(user.createdAt) : 'N/A'}
+                    </p>
+                  </div>
+                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -186,8 +225,6 @@ const ViewUserPage = () => {
                   <p className="text-gray-900">{user.isVerified ? 'Yes' : 'No'}</p>
                 </div>
                 
-               
-                
                 {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Organization Name
@@ -199,53 +236,64 @@ const ViewUserPage = () => {
               </div>
             </div>
 
-            {/* Permissions */}
+            {/* Permissions - Updated to Dropdown */}
             <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <CheckSquare className="w-5 h-5" />
                 Assigned Permissions
               </h2>
+              
               {permissions.length === 0 ? (
                 <p className="text-gray-600">No permissions assigned</p>
               ) : (
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Name
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Description
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Permission Key
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {permissions.map((permission) => (
-                          <tr key={permission.key}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {permission.name}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600">
-                              {permission.description}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-500 font-mono">
-                              {permission.key}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                <div className="w-full max-w-md">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowPermissions(!showPermissions)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-white flex items-center justify-between"
+                    >
+                      <span className="text-gray-700">
+                        {permissions.length} permission{permissions.length !== 1 ? 's' : ''} assigned
+                      </span>
+                      <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showPermissions ? 'transform rotate-180' : ''}`} />
+                    </button>
+                    
+                    {/* Permissions Dropdown Content */}
+                    {showPermissions && (
+                      <div className="absolute z-10 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        <div className="p-4">
+                          <div className="space-y-2">
+                            {permissions.map((permission) => (
+                              <div 
+                                key={permission.key} 
+                                className="p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors"
+                              >
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <h4 className="font-medium text-gray-900 text-sm">
+                                      {permission.name}
+                                    </h4>
+                                    <p className="text-gray-600 text-xs mt-1">
+                                      {permission.description}
+                                    </p>
+                                  </div>
+                                  <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full">
+                                    {permission.key}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
+                  
+                 
                 </div>
               )}
             </div>
-
-            
 
           </div>
         </div>

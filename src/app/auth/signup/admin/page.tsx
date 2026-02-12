@@ -64,16 +64,26 @@ export default function OrganizationSignupPage() {
 
   const { mutate: submitMutate, isPending } = useMutation({
     mutationFn: async (values: { name: string; email: string; phone: string; password: string; organizationName: string; country: string }) => {
-      // Split the name into firstName and lastName
-      const nameParts = values.name.trim().split(' ');
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
+      // Use the full name as provided
+      const firstName = '';
+      const lastName = '';
+      
+      // Normalize phone number
+      let normalizedPhone = values.phone.replace(/\s/g, '').replace(/[()-]/g, '');
+      
+      if (normalizedPhone.startsWith('0')) {
+        normalizedPhone = '+234' + normalizedPhone.substring(1);
+      }
+      
+      if (!normalizedPhone.startsWith('+') && normalizedPhone.length === 10) {
+        normalizedPhone = '+234' + normalizedPhone;
+      }
       
       const payload = {
-        fullName: `${firstName} ${lastName}`.trim(),
+        fullName: values.name,
         email: values.email.toLowerCase().trim(),
         password: values.password,
-        phoneNumber: values.phone.replace(/\s/g, ''),
+        phoneNumber: normalizedPhone,
         organizationName: values.organizationName,
         country: values.country,
         role: "ORGANIZATION"
@@ -911,6 +921,7 @@ export default function OrganizationSignupPage() {
             onClick={handleSubmit}
             disabled={isPending}
             className="submit-button mobile-submit-button"
+            onTouchStart={() => {}} // Fixes potential iOS Safari click delay
           >
             {isPending ? 'Signing up...' : 'Sign Up as Organization'}
           </button>
@@ -1075,6 +1086,7 @@ export default function OrganizationSignupPage() {
                   )}
                   {errors.phone && <p className="error-message">{errors.phone}</p>}
                 </div>
+                
 
                 {/* Organization Name */}
                 <div className={`input-container desktop-input-container ${errors.organizationName ? 'error' : ''}`}>
@@ -1115,7 +1127,6 @@ export default function OrganizationSignupPage() {
                   )}
                   {errors.country && <p className="error-message">{errors.country}</p>}
                 </div>
-
                 {/* Password */}
                 <div className={`input-container desktop-input-container ${errors.password ? 'error' : ''}`}>
                   <input
@@ -1170,6 +1181,7 @@ export default function OrganizationSignupPage() {
                   onClick={handleSubmit}
                   disabled={isPending}
                   className="submit-button desktop-submit-button"
+                  onTouchStart={() => {}} // Fixes potential iOS Safari click delay
                 >
                   {isPending ? 'Signing up...' : 'Sign Up as Organization'}
                 </button>

@@ -16,6 +16,12 @@ const OneTimeCodesPage = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [totalCodes, setTotalCodes] = useState<number>(0);
+  const [selectedCode, setSelectedCode] = useState<any>(null);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState<boolean>(false);
+  const [emailInput, setEmailInput] = useState<string>('');
+  const [emailSending, setEmailSending] = useState<boolean>(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [successTimeoutId, setSuccessTimeoutId] = useState<NodeJS.Timeout | null>(null);
 
   // Fetch one-time codes from API
   useEffect(() => {
@@ -36,6 +42,15 @@ const OneTimeCodesPage = () => {
     
     fetchCodes();
   }, [currentPage]);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (successTimeoutId) {
+        clearTimeout(successTimeoutId);
+      }
+    };
+  }, [successTimeoutId]);
 
   const handleGenerateCode = async (formData: OneTimeCodeRequest) => {
     try {
@@ -43,11 +58,23 @@ const OneTimeCodesPage = () => {
       setError(null);
       setSuccess(null);
       
+      // Clear any existing success timeout
+      if (successTimeoutId) {
+        clearTimeout(successTimeoutId);
+        setSuccessTimeoutId(null);
+      }
+      
       const service = new OneTimeCodeService();
       const response = await service.generateOneTimeCode(formData);
       
       setSuccess(response.data.message);
       setIsModalOpen(false);
+      
+      // Set timeout to clear success message after 3 seconds
+      const timeoutId = setTimeout(() => {
+        setSuccess(null);
+      }, 3000);
+      setSuccessTimeoutId(timeoutId);
       
       // Refresh the codes list
       const codesResponse = await service.getOneTimeCodes(currentPage, 10);
@@ -70,6 +97,45 @@ const OneTimeCodesPage = () => {
 
   const goBack = () => {
     router.back();
+  };
+
+  const handleSendEmail = async () => {
+    if (!selectedCode) return;
+    
+    setEmailSending(true);
+    setEmailError(null);
+    
+    // Clear any existing success timeout
+    if (successTimeoutId) {
+      clearTimeout(successTimeoutId);
+      setSuccessTimeoutId(null);
+    }
+    
+    try {
+      const service = new OneTimeCodeService();
+      // The backend expects just the code value, not the ID or email
+      await service.sendOneTimeCodeEmail(selectedCode.code);
+      
+      setSuccess('Email sent successfully');
+      
+      // Close the modal after a delay
+      setTimeout(() => {
+        setIsEmailModalOpen(false);
+        setEmailInput('');
+        // Clear the success message after modal closes
+        setTimeout(() => setSuccess(null), 300);
+      }, 2000); // Close modal after 2 seconds
+    } catch (err: any) {
+      // Handle 404/501 errors specifically for missing endpoint
+      if (err.status === 404 || err.status === 501) {
+        setEmailError('Email sending functionality is not yet available on the server');
+      } else {
+        setEmailError(err instanceof Error ? err.message : 'Failed to send email');
+      }
+      console.error('Error sending email:', err);
+    } finally {
+      setEmailSending(false);
+    }
   };
 
   return (
@@ -108,7 +174,7 @@ const OneTimeCodesPage = () => {
         )}
 
         {success && (
-          <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4 text-green-700">
+          <div className="mb-4 bg-white rounded-lg p-4 text-black">
             Success: {success}
           </div>
         )}
@@ -133,28 +199,34 @@ const OneTimeCodesPage = () => {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Organization Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expires At</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {codes.map((code) => (
-                    <tr key={code.id}>
+                    <tr key={code._id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{code.code}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{code.userEmail}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          code.isUsed ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                        }`}>
-                          {code.isUsed ? 'Used' : 'Available'}
-                        </span>
-                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{code.organizationId}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(code.expiresAt).toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(code.createdAt).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          onClick={() => {
+                            setSelectedCode(code);
+                            setIsEmailModalOpen(true);
+                          }}
+                          className="text-[#5d2a8b]"
+                        >
+                          Send Email
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -198,6 +270,57 @@ const OneTimeCodesPage = () => {
         onSubmit={handleGenerateCode}
         loading={loading}
       />
+      
+      {/* Send Email Modal */}
+      {isEmailModalOpen && selectedCode && (
+        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md p-6 shadow-xl">
+            <h3 className="text-lg font-semibold mb-4">Send One-Time Code via Email</h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Recipient Email</label>
+              <input
+                type="email"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                placeholder="Enter email address"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
+              <div className="p-2 bg-gray-100 rounded-md text-center font-mono">
+                {selectedCode.code}
+              </div>
+            </div>
+            
+            {emailError && (
+              <div className="mb-4 text-red-600 text-sm">{emailError}</div>
+            )}
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setIsEmailModalOpen(false);
+                  setEmailInput('');
+                  setEmailError(null);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendEmail}
+                disabled={emailSending}
+                className="px-4 py-2 bg-transparent text-[#5D2A8B] border border-[#5D2A8B] rounded-md hover:bg-[#5D2A8B] hover:text-white disabled:opacity-50"
+              >
+                {emailSending ? 'Sending...' : 'Send Email'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   </div>
   );

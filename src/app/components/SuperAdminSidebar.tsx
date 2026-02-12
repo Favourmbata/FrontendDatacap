@@ -1,18 +1,26 @@
+
+
+
 "use client";
 
-import React, { Dispatch, SetStateAction, ReactNode, useState } from 'react';
+import React, { Dispatch, SetStateAction, ReactNode, useState, useEffect, useRef } from 'react';
 import { 
   Menu,
   User,
   Users,
   Shield,
   LogOut,
-  Settings,
   Home,
-  FileText,
   CreditCard,
-  Medal,
-  Pen
+  Pen,
+  Building2,
+  Package,
+  DollarSign,
+  ChevronDown,
+  MapPin,
+  ClipboardList,
+  FileCheck,
+  Truck // Added for Pickup Center
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -22,6 +30,20 @@ import { LogoutModal } from './logoutModal';
 interface SidebarProps {
   onShow: boolean;
   setShow: Dispatch<SetStateAction<boolean>>;
+}
+
+interface SubMenuItem {
+  id: string;
+  name: string;
+  route: string;
+}
+
+interface MenuItem {
+  id: string;
+  name: string;
+  route?: string;
+  icon: React.ReactNode;
+  subItems?: SubMenuItem[];
 }
 
 interface MenuBtnProps {
@@ -45,6 +67,8 @@ const MenuBtn: React.FC<MenuBtnProps> = ({ icon, positioning = '', onClick, togg
 export const SuperAdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
   const pathname = usePathname();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
   
   const toggleSidebar = (): string => onShow ? "block" : "hidden";
   const toggleLeftPadding = (): string => onShow ? "pl-4 md:pl-12" : "";
@@ -56,19 +80,25 @@ export const SuperAdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) =
     return false;
   };
 
-  // Helper function to get active styles
-  const getActiveStyles = (route: string) => {
-    return isActive(route) ? {
-      background: '#5D2A8B',
-      borderRadius: '20px',
-      width: '275px',
-      height: '71px'
-    } : {};
-  };
-
   // Helper function to get text color
   const getTextColor = (route: string) => {
     return isActive(route) ? '#FFFFFF' : '#6E6E6EB2';
+  };
+
+  // Helper function to get icon filter for active state
+  const getIconFilter = (route: string) => {
+    return isActive(route) ? 'brightness(0) invert(1)' : 'none';
+  };
+
+  // Toggle submenu
+  const toggleSubmenu = (menuId: string) => {
+    setExpandedMenu(expandedMenu === menuId ? null : menuId);
+  };
+
+  // Check if any submenu item is active
+  const isSubmenuActive = (subItems?: SubMenuItem[]): boolean => {
+    if (!subItems) return false;
+    return subItems.some(item => isActive(item.route));
   };
 
   // Logout handler functions
@@ -88,7 +118,7 @@ export const SuperAdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) =
   };
 
   // Super Admin menu items with their positions
-  const superAdminMenuItems = [
+  const superAdminMenuItems: MenuItem[] = [
     { 
       id: 'dashboard', 
       name: 'Dashboard', 
@@ -114,24 +144,150 @@ export const SuperAdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) =
       icon: <Users className="w-6 h-6 text-[#dcdcdc]" />,
     },
     { 
+      id: 'service', 
+      name: 'Service', 
+      route: '/super-admin/service', 
+      icon: <Pen className="w-6 h-6 text-[#dcdcdc]" />,
+    },
+    { 
       id: 'subscription', 
       name: 'Subscription', 
-      route: '/super-admin/subscription', 
+      route: undefined, // Make it a parent menu
       icon: <CreditCard className="w-6 h-6 text-[#dcdcdc]" />,
+      subItems: [
+        {
+          id: 'package-subscription',
+          name: 'Package Subscription',
+          route: '/super-admin/subscription' 
+        },
+        {
+          id: 'verified-badge-subscription',
+          name: 'Verified Badge Subscription',
+          route: '/super-admin/subscription/verified-badge' 
+        },
+        {
+          id: 'rejected-locations',
+          name: 'Rejected Locations',
+          route: '/super-admin/subscription/verified-badge/rejected-locations'  
+        },
+        {
+          id: 'verified-locations',
+          name: 'Verified Locations',
+          route: '/super-admin/subscription/verified-badge/verified-locations' 
+        },
+        {
+          id: 'city-region',
+          name: "City's Region",
+          route: '/super-admin/subscription/city-region' 
+        },
+         {
+          id: 'default-price',
+          name: "Default prices",
+          route: '/super-admin/subscription/default-price' 
+        }
+      ]
+    },
+    { 
+      id: 'questionnaire', 
+      name: 'Questionnaire', 
+      route: undefined,
+      icon: <ClipboardList className="w-6 h-6 text-[#dcdcdc]" />,
+      subItems: [
+        {
+          id: 'verification-data',
+          name: 'Verification Data',
+          route: '/super-admin/questionaire/verification-data'
+        }
+      ]
     },
     { 
       id: 'payments', 
       name: 'Payments', 
-      route: '/super-admin/payments', 
+      route: undefined, // Make it a parent menu
       icon: <CreditCard className="w-6 h-6 text-[#dcdcdc]" />,
+      subItems: [
+        {
+          id: 'package-subscription-payment',
+          name: 'Package Subscription Payment',
+          route: '/super-admin/payments'
+        },
+        {
+          id: 'verified-badge-payment',
+          name: 'Verified Badge Payment',
+          route: '/super-admin/payments/verified-badge'
+        }
+      ]
+    },
+    { 
+      id: 'pickup-center', 
+      name: 'Pickup Center', 
+      route: '/super-admin/pickup-center', 
+      icon: <Truck className="w-6 h-6 text-[#dcdcdc]" />,
+    },
+    { 
+      id: 'industry', 
+      name: 'Industry', 
+      route: '/super-admin/industry', 
+      icon: <Building2 className="w-6 h-6 text-[#dcdcdc]" />,
+    },
+    { 
+      id: 'category', 
+      name: 'Category', 
+      route: '/super-admin/category', 
+      icon: <Package className="w-6 h-6 text-[#dcdcdc]" />,
+    },
+    { 
+      id: 'platform-commission', 
+      name: 'Platform Commission', 
+      route: '/super-admin/platform-commission', 
+      icon: <DollarSign className="w-6 h-6 text-[#dcdcdc]" />,
+    },
+    { 
+      id: 'data-verification', 
+      name: 'Data Verification', 
+      route: '/super-admin/data-verification', 
+      icon: <FileCheck className="w-6 h-6 text-[#dcdcdc]" />,
+    },
+    { 
+      id: 'organization-categories', 
+      name: 'Org Categories', 
+      route: '/super-admin/organization-categories', 
+      icon: <Package className="w-6 h-6 text-[#dcdcdc]" />,
     },
   ];
+
+  // Auto-expand subscription and payments menus if on related pages
+  useEffect(() => {
+    if (pathname.includes('/super-admin/subscription')) {
+      setExpandedMenu('subscription');
+    } else if (pathname.includes('/super-admin/payments')) {
+      setExpandedMenu('payments');
+    }
+  }, [pathname]);
 
   return (
     <aside>
       <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
         .manrope { font-family: 'Manrope', sans-serif; }
+        
+        /* Custom scrollbar styles */
+        .sidebar-scroll::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        .sidebar-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        
+        .sidebar-scroll::-webkit-scrollbar-thumb {
+          background: #d1d5db;
+          border-radius: 3px;
+        }
+        
+        .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+          background: #9ca3af;
+        }
         
         @media (max-width: 768px) {
           .sidebar-container {
@@ -200,7 +356,7 @@ export const SuperAdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) =
       )}
       
       <div 
-        className={`${toggleSidebar()} sidebar-container bg-[#FFFFFF] fixed overflow-y-auto shadow-sm`}
+        className={`${toggleSidebar()} sidebar-container sidebar-scroll bg-[#FFFFFF] fixed overflow-y-auto shadow-sm`}
         style={{
           width: '328px',
           height: '100vh',
@@ -248,59 +404,147 @@ export const SuperAdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) =
           </button>
         </div>
 
-        <nav className="sidebar-nav-container" style={{ marginTop: '120px' }}>
+        <nav className="sidebar-nav-container" style={{ marginTop: '120px', paddingBottom: '40px' }}>
           <div className="menu-item-container flex flex-col" style={{ gap: '12px' }}>
             {/* Super Admin Menu Items */}
-            {superAdminMenuItems.map((item) => (
-              <Link href={item.route} key={item.id}>
-                <div 
-                  className={`manrope flex items-center rounded-lg cursor-pointer hover:bg-gray-50 transition-all duration-200 ${
-                    isActive(item.route) ? 'bg-[#5D2A8B]' : ''
-                  }`}
-                  style={{
-                    width: '275px',
-                    height: '71px',
-                    padding: '0 23px',
-                    marginLeft: '15px'
-                  }}
-                >
-                  <div 
-                    className="flex items-center w-full"
-                    style={{
-                      gap: '12px'
-                    }}
-                  >
-                    <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
-                      {item.icon}
-                    </div>
-                    <span 
-                      className="manrope whitespace-nowrap overflow-hidden text-ellipsis"
+            {superAdminMenuItems.map((item: MenuItem) => (
+              <div key={item.id}>
+                {item.route ? (
+                  // Menu item with route (no submenu)
+                  <Link href={item.route}>
+                    <div 
+                      className={`manrope flex items-center rounded-lg cursor-pointer hover:bg-gray-50 transition-all duration-200 ${isActive(item.route) ? 'bg-[#5D2A8B]' : ''}`}
                       style={{
-                        fontWeight: 500,
-                        fontSize: '20px',
-                        lineHeight: '100%',
-                        color: getTextColor(item.route),
-                        flex: 1,
-                        minWidth: 0 // This ensures text truncation works
+                        width: '275px',
+                        height: '71px',
+                        padding: '0 23px',
+                        marginLeft: '15px'
                       }}
                     >
-                      {item.name}
-                    </span>
+                      <div 
+                        className="flex items-center w-full"
+                        style={{
+                          gap: '12px'
+                        }}
+                      >
+                        <div className="w-6 h-6 flex items-center justify-center flex-shrink-0" style={{ filter: getIconFilter(item.route) }}>
+                          {item.icon}
+                        </div>
+                        <span 
+                          className="manrope whitespace-nowrap overflow-hidden text-ellipsis"
+                          style={{
+                            fontWeight: 500,
+                            fontSize: '20px',
+                            lineHeight: '100%',
+                            color: getTextColor(item.route),
+                            flex: 1,
+                            minWidth: 0
+                          }}
+                        >
+                          {item.name}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ) : (
+                  // Menu item with submenu
+                  <div className="relative">
+                    <div 
+                      className={`manrope flex items-center rounded-lg cursor-pointer hover:bg-gray-50 transition-all duration-200 ${
+                        isSubmenuActive(item.subItems) ? 'bg-[#5D2A8B]' : ''
+                      }`}
+                      style={{
+                        width: '275px',
+                        height: '71px',
+                        padding: '0 23px',
+                        marginLeft: '15px'
+                      }}
+                      onClick={() => toggleSubmenu(item.id)}
+                    >
+                      <div 
+                        className="flex items-center w-full"
+                        style={{
+                          gap: '12px'
+                        }}
+                      >
+                        <div className="w-6 h-6 flex items-center justify-center flex-shrink-0" style={{ filter: isSubmenuActive(item.subItems) ? 'brightness(0) invert(1)' : 'none' }}>
+                          {item.icon}
+                        </div>
+                        <span 
+                          className="manrope whitespace-nowrap overflow-hidden text-ellipsis"
+                          style={{
+                            fontWeight: 500,
+                            fontSize: '20px',
+                            lineHeight: '100%',
+                            color: isSubmenuActive(item.subItems) ? '#FFFFFF' : '#6E6E6EB2',
+                            flex: 1,
+                            minWidth: 0
+                          }}
+                        >
+                          {item.name}
+                        </span>
+                        <ChevronDown 
+                          className={`w-5 h-5 transition-transform duration-200 ${
+                            expandedMenu === item.id ? 'rotate-180' : ''
+                          }`}
+                          style={{ 
+                            filter: isSubmenuActive(item.subItems) ? 'brightness(0) invert(1)' : 'none',
+                            color: isSubmenuActive(item.subItems) ? '#FFFFFF' : '#6E6E6EB2'
+                          }}
+                        />
+                      </div>
+                    </div>
+                            
+                    {/* Submenu items - only show if this menu is expanded */}
+                    {expandedMenu === item.id && item.subItems && (
+                      <div className="ml-8 mt-2 flex flex-col gap-2 submenu-up" style={{ width: '230px', marginLeft: '40px' }}>
+                        {item.subItems.map((subItem: SubMenuItem) => (
+                          <Link href={subItem.route} key={subItem.id}>
+                            <div 
+                              className={`manrope flex items-center rounded-lg cursor-pointer hover:bg-gray-50 transition-all duration-200 ${
+                                isActive(subItem.route) ? 'bg-[#5D2A8B]' : 'bg-gray-100'
+                              }`}
+                              style={{
+                                width: '230px',
+                                height: '45px',
+                                padding: '0 15px',
+                                marginLeft: '10px',
+                                borderRadius: '8px',
+                                margin: '2px 0'
+                              }}
+                            >
+                              <span 
+                                className="manrope whitespace-nowrap overflow-hidden text-ellipsis"
+                                style={{
+                                  fontWeight: 400,
+                                  fontSize: '15px',
+                                  lineHeight: '100%',
+                                  color: isActive(subItem.route) ? '#FFFFFF' : '#6E6E6EB2',
+                                  flex: 1,
+                                  minWidth: 0
+                                }}
+                              >
+                                {subItem.name}
+                              </span>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              </Link>
+                )}
+              </div>
             ))}
           </div>
 
           {/* Logout Module */}
           <div 
-            className="sidebar-logout"
             style={{
-              position: 'absolute',
-              bottom: '40px',
-              left: '38px',
+              marginTop: '60px',
+              marginLeft: '23px',
               display: 'flex',
-              alignItems: 'center'
+              alignItems: 'center',
+              marginBottom: '40px'
             }}
           >
             <button 

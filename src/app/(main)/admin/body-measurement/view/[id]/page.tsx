@@ -107,9 +107,29 @@ const AdminBodyMeasurementViewPage = ({ params }: ViewPageProps) => {
     );
   }
   
-  // Extract measurements from the measurement object
-  const measurements = measurement.measurements || {};
-  const measurementEntries = Object.entries(measurements);
+  // Try new format first (sections with bodyPartName)
+  let measurementEntries: [string, number | string][] = [];
+  
+  if (measurement.sections && Array.isArray(measurement.sections) && measurement.sections.length > 0) {
+    // Process measurements from sections format
+    measurement.sections.forEach((section) => {
+      if (section.measurements && Array.isArray(section.measurements)) {
+        section.measurements.forEach((measurementItem: { bodyPartName: string; size: number }) => {
+          if (measurementItem.bodyPartName && measurementItem.size !== undefined && measurementItem.size !== null) {
+            const partName = measurementItem.bodyPartName.charAt(0).toUpperCase() + measurementItem.bodyPartName.slice(1);
+            measurementEntries.push([partName, `${measurementItem.size} cm`]);
+          }
+        });
+      }
+    });
+  }
+  // Fallback to old format (measurements object)
+  else if (measurement.measurements && typeof measurement.measurements === 'object') {
+    measurementEntries = Object.entries(measurement.measurements).map(([key, value]) => {
+      const formattedKey = key.charAt(0).toUpperCase() + key.slice(1);
+      return [formattedKey, value !== undefined && value !== null ? `${value} cm` : 'N/A'];
+    });
+  }
   
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -161,23 +181,51 @@ const AdminBodyMeasurementViewPage = ({ params }: ViewPageProps) => {
           </div>
         </div>
         
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Measurement Data</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {measurementEntries.length > 0 ? (
-              measurementEntries.map(([key, value]) => (
-                <div key={key} className="p-4 border border-gray-200 rounded-lg">
-                  <p className="text-sm text-gray-500 capitalize">{key}</p>
-                  <p className="font-medium">{value !== undefined && value !== null ? `${value}` : 'N/A'}</p>
+        {/* Display measurements in sections if available, otherwise as a flat list */}
+        {measurement.sections && Array.isArray(measurement.sections) && measurement.sections.length > 0 ? (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Measurement Data by Section</h2>
+            <div className="space-y-6">
+              {measurement.sections.map((section: { sectionName: string; measurements: Array<{ bodyPartName: string; size: number }> }, sectionIndex: number) => (
+                <div key={sectionIndex} className="border border-gray-200 rounded-lg p-4">
+                  <h3 className="text-lg font-medium text-gray-700 mb-3">{section.sectionName}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {section.measurements && Array.isArray(section.measurements) && section.measurements.length > 0 ? (
+                      section.measurements.map((measurementItem: { bodyPartName: string; size: number }, itemIndex: number) => (
+                        <div key={itemIndex} className="p-3 border border-gray-100 rounded-md">
+                          <p className="text-sm text-gray-500 capitalize">{measurementItem.bodyPartName}</p>
+                          <p className="font-medium">{measurementItem.size !== undefined && measurementItem.size !== null ? `${measurementItem.size} cm` : 'N/A'}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="col-span-full text-center py-4 text-gray-500">
+                        No measurements in this section
+                      </div>
+                    )}
+                  </div>
                 </div>
-              ))
-            ) : (
-              <div className="col-span-full text-center py-8 text-gray-500">
-                No measurement data available
-              </div>
-            )}
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Measurement Data</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {measurementEntries.length > 0 ? (
+                measurementEntries.map(([key, value]) => (
+                  <div key={key} className="p-4 border border-gray-200 rounded-lg">
+                    <p className="text-sm text-gray-500 capitalize">{key}</p>
+                    <p className="font-medium">{value !== undefined && value !== null ? value : 'N/A'}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full text-center py-8 text-gray-500">
+                  No measurement data available
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         
        
       </div>

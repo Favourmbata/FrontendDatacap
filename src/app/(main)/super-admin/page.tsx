@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Users, Building2, Package, TrendingUp, BarChart3, DollarSign, Calendar } from 'lucide-react';
+import { SuperAdminDashboardService } from '@/services/SuperAdminDashboardService';
 
 interface DashboardStats {
   totalOrganizations: number;
@@ -14,10 +15,14 @@ interface DashboardStats {
   activeSubscriptionPackages: number;
   totalRevenue: number;
   monthlyRevenue: number;
-  recentRegistrations: {
+  recentRegistrations?: {
     organizations: number;
     customers: number;
   };
+  totalUsers?: number;
+  activeUsers?: number;
+  pendingUsers?: number;
+  totalSubscriptions?: number;
 }
 
 interface AnalyticsData {
@@ -38,32 +43,11 @@ const SuperAdminDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const [statsResponse, analyticsResponse] = await Promise.all([
-          fetch('/api/super-admin/dashboard/stats', {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-            }
-          }),
-          fetch('/api/super-admin/dashboard/analytics', {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-            }
-          })
-        ]);
-
-        if (!statsResponse.ok) {
-          throw new Error('Failed to fetch dashboard stats');
-        }
+        const service = new SuperAdminDashboardService();
+        const { stats, analytics } = await service.getFullDashboardData();
         
-        if (!analyticsResponse.ok) {
-          throw new Error('Failed to fetch analytics data');
-        }
-
-        const statsData: { data: DashboardStats } = await statsResponse.json();
-        const analyticsData: { data: AnalyticsData } = await analyticsResponse.json();
-
-        setStats(statsData.data);
-        setAnalytics(analyticsData.data);
+        setStats(stats);
+        setAnalytics(analytics);
         setError(null);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
@@ -99,7 +83,7 @@ const SuperAdminDashboard = () => {
         
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800">Super Admin Dashboard</h1>
-          <p className="text-gray-600 mt-2">Welcome to the super admin panel. Manage roles, users, and organisations.</p>
+          
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -159,7 +143,7 @@ const SuperAdminDashboard = () => {
   }
 
   return (
-    <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
+    <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-white">
       <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
         .manrope { font-family: 'Manrope', sans-serif; }
@@ -167,109 +151,76 @@ const SuperAdminDashboard = () => {
       
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Super Admin Dashboard</h1>
-        <p className="text-gray-600 mt-2">Welcome to the super admin panel. Manage roles, users, and organisations.</p>
+       
       </div>
 
       {/* Dashboard Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-[#F4EFFA] rounded-xl p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-500 text-sm font-medium">Total Organizations</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{formatNumber(stats?.totalOrganizations || 0)}</p>
+              <p className="text-sm font-medium text-[#6E6E6EB2]">Total Users</p>
+              <p className="text-2xl font-bold text-[#1A1A1A] mt-1">{formatNumber(stats?.totalUsers || 0)}</p>
             </div>
-            <div className="p-3 rounded-lg bg-purple-500 text-white">
-              <Building2 className="w-6 h-6" />
+            <div className="p-3 rounded-lg bg-white bg-opacity-50">
+              <Users className="w-6 h-6 text-[#5D2A8B]" />
             </div>
           </div>
           <div className="mt-4 flex text-sm text-gray-600">
             <span className="flex items-center mr-4">
               <span className="text-green-500 mr-1">●</span>
-              Active: {formatNumber(stats?.activeOrganizations || 0)}
+              Active: {formatNumber(stats?.activeUsers || 0)}
             </span>
             <span className="flex items-center">
               <span className="text-red-500 mr-1">●</span>
-              Suspended: {formatNumber(stats?.suspendedOrganizations || 0)}
+              Pending: {formatNumber(stats?.pendingUsers || 0)}
             </span>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-[#FBF8EF] rounded-xl p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-500 text-sm font-medium">Total Customers</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{formatNumber(stats?.totalCustomers || 0)}</p>
+              <p className="text-sm font-medium text-[#6E6E6EB2]">Organizations</p>
+              <p className="text-2xl font-bold text-[#1A1A1A] mt-1">{formatNumber(stats?.totalOrganizations || 0)}</p>
             </div>
-            <div className="p-3 rounded-lg bg-blue-500 text-white">
-              <Users className="w-6 h-6" />
+            <div className="p-3 rounded-lg bg-white bg-opacity-50">
+              <Building2 className="w-6 h-6 text-[#5D2A8B]" />
             </div>
-          </div>
-          <div className="mt-4 flex text-sm text-gray-600">
-            <span className="flex items-center mr-4">
-              <span className="text-green-500 mr-1">●</span>
-              Active: {formatNumber(stats?.activeCustomers || 0)}
-            </span>
-            <span className="flex items-center">
-              <span className="text-red-500 mr-1">●</span>
-              Suspended: {formatNumber(stats?.suspendedCustomers || 0)}
-            </span>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-[#FCEEEE] rounded-xl p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-500 text-sm font-medium">Total Revenue</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(stats?.totalRevenue || 0)}</p>
+              <p className="text-sm font-medium text-[#6E6E6EB2]">Customers</p>
+              <p className="text-2xl font-bold text-[#1A1A1A] mt-1">{formatNumber(stats?.totalCustomers || 0)}</p>
             </div>
-            <div className="p-3 rounded-lg bg-green-500 text-white">
-              <DollarSign className="w-6 h-6" />
+            <div className="p-3 rounded-lg bg-white bg-opacity-50">
+              <Users className="w-6 h-6 text-[#5D2A8B]" />
             </div>
-          </div>
-          <div className="mt-4 text-sm text-gray-600">
-            Monthly: {formatCurrency(stats?.monthlyRevenue || 0)}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-[#E8F4F8] rounded-xl p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-500 text-sm font-medium">Active Packages</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{formatNumber(stats?.activeSubscriptionPackages || 0)}</p>
+              <p className="text-sm font-medium text-[#6E6E6EB2]">Subscriptions</p>
+              <p className="text-2xl font-bold text-[#1A1A1A] mt-1">{formatNumber(stats?.totalSubscriptions || 0)}</p>
             </div>
-            <div className="p-3 rounded-lg bg-yellow-500 text-white">
-              <Package className="w-6 h-6" />
+            <div className="p-3 rounded-lg bg-white bg-opacity-50">
+              <Package className="w-6 h-6 text-[#5D2A8B]" />
             </div>
-          </div>
-          <div className="mt-4 text-sm text-gray-600">
-            Total: {formatNumber(stats?.totalSubscriptionPackages || 0)}
           </div>
         </div>
       </div>
 
-      {/* Recent Registrations */}
+      {/* Top States */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-[#F0F4E8] rounded-xl p-6">
           <div className="flex items-center mb-6">
-            <Calendar className="w-5 h-5 text-blue-500 mr-2" />
-            <h2 className="text-xl font-bold text-gray-800">Recent Registrations</h2>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-gray-600 text-sm">Organizations</p>
-              <p className="text-2xl font-bold text-blue-600">{formatNumber(stats?.recentRegistrations.organizations || 0)}</p>
-            </div>
-            <div className="bg-green-50 p-4 rounded-lg">
-              <p className="text-gray-600 text-sm">Customers</p>
-              <p className="text-2xl font-bold text-green-600">{formatNumber(stats?.recentRegistrations.customers || 0)}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center mb-6">
-            <BarChart3 className="w-5 h-5 text-purple-500 mr-2" />
-            <h2 className="text-xl font-bold text-gray-800">Top States</h2>
+            <BarChart3 className="w-5 h-5 text-[#5D2A8B] mr-2" />
+            <h2 className="text-xl font-bold text-[#1A1A1A]">Top States</h2>
           </div>
           <div className="space-y-3">
             {analytics?.topStates.slice(0, 5).map((state, index) => (
@@ -285,14 +236,45 @@ const SuperAdminDashboard = () => {
             ))}
           </div>
         </div>
+
+        <div className="bg-[#F8E8F0] rounded-xl p-6">
+          <div className="flex items-center mb-6">
+            <Package className="w-5 h-5 text-[#5D2A8B] mr-2" />
+            <h2 className="text-xl font-bold text-[#1A1A1A]">Package Popularity</h2>
+          </div>
+          <div className="space-y-4">
+            {analytics?.packagePopularity.map((pkg, index) => (
+              <div key={index} className="flex items-center">
+                <div className="w-32 text-gray-700">{pkg.packageName}</div>
+                <div className="flex-1">
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div 
+                      className="bg-pink-500 h-2.5 rounded-full"
+                      style={{ width: `${(pkg.subscriberCount / Math.max(...analytics?.packagePopularity.map(p => p.subscriberCount) || [1])) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <div className="w-20 text-right text-gray-900 font-medium">{formatNumber(pkg.subscriberCount)}</div>
+              </div>
+            )) || [1, 2, 3, 4].map((item) => (
+              <div key={item} className="flex items-center animate-pulse">
+                <div className="w-32 h-4 bg-gray-200 rounded"></div>
+                <div className="flex-1 ml-4">
+                  <div className="w-full bg-gray-200 rounded-full h-2.5"></div>
+                </div>
+                <div className="w-20 h-4 bg-gray-200 rounded ml-4"></div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Growth Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-[#FCEEEE] rounded-xl p-6">
           <div className="flex items-center mb-6">
-            <TrendingUp className="w-5 h-5 text-green-500 mr-2" />
-            <h2 className="text-xl font-bold text-gray-800">Customer Growth</h2>
+            <TrendingUp className="w-5 h-5 text-[#5D2A8B] mr-2" />
+            <h2 className="text-xl font-bold text-[#1A1A1A]">Customer Growth</h2>
           </div>
           <div className="h-64 flex items-end space-x-2 pt-4 border-t border-gray-100">
             {analytics?.customerGrowth.slice(-6).map((item, index) => (
@@ -314,20 +296,20 @@ const SuperAdminDashboard = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-[#FBF8EF] rounded-xl p-6">
           <div className="flex items-center mb-6">
-            <TrendingUp className="w-5 h-5 text-yellow-500 mr-2" />
-            <h2 className="text-xl font-bold text-gray-800">Revenue Growth</h2>
+            <TrendingUp className="w-5 h-5 text-[#5D2A8B] mr-2" />
+            <h2 className="text-xl font-bold text-[#1A1A1A]">Organization Growth</h2>
           </div>
           <div className="h-64 flex items-end space-x-2 pt-4 border-t border-gray-100">
-            {analytics?.revenueGrowth.slice(-6).map((item, index) => (
+            {analytics?.organizationGrowth.slice(-6).map((item, index) => (
               <div key={index} className="flex flex-col items-center flex-1">
                 <div className="text-xs text-gray-500 mb-1">{item.month.split('-')[1]}</div>
                 <div 
-                  className="w-full bg-yellow-500 rounded-t hover:bg-yellow-600 transition-colors"
-                  style={{ height: `${Math.min(100, (item.revenue / Math.max(...analytics?.revenueGrowth.map(r => r.revenue) || [1])) * 100)}%` }}
+                  className="w-full bg-purple-500 rounded-t hover:bg-purple-600 transition-colors"
+                  style={{ height: `${Math.min(100, (item.count / Math.max(...analytics?.organizationGrowth.map(c => c.count) || [1])) * 100)}%` }}
                 ></div>
-                <div className="text-xs mt-1">{formatCurrency(item.revenue)}</div>
+                <div className="text-xs mt-1">{formatNumber(item.count)}</div>
               </div>
             )) || [1, 2, 3, 4, 5, 6].map((item) => (
               <div key={item} className="flex flex-col items-center flex-1">
@@ -340,37 +322,7 @@ const SuperAdminDashboard = () => {
         </div>
       </div>
 
-      {/* Package Popularity */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center mb-6">
-          <Package className="w-5 h-5 text-pink-500 mr-2" />
-          <h2 className="text-xl font-bold text-gray-800">Package Popularity</h2>
-        </div>
-        <div className="space-y-4">
-          {analytics?.packagePopularity.map((pkg, index) => (
-            <div key={index} className="flex items-center">
-              <div className="w-32 text-gray-700">{pkg.packageName}</div>
-              <div className="flex-1">
-                <div className="w-full bg-gray-200 rounded-full h-2.5">
-                  <div 
-                    className="bg-pink-500 h-2.5 rounded-full"
-                    style={{ width: `${(pkg.subscriberCount / Math.max(...analytics?.packagePopularity.map(p => p.subscriberCount) || [1])) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-              <div className="w-20 text-right text-gray-900 font-medium">{formatNumber(pkg.subscriberCount)}</div>
-            </div>
-          )) || [1, 2, 3, 4].map((item) => (
-            <div key={item} className="flex items-center animate-pulse">
-              <div className="w-32 h-4 bg-gray-200 rounded"></div>
-              <div className="flex-1 ml-4">
-                <div className="w-full bg-gray-200 rounded-full h-2.5"></div>
-              </div>
-              <div className="w-20 h-4 bg-gray-200 rounded ml-4"></div>
-            </div>
-          ))}
-        </div>
-      </div>
+
     </div>
   );
 };

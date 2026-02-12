@@ -5,6 +5,7 @@ import { superAdminUserModule, Customer, GetCustomersParams } from './userModule
 import ActionModal from '../../../components/SuperAdminActionModal';
 import DeleteConfirmationModal from '../../../components/DeleteConfirmationModal';
 import { useRouter } from 'next/navigation';
+import { MoreVertical } from 'lucide-react';
 
 const SuperAdminUserList: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -18,6 +19,9 @@ const SuperAdminUserList: React.FC = () => {
   const [showActionModal, setShowActionModal] = useState<boolean>(false);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [actionType, setActionType] = useState<string>('');
+  const [actionModalPosition, setActionModalPosition] = useState({ top: 0, left: 0 });
+  const [selectedCustomerForActions, setSelectedCustomerForActions] = useState<Customer | null>(null);
+  const [showActionMenu, setShowActionMenu] = useState<boolean>(false);
   const [filters, setFilters] = useState({
     status: '' as 'active' | 'suspended' | 'inactive' | '',
     state: '',
@@ -150,6 +154,65 @@ const SuperAdminUserList: React.FC = () => {
     }
   };
 
+  const handleActionClick = (customer: Customer, e: React.MouseEvent) => {
+    e.preventDefault();
+    setSelectedCustomerForActions(customer);
+    
+    // Calculate position to ensure modal stays within viewport
+    const buttonRect = (e.target as Element).getBoundingClientRect();
+    const top = buttonRect.bottom + window.scrollY;
+    const left = Math.max(buttonRect.left - 150, 10); // Position to the left of the button, with minimum 10px from left edge
+    
+    // Ensure the modal doesn't go off the bottom of the screen
+    const modalHeight = 150; // Approximate height of the action modal
+    const adjustedTop = (buttonRect.bottom + window.scrollY + modalHeight > document.body.scrollHeight) 
+      ? buttonRect.top + window.scrollY - modalHeight 
+      : buttonRect.bottom + window.scrollY;
+    
+    setActionModalPosition({
+      top: adjustedTop,
+      left,
+    });
+    setShowActionMenu(true);
+  };
+
+  const handleViewCustomer = () => {
+    if (selectedCustomerForActions) {
+      // Navigate to view customer page
+      console.log('View customer:', selectedCustomerForActions.id);
+      setShowActionMenu(false);
+    }
+  };
+
+  const handleEditCustomer = () => {
+    if (selectedCustomerForActions) {
+      // Navigate to edit customer page
+      console.log('Edit customer:', selectedCustomerForActions.id);
+      setShowActionMenu(false);
+    }
+  };
+
+  const handleStatusChange = () => {
+    if (selectedCustomerForActions) {
+      handleAction(selectedCustomerForActions, 'status');
+      setShowActionMenu(false);
+    }
+  };
+
+  const handleResetPassword = () => {
+    if (selectedCustomerForActions) {
+      handleAction(selectedCustomerForActions, 'reset-password');
+      setShowActionMenu(false);
+    }
+  };
+
+  const handleDeleteCustomer = () => {
+    if (selectedCustomerForActions) {
+      handleDelete(selectedCustomerForActions);
+      setShowActionMenu(false);
+    }
+  };
+
   if (error) {
     return (
       <div className="p-4 bg-red-50 text-red-700 rounded-md">
@@ -208,12 +271,12 @@ const SuperAdminUserList: React.FC = () => {
       <div className="mb-6 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Customer Management</h1>
-          <p className="text-gray-600">Manage all customer accounts in the system</p>
+          
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={() => router.push('/super-admin/users/create')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 bg-[#5D2A8B] text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
             Create New User
           </button>
@@ -271,7 +334,7 @@ const SuperAdminUserList: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by name, email, phone, or ID"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
           
@@ -281,7 +344,7 @@ const SuperAdminUserList: React.FC = () => {
               name="status"
               value={filters.status}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="">All Statuses</option>
               <option value="active">Active</option>
@@ -298,7 +361,7 @@ const SuperAdminUserList: React.FC = () => {
               value={filters.state}
               onChange={handleFilterChange}
               placeholder="Filter by state"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
           
@@ -310,7 +373,7 @@ const SuperAdminUserList: React.FC = () => {
               value={filters.lga}
               onChange={handleFilterChange}
               placeholder="Filter by LGA"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
           
@@ -321,7 +384,7 @@ const SuperAdminUserList: React.FC = () => {
               name="fromDate"
               value={filters.fromDate}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1 text-xs sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           
@@ -332,18 +395,11 @@ const SuperAdminUserList: React.FC = () => {
               name="toDate"
               value={filters.toDate}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1 text-xs sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           
-          <div className="flex items-end">
-            <button
-              type="submit"
-              className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              Search
-            </button>
-          </div>
+         
         </form>
       </div>
 
@@ -360,10 +416,9 @@ const SuperAdminUserList: React.FC = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registration Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
@@ -372,21 +427,12 @@ const SuperAdminUserList: React.FC = () => {
                   {customers.map((customer) => (
                     <tr key={customer.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{customer.customerName}</div>
-                          <div className="text-sm text-gray-500">ID: {customer.customerId}</div>
-                        </div>
+                        <div className="text-sm text-gray-900">{customer.email}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{customer.email}</div>
                         <div className="text-sm text-gray-500">{customer.phoneNumber}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{customer.state}</div>
-                        <div className="text-sm text-gray-500">{customer.lga}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">ACC: {customer.accountNumber}</div>
                         <div className="text-sm text-gray-500">{new Date(customer.accountCreatedOn).toLocaleDateString()}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -395,36 +441,15 @@ const SuperAdminUserList: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => handleAction(customer, 'view')}
-                          className="text-blue-600 hover:text-blue-900 mr-3"
-                        >
-                          View
-                        </button>
-                        <button
-                          onClick={() => handleAction(customer, 'edit')}
-                          className="text-indigo-600 hover:text-indigo-900 mr-3"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleAction(customer, 'status')}
-                          className="text-yellow-600 hover:text-yellow-900 mr-3"
-                        >
-                          {customer.status === 'active' ? 'Suspend' : 'Activate'}
-                        </button>
-                        <button
-                          onClick={() => handleAction(customer, 'reset-password')}
-                          className="text-purple-600 hover:text-purple-900 mr-3"
-                        >
-                          Reset Password
-                        </button>
-                        <button
-                          onClick={() => handleDelete(customer)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Delete
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={(e) => handleActionClick(customer, e)}
+                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                            title="More actions"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -542,6 +567,117 @@ const SuperAdminUserList: React.FC = () => {
         item="customer"
         itemName={selectedCustomer?.customerName || ''}
       />
+
+      {/* Action Menu Modal */}
+      {showActionMenu && selectedCustomerForActions && (
+        <>
+          <div 
+            className="fixed inset-0 z-40 bg-transparent" 
+            onClick={() => setShowActionMenu(false)}
+          />
+          
+          <div 
+            className="fixed bg-white shadow-lg rounded-lg z-50"
+            style={{
+              top: `${actionModalPosition.top}px`,
+              left: `${actionModalPosition.left}px`,
+              width: '155px',
+              borderRadius: '20px',
+              padding: '16px',
+              boxShadow: '0px 2px 8px 0px #5D2A8B1A',
+              border: '1px solid #E4D8F3'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col gap-2">
+              <button 
+                className="text-left hover:bg-gray-50 p-2 rounded transition-colors"
+                style={{
+                  fontSize: '14px',
+                  color: '#1A1A1A',
+                  border: 'none',
+                  background: 'none',
+                  width: '100%'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleViewCustomer();
+                }}
+              >
+                View
+              </button>
+              
+              <button 
+                className="text-left hover:bg-gray-50 p-2 rounded transition-colors"
+                style={{
+                  fontSize: '14px',
+                  color: '#1A1A1A',
+                  border: 'none',
+                  background: 'none',
+                  width: '100%'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEditCustomer();
+                }}
+              >
+                Edit
+              </button>
+              
+              <button 
+                className="text-left hover:bg-gray-50 p-2 rounded transition-colors"
+                style={{
+                  fontSize: '14px',
+                  color: '#1A1A1A',
+                  border: 'none',
+                  background: 'none',
+                  width: '100%'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleStatusChange();
+                }}
+              >
+                {selectedCustomerForActions.status === 'active' ? 'Suspend' : 'Activate'}
+              </button>
+              
+              <button 
+                className="text-left hover:bg-gray-50 p-2 rounded transition-colors"
+                style={{
+                  fontSize: '14px',
+                  color: '#1A1A1A',
+                  border: 'none',
+                  background: 'none',
+                  width: '100%'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleResetPassword();
+                }}
+              >
+                Reset Password
+              </button>
+              
+              <button 
+                className="text-left hover:bg-gray-50 p-2 rounded transition-colors"
+                style={{
+                  fontSize: '14px',
+                  color: '#FF6161',
+                  border: 'none',
+                  background: 'none',
+                  width: '100%'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteCustomer();
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

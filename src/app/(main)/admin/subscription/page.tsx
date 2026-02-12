@@ -1,399 +1,433 @@
 "use client";
 
-import React, { useState } from 'react';
-import { CheckCircle } from 'lucide-react';
+import type React from "react";
+import { useState, useEffect } from "react";
+import { ShieldCheck, Building, Users, MapPin, CreditCard, AlertCircle, CheckCircle } from "lucide-react";
+import OrganizationProfileService, { OrganizationProfile } from "@/services/OrganizationProfileService";
+import LocationPaymentService, { 
+  PaymentCheckResponse, 
+  InitializePaymentResponse, 
+  VerifyPaymentResponse 
+} from "@/services/LocationPaymentService";
 
-interface Service {
-  id: number;
-  name: string;
-  pricePerMonth: number;
+interface LocationWithStatus extends Record<string, any> {
+  locationType: string;
+  brandName: string;
+  country: string;
+  state: string;
+  city: string;
+  cityRegion: string;
+  houseNumber: string;
+  street: string;
+  isPaidFor?: boolean;
+  verificationStatus?: string;
+  status?: string;
 }
 
-interface SubscriptionPackage {
-  id: string;
-  name: string;
-  maxUsers: number;
-  services: number;
-  pricePerMonth: number;
-  pricePerQuarter: number;
-  pricePerYear: number;
-}
+const SubscriptionPage: React.FC = () => {
+  const [organizationDetails, setOrganizationDetails] = useState<OrganizationProfile | null>(null);
+  const [locations, setLocations] = useState<LocationWithStatus[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [paymentRequired, setPaymentRequired] = useState(false);
+  const [unpaidLocations, setUnpaidLocations] = useState(0);
+  const [totalLocations, setTotalLocations] = useState(0);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
 
-const AdminSubscriptionPage = () => {
-  // Mock data for subscription packages
-  const subscriptionPackages: SubscriptionPackage[] = [
-    {
-      id: '1',
-      name: 'Basic Package',
-      maxUsers: 50,
-      services: 1,
-      pricePerMonth: 20,
-      pricePerQuarter: 55,
-      pricePerYear: 200
-    },
-    {
-      id: '2',
-      name: 'Professional Package',
-      maxUsers: 200,
-      services: 2,
-      pricePerMonth: 50,
-      pricePerQuarter: 140,
-      pricePerYear: 500
-    },
-    {
-      id: '3',
-      name: 'Enterprise Package',
-      maxUsers: 1000,
-      services: 3,
-      pricePerMonth: 100,
-      pricePerQuarter: 280,
-      pricePerYear: 1000
-    }
-  ];
+  const organizationProfileService = new OrganizationProfileService();
 
-  // Mock data for services
-  const services: Service[] = [
-    { id: 1, name: 'All Services', pricePerMonth: 60 },
-    { id: 2, name: 'Body Measurement Service', pricePerMonth: 20 },
-    { id: 3, name: 'Object Measurement Service', pricePerMonth: 30 },
-    { id: 4, name: 'Questionnaire Service', pricePerMonth: 15 }
-  ];
-
-  const [selectedPackage, setSelectedPackage] = useState<string>('');
-  const [numberOfUsers, setNumberOfUsers] = useState<number>(10);
-  const [selectedServices, setSelectedServices] = useState<number[]>([]);
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
-  const [totalAmount, setTotalAmount] = useState<number>(0);
-  const [showServiceDetails, setShowServiceDetails] = useState<number | null>(null);
-  
-  // Debugging: Log state changes
-  React.useEffect(() => {
-    console.log('State changed:', { selectedPackage, selectedServices, billingCycle, totalAmount });
-  }, [selectedPackage, selectedServices, billingCycle, totalAmount]);
-
-  // Calculate total amount based on selections
-  const calculateTotal = () => {
-    if (!selectedPackage) return 0;
-    
-    const pkg = subscriptionPackages.find(p => p.id === selectedPackage);
-    if (!pkg) return 0;
-    
-    // If no services selected, return 0
-    if (selectedServices.length === 0) return 0;
-    
-    // If "All Services" is selected, use package price
-    if (selectedServices.includes(1)) {
-      switch (billingCycle) {
-        case 'monthly': return pkg.pricePerMonth;
-        case 'quarterly': return pkg.pricePerQuarter;
-        case 'yearly': return pkg.pricePerYear;
-        default: return pkg.pricePerMonth;
+  // Function to check if payment is required
+  const checkPaymentRequired = async () => {
+    try {
+      const response: PaymentCheckResponse = await LocationPaymentService.checkPaymentRequired();
+      
+      if (response.success) {
+        setPaymentRequired(response.data.paymentRequired);
+        setUnpaidLocations(response.data.unpaidLocations);
+        setTotalLocations(response.data.totalLocations);
       }
-    }
-    
-    // Calculate based on individual services
-    let serviceTotal = 0;
-    selectedServices.forEach(serviceId => {
-      const service = services.find(s => s.id === serviceId);
-      if (service) {
-        serviceTotal += service.pricePerMonth;
-      }
-    });
-    
-    // Apply discounts based on billing cycle
-    switch (billingCycle) {
-      case 'monthly': 
-        return serviceTotal;
-      case 'quarterly':
-        return serviceTotal * 3 * 0.95; // 5% discount
-      case 'yearly':
-        return serviceTotal * 12 * 0.9; // 10% discount
-      default:
-        return serviceTotal;
+    } catch (err) {
+      console.error('Error checking payment required:', err);
     }
   };
 
-  // Update total whenever selections change
-  React.useEffect(() => {
-    setTotalAmount(calculateTotal());
-  }, [selectedPackage, numberOfUsers, selectedServices, billingCycle]);
+  // Function to initialize payment
+  const initializePayment = async () => {
+    try {
+      // Get user details (you might want to fetch from your auth context)
+      const userData = {
+        email: 'admin@company.com', // Replace with actual user data
+        name: 'John Smith',         // Replace with actual user data
+        phone: '+2348012345678'     // Replace with actual user data
+      };
 
-  const handleServiceToggle = (serviceId: number) => {
-    setSelectedServices(prev => {
-      // If selecting "All Services", deselect all other services
-      if (serviceId === 1 && !prev.includes(1)) {
-        return [1];
+      const response: InitializePaymentResponse = await LocationPaymentService.initializePayment(userData);
+
+      if (response.success && response.data.paymentLink) {
+        // Redirect to payment gateway
+        window.location.href = response.data.paymentLink;
+      }
+    } catch (err) {
+      console.error('Error initializing payment:', err);
+      setError('Failed to initialize payment');
+    }
+  };
+
+  // Function to verify payment based on URL parameters (if coming back from payment gateway)
+  const verifyPayment = async (transactionId: string) => {
+    setVerifyingPayment(true);
+    try {
+      const response: VerifyPaymentResponse = await LocationPaymentService.verifyPayment({
+        transactionId
+      });
+
+      if (response.success) {
+        // Refresh the data after successful payment verification
+        await loadSubscriptionData();
+      }
+    } catch (err) {
+      console.error('Error verifying payment:', err);
+      setError('Failed to verify payment');
+    } finally {
+      setVerifyingPayment(false);
+    }
+  };
+
+  // Check for transaction ID in URL parameters (for payment return verification)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const transactionId = urlParams.get('transaction_id');
+    
+    if (transactionId) {
+      verifyPayment(transactionId);
+    }
+  }, []);
+
+  const loadSubscriptionData = async () => {
+    try {
+      setLoading(true);
+      
+      // Load organization profile
+      const profileResponse = await organizationProfileService.getProfile();
+      if (profileResponse.success && profileResponse.data) {
+        setOrganizationDetails(profileResponse.data.profile);
       }
       
-      // If selecting an individual service while "All Services" is selected, deselect "All Services"
-      if (serviceId !== 1 && prev.includes(1)) {
-        return prev.filter(id => id !== 1).concat(serviceId);
+      // Load locations
+      const locationsResponse = await organizationProfileService.getAllLocations();
+      if (locationsResponse.success && locationsResponse.data) {
+        // Calculate status for each location based on isPaidFor and verificationStatus
+        const locationsWithStatus = locationsResponse.data.locations.map((location: LocationWithStatus) => {
+          let status = "Pending Payment";
+          
+          if (location.isPaidFor === true) {
+            if (location.verificationStatus === 'verified') {
+              status = "Verified";
+            } else if (location.verificationStatus === 'rejected') {
+              status = "Rejected";
+            } else {
+              status = "Pending Verification";
+            }
+          } else if (location.isPaidFor === false || location.isPaidFor === undefined) {
+            status = "Pending Payment";
+          }
+          
+          return {
+            ...location,
+            status
+          };
+        });
+        
+        setLocations(locationsWithStatus);
       }
       
-      // Toggle individual services
-      if (prev.includes(serviceId)) {
-        return prev.filter(id => id !== serviceId);
-      } else {
-        return [...prev, serviceId];
-      }
-    });
+      // Check payment requirements
+      await checkPaymentRequired();
+    } catch (err) {
+      console.error('Error loading subscription data:', err);
+      setError('Failed to load subscription data');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Handle form submission
-    console.log({
-      selectedPackage,
-      numberOfUsers,
-      selectedServices,
-      billingCycle,
-      totalAmount
-    });
-    alert(`Subscription request submitted! Total: $${totalAmount.toFixed(2)}`);
-  };
+  useEffect(() => {
+    loadSubscriptionData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading subscription data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
+          <p className="text-red-600 text-center">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Count locations by status
+  const pendingPaymentCount = locations.filter(loc => loc.status === "Pending Payment").length;
+  const pendingVerificationCount = locations.filter(loc => loc.status === "Pending Verification").length;
+  const verifiedCount = locations.filter(loc => loc.status === "Verified").length;
+  const rejectedCount = locations.filter(loc => loc.status === "Rejected").length;
 
   return (
-    <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
-      <style jsx>{`
+    <div className="min-h-screen bg-gray-50">
+      <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
-        .manrope { font-family: 'Manrope', sans-serif; }
+        * { font-family: 'Manrope', sans-serif; }
       `}</style>
-      
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Subscription Management</h1>
-        <p className="text-gray-600 mt-2">Select a package and customize your subscription</p>
-      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Package Selection */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Select Package</h2>
-          <div className="max-w-md">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Choose a subscription package
-            </label>
-            <select
-              value={selectedPackage}
-              onChange={(e) => setSelectedPackage(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-            >
-              <option value="">Select a package</option>
-              {subscriptionPackages.map((pkg) => (
-                <option key={pkg.id} value={pkg.id}>
-                  {pkg.name} - Up to {pkg.maxUsers} users (${pkg.pricePerMonth}/month)
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Number of Users */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Number of Users</h2>
-          <div className="max-w-md">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              How many users will be using the service?
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="1000"
-              value={numberOfUsers}
-              onChange={(e) => setNumberOfUsers(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-            />
-            <p className="text-sm text-gray-500 mt-1">
-              Select a package that supports at least {numberOfUsers} users
-            </p>
-          </div>
-        </div>
-
-        {/* Service Selection */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Available Services</h2>
-          <p className="text-gray-600 mb-4">
-            Click on any service to view pricing details.
-          </p>
-          
-          <div className="space-y-3">
-            {services.map((service) => (
-              <div key={service.id}>
-                <div 
-                  className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all ${
-                    showServiceDetails === service.id
-                      ? 'border-[#5D2A8B] bg-[#f8f5fa]'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                  onClick={() => setShowServiceDetails(showServiceDetails === service.id ? null : service.id)}
+      <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
+        <div className="mb-8">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-4">
+              <h2 className="text-2xl font-bold text-gray-900">Subscription Overview</h2>
+              <a href="/admin/subscription/profile" className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center">
+                <ShieldCheck className="w-4 h-4 mr-2" />
+                Verify Profile
+              </a>
+              
+              {/* Payment button - only show if payment is required */}
+              {paymentRequired && unpaidLocations > 0 && (
+                <button 
+                  onClick={initializePayment}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
                 >
-                  <div className="flex items-center">
-                    <span className="font-medium text-gray-800">{service.name}</span>
-                  </div>
-                  <span className="text-gray-700">${service.pricePerMonth}/month</span>
-                </div>
-                
-                {/* Service Details Panel */}
-                {showServiceDetails === service.id && (
-                  <div className="mt-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="flex justify-between items-center mb-3">
-                      <h3 className="font-semibold text-gray-800">{service.name} Pricing</h3>
-                      <button 
-                        onClick={() => handleServiceToggle(service.id)}
-                        className={`px-3 py-1 rounded text-sm ${selectedServices.includes(service.id) ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}
-                        disabled={service.id === 1 && selectedServices.some(id => id !== 1) || service.id !== 1 && selectedServices.includes(1)}
-                      >
-                        {selectedServices.includes(service.id) ? 'Remove from Subscription' : 'Add to Subscription'}
-                      </button>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span>Monthly:</span>
-                        <span className="font-medium">${service.pricePerMonth}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Quarterly:</span>
-                        <span className="font-medium">${(service.pricePerMonth * 3 * 0.95).toFixed(2)} (5% discount)</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Yearly:</span>
-                        <span className="font-medium">${(service.pricePerMonth * 12 * 0.9).toFixed(2)} (10% discount)</span>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-3">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Billing Frequency</label>
-                      <div className="text-sm text-gray-600">
-                        <p>Select your preferred billing cycle from the options above.</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Pay for {unpaidLocations} Location{unpaidLocations > 1 ? 's' : ''}
+                </button>
+              )}
+            </div>
+            <p className="text-gray-600 hidden md:block">View your organization's subscription and profile information</p>
           </div>
-        </div>
-
-        {/* Billing Cycle */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Billing Cycle</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div 
-              className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                billingCycle === 'monthly' 
-                  ? 'border-[#5D2A8B] ring-2 ring-[#5D2A8B] ring-opacity-50' 
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-              onClick={() => setBillingCycle('monthly')}
-            >
-              <h3 className="font-semibold text-gray-800">Monthly</h3>
-              <p className="text-sm text-gray-600 mt-1">Pay month to month</p>
-            </div>
-            
-            <div 
-              className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                billingCycle === 'quarterly' 
-                  ? 'border-[#5D2A8B] ring-2 ring-[#5D2A8B] ring-opacity-50' 
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-              onClick={() => setBillingCycle('quarterly')}
-            >
-              <h3 className="font-semibold text-gray-800">Quarterly</h3>
-              <p className="text-sm text-gray-600 mt-1">Save 5% with 3-month billing</p>
-            </div>
-            
-            <div 
-              className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                billingCycle === 'yearly' 
-                  ? 'border-[#5D2A8B] ring-2 ring-[#5D2A8B] ring-opacity-50' 
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-              onClick={() => setBillingCycle('yearly')}
-            >
-              <h3 className="font-semibold text-gray-800">Yearly</h3>
-              <p className="text-sm text-gray-600 mt-1">Save 10% with annual billing</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Summary and Total */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Order Summary</h2>
           
-          {selectedPackage && (
-            <div className="mb-4">
-              <p className="text-gray-700">
-                Package: <span className="font-medium">
-                  {subscriptionPackages.find(p => p.id === selectedPackage)?.name}
-                </span>
+          {/* Payment notification if payment is required */}
+          {paymentRequired && unpaidLocations > 0 && (
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start">
+              <AlertCircle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-medium text-yellow-800">Payment Required</h3>
+                <p className="text-yellow-700 text-sm">
+                  You have {unpaidLocations} location{unpaidLocations > 1 ? 's' : ''} that require payment to get verified.
+                  Complete payment to proceed with verification.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Organization Summary Card */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-8">
+          <div className="flex items-center mb-6">
+            <ShieldCheck className="w-8 h-8 text-purple-600 mr-3" />
+            <h2 className="text-xl font-bold text-gray-900">Organization Summary</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex items-center">
+                <Building className="w-6 h-6 text-purple-600 mr-2" />
+                <h3 className="font-semibold text-gray-900">Business Type</h3>
+              </div>
+              <p className="mt-2 text-lg font-medium">
+                {organizationDetails?.businessType || 'N/A'}
+              </p>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex items-center">
+                <MapPin className="w-6 h-6 text-purple-600 mr-2" />
+                <h3 className="font-semibold text-gray-900">Locations</h3>
+              </div>
+              <p className="mt-2 text-lg font-medium">
+                {locations.length} {locations.length === 1 ? 'Location' : 'Locations'}
+              </p>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex items-center">
+                <ShieldCheck className="w-6 h-6 text-purple-600 mr-2" />
+                <h3 className="font-semibold text-gray-900">Verification Status</h3>
+              </div>
+              <p className="mt-2 text-lg font-medium">
+                {organizationDetails?.verificationStatus || 'N/A'}
+              </p>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex items-center">
+                <CreditCard className="w-6 h-6 text-purple-600 mr-2" />
+                <h3 className="font-semibold text-gray-900">Payment Status</h3>
+              </div>
+              <p className="mt-2 text-lg font-medium">
+                {paymentRequired ? `${unpaidLocations} unpaid` : 'All paid'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Location Status Summary */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-8">
+          <div className="flex items-center mb-6">
+            <MapPin className="w-8 h-8 text-purple-600 mr-3" />
+            <h2 className="text-xl font-bold text-gray-900">Location Status Summary</h2>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <div className="flex items-center">
+                <AlertCircle className="w-5 h-5 text-blue-600 mr-2" />
+                <h3 className="font-semibold text-blue-900">Pending Payment</h3>
+              </div>
+              <p className="mt-2 text-2xl font-bold text-blue-700">{pendingPaymentCount}</p>
+            </div>
+
+            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+              <div className="flex items-center">
+                <AlertCircle className="w-5 h-5 text-yellow-600 mr-2" />
+                <h3 className="font-semibold text-yellow-900">Pending Verification</h3>
+              </div>
+              <p className="mt-2 text-2xl font-bold text-yellow-700">{pendingVerificationCount}</p>
+            </div>
+
+            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+              <div className="flex items-center">
+                <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+                <h3 className="font-semibold text-green-900">Verified</h3>
+              </div>
+              <p className="mt-2 text-2xl font-bold text-green-700">{verifiedCount}</p>
+            </div>
+
+            <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+              <div className="flex items-center">
+                <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
+                <h3 className="font-semibold text-red-900">Rejected</h3>
+              </div>
+              <p className="mt-2 text-2xl font-bold text-red-700">{rejectedCount}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Organization Details */}
+        {organizationDetails && (
+          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-8">
+            <div className="flex items-center mb-6">
+              <Building className="w-8 h-8 text-purple-600 mr-3" />
+              <h2 className="text-xl font-bold text-gray-900">Organization Details</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-semibold text-gray-700 mb-2">Business Type</h3>
+                <p className="text-gray-900 capitalize">
+                  {organizationDetails.businessType}
+                </p>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-gray-700 mb-2">Public Profile</h3>
+                <p className="text-gray-900">
+                  {organizationDetails.isPublicProfile ? 'Visible' : 'Hidden'}
+                </p>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-gray-700 mb-2">Verification Status</h3>
+                <p className={`font-medium ${organizationDetails.verificationStatus === 'verified' ? 'text-green-600' : 'text-orange-600'}`}>
+                  {organizationDetails.verificationStatus.charAt(0).toUpperCase() + organizationDetails.verificationStatus.slice(1)}
+                </p>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* Locations Section */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+          <div className="flex items-center mb-6">
+            <MapPin className="w-8 h-8 text-purple-600 mr-3" />
+            <h2 className="text-xl font-bold text-gray-900">Locations</h2>
+          </div>
+
+          {locations.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {locations.map((location, index) => (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${location.locationType === 'headquarters' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
+                          {location.locationType.charAt(0).toUpperCase() + location.locationType.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{location.brandName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {location.city}, {location.state}, {location.country}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {location.houseNumber} {location.street}, {location.cityRegion}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {location.status === "Pending Payment" && (
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                            Pending Payment
+                          </span>
+                        )}
+                        {location.status === "Pending Verification" && (
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                            Pending Verification
+                          </span>
+                        )}
+                        {location.status === "Verified" && (
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            Verified
+                          </span>
+                        )}
+                        {location.status === "Rejected" && (
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                            Rejected
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <MapPin className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No locations</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Get started by adding a new location.
               </p>
             </div>
           )}
-          
-          <div className="mb-4">
-            <p className="text-gray-700">
-              Users: <span className="font-medium">{numberOfUsers}</span>
-            </p>
-          </div>
-          
-          {selectedServices.length > 0 && (
-            <div className="mb-4">
-              <p className="text-gray-700">Services:</p>
-              <ul className="list-disc list-inside mt-1">
-                {selectedServices.map(serviceId => {
-                  const service = services.find(s => s.id === serviceId);
-                  return service ? <li key={serviceId} className="text-gray-600">{service.name}</li> : null;
-                })}
-              </ul>
-              {selectedServices.includes(1) && (
-                <p className="text-sm text-gray-500 mt-2">* Includes all available services</p>
-              )}
-            </div>
-          )}
-          
-          <div className="mb-4">
-            <p className="text-gray-700">
-              Billing Cycle: <span className="font-medium capitalize">{billingCycle}</span>
-            </p>
-          </div>
-          
-          <div className="border-t border-gray-200 pt-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-lg font-bold text-gray-900">Total Amount</span>
-            </div>
-            <div className="flex justify-end items-center">
-              <span className="text-3xl font-bold text-[#5D2A8B]">${totalAmount.toFixed(2)}</span>
-              {billingCycle !== 'monthly' && (
-                <span className="text-sm text-gray-500 ml-2">
-                  {billingCycle === 'quarterly' ? '(5% discount)' : '(10% discount)'}
-                </span>
-              )}
-            </div>
-            <div className="mt-2 text-sm text-gray-500 text-right">
-              {billingCycle === 'monthly' && 'Billed monthly'}
-              {billingCycle === 'quarterly' && 'Billed quarterly'}
-              {billingCycle === 'yearly' && 'Billed annually'}
-            </div>
-          </div>
         </div>
-
-        {/* Submit Button */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={!selectedPackage || selectedServices.length === 0}
-            className={`px-6 py-3 rounded-lg font-medium ${
-              !selectedPackage || selectedServices.length === 0
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-[#5D2A8B] text-white hover:bg-[#4a216e]'
-            }`}
-          >
-            Submit Subscription Request
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   );
 };
 
-export default AdminSubscriptionPage;
+export default SubscriptionPage;

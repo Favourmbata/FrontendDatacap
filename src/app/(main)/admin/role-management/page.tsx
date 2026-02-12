@@ -258,12 +258,14 @@ const RoleManagementPage = () => {
                 </div>
               </div>
               
-              <button
-                className="px-4 py-3 bg-[#5D2A8B] text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center gap-2"
-                onClick={() => router.push('/admin/role-management/create')}>
-                <Plus className="w-5 h-5" />
-                Create Role
-              </button>
+              <div className="mr-4">
+                <button
+                  className="px-4 py-3 bg-[#5D2A8B] text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center gap-2"
+                  onClick={() => router.push('/admin/role-management/create')}>
+                  <Plus className="w-5 h-5" />
+                  Create Role
+                </button>
+              </div>
             </div>
           </div>
 

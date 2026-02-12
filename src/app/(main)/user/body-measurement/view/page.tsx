@@ -28,7 +28,8 @@ function MeasurementDetailContent() {
     measurement.sections?.forEach((section: MeasurementSection) => {
       section.measurements?.forEach((m: MeasurementData) => {
         const partName = m.bodyPartName?.toLowerCase() || section.sectionName?.toLowerCase() || 'Unknown';
-        const value = `${m.size} cm`;
+        const size = typeof m.size === 'string' ? parseFloat(m.size) : m.size;
+        const value = isNaN(size) ? '--' : `${size.toFixed(2)} cm`;
         
         // Check for common body parts and add them to summary
         if (partName?.includes('chest')) {
@@ -204,7 +205,7 @@ function MeasurementDetailContent() {
                                   {m.bodyPartName}
                                 </td>
                                 <td className="manrope px-4 py-3 text-sm text-gray-900 font-medium">
-                                  {m.size}
+                                  {typeof m.size === 'number' ? m.size.toFixed(2) : parseFloat(m.size?.toString() || '0').toFixed(2)}
                                 </td>
                               </tr>
                             ))}

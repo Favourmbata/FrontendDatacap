@@ -1,505 +1,748 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Plus, MoreVertical } from 'lucide-react';
-import { SuperAdminActionModal } from '@/app/components/SuperAdminActionModal';
-import DeleteConfirmationModal from '@/app/components/DeleteConfirmationModal';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import SubscriptionService, { SubscriptionPackage } from '@/services/subscriptionService';
+import { Search, Plus, Eye, Edit, Trash2, MoreVertical, Filter, X } from 'lucide-react';
+import SubscriptionService, { SubscriptionPackage } from "@/services/subscriptionService";
 
 const SubscriptionPage = () => {
   const router = useRouter();
-  const actionButtonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+  const [subscriptions, setSubscriptions] = useState<SubscriptionPackage[]>([]);
+  const [filteredSubscriptions, setFilteredSubscriptions] = useState<SubscriptionPackage[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [subscriptionToDelete, setSubscriptionToDelete] = useState<SubscriptionPackage | null>(null);
+  const [deleteMessage, setDeleteMessage] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [showFeaturesModal, setShowFeaturesModal] = useState(false);
+  const [currentFeatures, setCurrentFeatures] = useState<string[]>([]);
+  const [currentPackageTitle, setCurrentPackageTitle] = useState('');
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [currentNote, setCurrentNote] = useState('');
 
-  const [packages, setPackages] = useState<SubscriptionPackage[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  const [deleteModal, setDeleteModal] = useState<{
-    isOpen: boolean;
-    packageId: string | null;
-    packageName: string;
-  }>({
-    isOpen: false,
-    packageId: null,
-    packageName: ''
-  });
-
-  const [actionModal, setActionModal] = useState<{
-    isOpen: boolean;
-    packageId: string | null;
-    position: { top: number; left: number };
-  }>({
-    isOpen: false,
-    packageId: null,
-    position: { top: 0, left: 0 }
-  });
-
-  // State for search and filters
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('');
-  const [sortBy, setSortBy] = useState<string>('setupDate');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-
-  const [exportLoading, setExportLoading] = useState<'csv' | 'excel' | 'pdf' | null>(null); // Track export loading state
-  const [showExportDropdown, setShowExportDropdown] = useState(false); // Track export dropdown visibility
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    loadPackages();
-  };
-
+  // Fetch data from the API
   useEffect(() => {
-    loadPackages();
-  }, [searchTerm, filterStatus, sortBy, sortOrder]);
-
-  const handleExport = async (format: 'csv' | 'excel' | 'pdf') => {
-    try {
-      setExportLoading(format);
-      const blob = await SubscriptionService.exportSubscriptionPackages(format);
-      
-      // Create a download link
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `subscription-packages-${new Date().toISOString().slice(0, 10)}.${format}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : `Failed to export subscription packages as ${format.toUpperCase()}`);
-      console.error('Export error:', err);
-    } finally {
-      setExportLoading(null);
-    }
-  };
-
-  useEffect(() => {
-    // Load packages from service
-    loadPackages();
+    const fetchSubscriptions = async () => {
+      try {
+        const { packages } = await SubscriptionService.getSubscriptionPackages();
+        setSubscriptions(packages);
+        setFilteredSubscriptions(packages);
+      } catch (error) {
+        console.error('Error fetching subscriptions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchSubscriptions();
   }, []);
 
+  // Filter subscriptions when search term or status filter changes
   useEffect(() => {
-    // Close export dropdown when clicking outside
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (showExportDropdown && !target.closest('.export-dropdown')) {
-        setShowExportDropdown(false);
+    if (searchTerm.trim() === '' && statusFilter === 'all') {
+      setFilteredSubscriptions(subscriptions);
+    } else {
+      let filtered = subscriptions;
+      
+      // Apply search filter
+      if (searchTerm.trim() !== '') {
+        filtered = filtered.filter(subscription =>
+          subscription.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          subscription.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (subscription.features && subscription.features.some(feature => 
+            feature.toLowerCase().includes(searchTerm.toLowerCase())
+          ))
+        );
       }
+      
+      // Apply status filter
+      if (statusFilter !== 'all') {
+        filtered = filtered.filter(subscription => 
+          subscription.status === statusFilter
+        );
+      }
+      
+      setFilteredSubscriptions(filtered);
+    }
+  }, [searchTerm, subscriptions, statusFilter]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      Object.keys(dropdownRefs.current).forEach(key => {
+        const ref = dropdownRefs.current[key];
+        if (ref && !ref.contains(event.target as Node)) {
+          setDropdownOpen(null);
+        }
+      });
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showExportDropdown]);
+  }, []);
 
-  const loadPackages = async () => {
+  const toggleDropdown = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setDropdownOpen(dropdownOpen === id ? null : id);
+  };
+
+  const getPackageId = (subscription: SubscriptionPackage): string => {
+    return subscription._id || subscription.id || '';
+  };
+
+  const handleView = (subscription: SubscriptionPackage) => {
+    setDropdownOpen(null);
+    const id = getPackageId(subscription);
+    if (id) {
+      router.push(`/super-admin/subscription/view/${id}`);
+    }
+  };
+
+  const handleEdit = (subscription: SubscriptionPackage) => {
+    setDropdownOpen(null);
+    const id = getPackageId(subscription);
+    if (id) {
+      router.push(`/super-admin/subscription/edit/${id}`);
+    }
+  };
+
+  const handleDeleteClick = (subscription: SubscriptionPackage, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setDropdownOpen(null);
+    setSubscriptionToDelete(subscription);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!subscriptionToDelete) return;
+    
     try {
-      setLoading(true);
-      const result = await SubscriptionService.getSubscriptionPackages(1, 10, searchTerm, sortBy, sortOrder, filterStatus || undefined);
-      setPackages(result.packages);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load subscription packages');
-      console.error('Error loading packages:', err);
+      setIsDeleting(true);
+      const id = getPackageId(subscriptionToDelete);
+      if (!id) {
+        throw new Error('No ID found for subscription');
+      }
+      await SubscriptionService.deleteSubscriptionPackage(id);
+      
+      // Remove from state
+      setSubscriptions(subscriptions.filter(sub => getPackageId(sub) !== id));
+      setFilteredSubscriptions(filteredSubscriptions.filter(sub => getPackageId(sub) !== id));
+      
+      setDeleteMessage('Subscription deleted successfully!');
+      
+      setTimeout(() => {
+        setDeleteMessage('');
+        setShowDeleteModal(false);
+        setSubscriptionToDelete(null);
+      }, 2000);
+    } catch (error) {
+      console.error('Error deleting subscription:', error);
+      setDeleteMessage('Failed to delete subscription package');
+      setTimeout(() => setDeleteMessage(''), 3000);
     } finally {
-      setLoading(false);
+      setIsDeleting(false);
     }
   };
 
-  const handleCreatePackage = () => {
-    router.push('/super-admin/subscription/create');
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setSubscriptionToDelete(null);
   };
 
-  // Handle action button click
-  const handleActionClick = (pkg: SubscriptionPackage, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const button = actionButtonRefs.current[pkg.id];
-    if (button) {
-      const rect = button.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const modalHeight = 200; // Approximate modal height
+  const handleStatusToggle = async (subscription: SubscriptionPackage) => {
+    try {
+      const newStatus: 'active' | 'inactive' = subscription.status === 'active' ? 'inactive' : 'active';
+      const id = getPackageId(subscription);
+      if (!id) return;
       
-      // Calculate position - show modal above if near bottom of viewport
-      let top = rect.bottom;
-      if (rect.bottom + modalHeight > viewportHeight) {
-        top = rect.top - modalHeight;
-      }
+      await SubscriptionService.updateSubscriptionStatus(id, newStatus);
       
-      setActionModal({
-        isOpen: true,
-        packageId: pkg.id,
-        position: {
-          top: top + window.scrollY,
-          left: rect.left + window.scrollX - 140 // Adjust to align properly
-        }
-      });
+      // Update local state with properly typed status
+      const updatedSubscription: SubscriptionPackage = {
+        ...subscription,
+        status: newStatus
+      };
+      
+      setSubscriptions(subscriptions.map(sub => 
+        getPackageId(sub) === id ? updatedSubscription : sub
+      ));
+      
+      setFilteredSubscriptions(filteredSubscriptions.map(sub => 
+        getPackageId(sub) === id ? updatedSubscription : sub
+      ));
+    } catch (error) {
+      console.error('Error toggling status:', error);
     }
   };
 
-  // Close action modal
-  const closeActionModal = () => {
-    setActionModal({ isOpen: false, packageId: null, position: { top: 0, left: 0 } });
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
   };
 
-  const handleEditPackage = () => {
-    if (actionModal.packageId) {
-      router.push(`/super-admin/subscription/edit/${actionModal.packageId}`);
-    }
-    closeActionModal();
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
-  const handleDeletePackage = () => {
-    if (actionModal.packageId) {
-      const pkgToDelete = packages.find(pkg => pkg.id === actionModal.packageId);
-      if (pkgToDelete) {
-        setDeleteModal({
-          isOpen: true,
-          packageId: actionModal.packageId,
-          packageName: pkgToDelete.packageName
-        });
-      }
-    }
-    closeActionModal();
+  const getStatusBadge = (subscription: SubscriptionPackage) => {
+    const isActive = subscription.status === 'active';
+    return (
+      <button
+        onClick={() => handleStatusToggle(subscription)}
+        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium cursor-pointer transition-colors ${
+          isActive 
+            ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+            : 'bg-red-100 text-red-800 hover:bg-red-200'
+        }`}
+      >
+        {subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1)}
+      </button>
+    );
   };
 
-  const handleViewPackage = () => {
-    if (actionModal.packageId) {
-      router.push(`/super-admin/subscription/view/${actionModal.packageId}`);
-    }
-    closeActionModal();
-  };
-
-  const confirmDeletePackage = async () => {
-    if (deleteModal.packageId) {
-      try {
-        const success = await SubscriptionService.deleteSubscriptionPackage(deleteModal.packageId);
-        if (success) {
-          await loadPackages(); // Refresh the list
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to delete subscription package');
-        console.error('Error deleting package:', err);
-      }
-    }
-    setDeleteModal({ isOpen: false, packageId: null, packageName: '' });
-  };
-
-  const cancelDeletePackage = () => {
-    setDeleteModal({ isOpen: false, packageId: null, packageName: '' });
-  };
+  // Calculate statistics
+  const activeSubscriptions = subscriptions.filter(s => s.status === 'active').length;
+  const inactiveSubscriptions = subscriptions.filter(s => s.status === 'inactive').length;
+  const totalFeatures = subscriptions.reduce((acc, sub) => acc + (sub.features?.length || 0), 0);
+  const totalServiceCost = subscriptions.reduce((acc, sub) => acc + (sub.totalServiceCost || 0), 0);
+  const totalDiscountAmount = subscriptions.reduce((acc, sub) => acc + (sub.discountAmount || 0), 0);
+  const avgDiscountPercentage = subscriptions.length > 0 
+    ? (subscriptions.reduce((acc, sub) => acc + (sub.discountPercentage || 0), 0) / (subscriptions.filter(sub => sub.discountPercentage !== undefined).length || 1)).toFixed(2)
+    : '0.00';
+  const totalFinalPrice = subscriptions.reduce((acc, sub) => acc + (sub.finalPriceAfterDiscount || 0), 0);
 
   if (loading) {
     return (
-      <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen flex items-center justify-center">
+      <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
         <style jsx>{`
           @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
-          .manrope { font-family: 'Manrope', sans-serif; }
-        `}</style>
-        <p>Loading subscription packages...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
-        <style jsx>{`
-          @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
-          .manrope { font-family: 'Manrope', sans-serif; }
+          body, .manrope-text { 
+            font-family: 'Manrope', sans-serif; 
+            font-weight: 400; 
+            font-size: 14px; 
+            line-height: 100%; 
+            letter-spacing: 0%; 
+            color: #1A1A1A; 
+          }
         `}</style>
         
-        <div className="mb-6">
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800 mb-2">Subscription Management</h1>
-              <p className="text-gray-600">Manage subscription packages for organizations</p>
-            </div>
-            <button 
-              onClick={handleCreatePackage}
-              className="px-4 py-2 bg-[#5D2A8B] hover:bg-[#4a216e] text-white rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Create Package
-            </button>
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold text-[#1A1A1A]">Subscription Package Management</h1>
+            <p className="text-gray-600">Manage subscription packages</p>
           </div>
-        </div>
-
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-          Error: {error}
-          <button 
-            onClick={loadPackages}
-            className="ml-4 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
-          >
-            Retry
-          </button>
+          
+          {/* Stats Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <p className="text-sm text-gray-600 manrope-text">Active</p>
+              <p className="text-2xl font-bold text-green-600 manrope-text">{activeSubscriptions}</p>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <p className="text-sm text-gray-600 manrope-text">Inactive</p>
+              <p className="text-2xl font-bold text-red-600 manrope-text">{inactiveSubscriptions}</p>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <p className="text-sm text-gray-600 manrope-text">Total Features</p>
+              <p className="text-2xl font-bold text-blue-600 manrope-text">{totalFeatures}</p>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <p className="text-sm text-gray-600 manrope-text">Total Service Cost</p>
+              <p className="text-2xl font-bold text-purple-600 manrope-text">{formatCurrency(totalServiceCost)}</p>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <p className="text-sm text-gray-600 manrope-text">Avg Discount %</p>
+              <p className="text-2xl font-bold text-yellow-600 manrope-text">{avgDiscountPercentage}%</p>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="animate-pulse">
+              <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+              <div className="h-10 bg-gray-200 rounded w-1/2 mb-6"></div>
+              {[1, 2, 3].map((item) => (
+                <div key={item} className="flex items-center justify-between py-4 border-b border-gray-100">
+                  <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-8 bg-gray-200 rounded w-20"></div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
+    <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
       <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
-        .manrope { font-family: 'Manrope', sans-serif; }
+        body, .manrope-text { 
+          font-family: 'Manrope', sans-serif; 
+          font-weight: 400; 
+          font-size: 14px; 
+          line-height: 100%; 
+          letter-spacing: 0%; 
+          color: #1A1A1A; 
+        }
       `}</style>
-      
-      <div className="mb-6">
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+
+      <div className="max-w-7xl mx-auto manrope-text">
+        {/* Page Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">Subscription Management</h1>
-            <p className="text-gray-600">Manage subscription packages for organizations</p>
+            <h1 className="text-2xl font-bold text-[#1A1A1A] manrope-text">Subscription Package Management</h1>
+            <p className="text-gray-600 manrope-text">Manage subscription packages</p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button 
-              onClick={handleCreatePackage}
-              className="px-4 py-2 bg-[#5D2A8B] hover:bg-[#4a216e] text-white rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Create Package
-            </button>
-            
-            {/* Export Dropdown */}
-            <div className="relative export-dropdown">
-              <button 
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors flex items-center gap-2"
-                disabled={exportLoading !== null}
-                onClick={() => setShowExportDropdown(!showExportDropdown)}
-              >
-                {exportLoading ? (
-                  <span>Exporting...</span>
-                ) : (
-                  <span>Export</span>
-                )}
-              </button>
-              
-              {showExportDropdown && (
-                <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                  <button
-                    onClick={() => { handleExport('csv'); setShowExportDropdown(false); }}
-                    disabled={exportLoading !== null}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Export CSV
-                  </button>
-                  <button
-                    onClick={() => { handleExport('excel'); setShowExportDropdown(false); }}
-                    disabled={exportLoading !== null}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Export Excel
-                  </button>
-                  <button
-                    onClick={() => { handleExport('pdf'); setShowExportDropdown(false); }}
-                    disabled={exportLoading !== null}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Export PDF
-                  </button>
+                
+          {/* Add Package Button */}
+          <button 
+            className="flex items-center justify-center bg-[#5D2A8B] text-white px-4 py-2.5 rounded-lg hover:bg-[#4a216d] transition-colors whitespace-nowrap"
+            onClick={() => router.push('/super-admin/subscription/create')}
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Add Subscription Package
+          </button>
+        </div>
+
+      
+
+        {/* Search & Filters Section */}
+        <div className="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Search Input */}
+            <div className="flex-1">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <Search className="w-5 h-5 text-gray-400" />
                 </div>
-              )}
-            </div>
-          </div>
-          
-          {/* Search and Filters */}
-          <div className="bg-white p-4 rounded-xl shadow mt-6">
-            <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
                 <input
                   type="text"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5D2A8B] focus:border-[#5D2A8B]"
+                  placeholder="Search packages by title, description, or features..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search by name, description, or services"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
                 />
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value as 'active' | 'inactive' | '')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
-                >
-                  <option value="">All Statuses</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-              
-              <div className="flex items-end">
-                <button
-                  type="submit"
-                  className="w-full px-4 py-2 bg-[#5D2A8B] text-white rounded-md hover:bg-[#4a216e] transition-colors"
-                >
-                  Search
-                </button>
-              </div>
-            </form>
+            </div>
+            
+           
+            
+          </div>
+          
+          {/* Search results info */}
+          <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-200">
+            <div className="text-sm text-gray-500 manrope-text">
+              Showing {filteredSubscriptions.length} of {subscriptions.length} packages
+              {searchTerm && (
+                <span className="ml-2 manrope-text">
+                  for "<span className="font-medium manrope-text">{searchTerm}</span>"
+                </span>
+              )}
+            </div>
+            
+            {/* Export Button */}
+            {/* <div className="flex items-center gap-2">
+              <button
+                onClick={() => SubscriptionService.exportSubscriptionPackages('csv')}
+                className="text-sm text-[#5D2A8B] hover:text-[#4a216d] hover:underline"
+              >
+                Export CSV
+              </button>
+            </div> */}
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Title</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Description</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Services</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Features</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Total Service Cost</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Final Price After Discount</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Discount Amount</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Discount %</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Promo Code</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Promo Start Date</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Promo End Date</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Note</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Status</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Created Date</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredSubscriptions.length > 0 ? (
+                  filteredSubscriptions.map((subscription) => {
+                    const subscriptionId = getPackageId(subscription);
+                    return (
+                      <tr key={subscriptionId} className="border-t border-gray-100 hover:bg-gray-50 group">
+                        <td className="py-4 px-4">
+                          <div className="font-medium text-gray-900 manrope-text">{subscription.title}</div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="text-gray-600 max-w-xs truncate manrope-text" title={subscription.description}>
+                            {subscription.description}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="space-y-1 manrope-text">
+                            {subscription.services && Array.isArray(subscription.services) && subscription.services.map((service, idx) => (
+                              <div key={idx} className="text-xs bg-gray-100 px-2 py-1 rounded manrope-text">
+                                {typeof service === 'string' ? service : service.serviceName || service.serviceId}
+                              </div>
+                            ))}
+                            {(subscription.services === undefined || subscription.services.length === 0) && (
+                              <div className="text-xs text-gray-500 manrope-text">-</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <button 
+                            onClick={() => {
+                              setCurrentFeatures(subscription.features || []);
+                              setCurrentPackageTitle(subscription.title);
+                              setShowFeaturesModal(true);
+                            }}
+                            className="text-[#5D2A8B] hover:text-[#4a216d] hover:underline text-sm manrope-text"
+                          >
+                            View Features ({subscription.features?.length || 0})
+                          </button>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="text-gray-700 font-medium manrope-text">
+                            {subscription.totalServiceCost !== undefined ? formatCurrency(subscription.totalServiceCost) : 'N/A'}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="text-green-600 font-medium manrope-text">
+                            {subscription.finalPriceAfterDiscount !== undefined ? formatCurrency(subscription.finalPriceAfterDiscount) : 'N/A'}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="text-red-600 font-medium manrope-text">
+                            {subscription.discountAmount !== undefined ? formatCurrency(subscription.discountAmount) : 'N/A'}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="text-gray-700 font-medium manrope-text">
+                            {subscription.discountPercentage !== undefined ? `${subscription.discountPercentage}%` : 'N/A'}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="text-gray-700 font-medium manrope-text">
+                            {subscription.promoCode || 'N/A'}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="text-gray-700 font-medium manrope-text">
+                            {subscription.promoStartDate ? formatDate(new Date(subscription.promoStartDate).toISOString()) : 'N/A'}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="text-gray-700 font-medium manrope-text">
+                            {subscription.promoEndDate ? formatDate(new Date(subscription.promoEndDate).toISOString()) : 'N/A'}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <button 
+                            onClick={() => {
+                              setCurrentNote(subscription.note || '');
+                              setShowNoteModal(true);
+                            }}
+                            className="text-[#5D2A8B] hover:text-[#4a216d] hover:underline text-sm manrope-text"
+                          >
+                            {subscription.note ? 'View Note' : 'N/A'}
+                          </button>
+                        </td>
+                        <td className="py-4 px-4">
+                          {getStatusBadge(subscription)}
+                        </td>
+                        <td className="py-4 px-4 text-gray-600 manrope-text">
+                          {formatDate(subscription.createdAt)}
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="relative">
+                            <button 
+                              onClick={(e) => toggleDropdown(subscriptionId, e)}
+                              className="p-2 hover:bg-gray-100 rounded-full transition-colors group-hover:bg-gray-100"
+                              title="Actions"
+                            >
+                              <MoreVertical className="w-5 h-5 text-gray-500" />
+                            </button>
+                            
+                            {dropdownOpen === subscriptionId && (
+                              <div 
+                                ref={(el) => {
+                                  dropdownRefs.current[subscriptionId] = el;
+                                }}
+                                className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+                              >
+                                <button 
+                                  onClick={() => handleView(subscription)}
+                                  className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center border-b border-gray-100"
+                                >
+                                  <Eye className="w-4 h-4 mr-2 text-blue-600" />
+                                  View Details
+                                </button>
+                                <button 
+                                  onClick={() => handleEdit(subscription)}
+                                  className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center border-b border-gray-100"
+                                >
+                                  <Edit className="w-4 h-4 mr-2 text-yellow-600" />
+                                  Edit
+                                </button>
+                                {/* Removed Deactivate/Activate from dropdown */}
+                                <button 
+                                  onClick={(e) => handleDeleteClick(subscription, e)}
+                                  className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={15} className="py-12 px-4 text-center text-gray-500">
+                      {searchTerm || statusFilter !== 'all' ? (
+                        <div className="flex flex-col items-center">
+                          <Search className="w-16 h-16 text-gray-300 mb-4" />
+                          <p className="text-lg font-medium text-gray-600">No subscription packages found</p>
+                          <p className="text-gray-500 mb-4">Try adjusting your search or filters</p>
+                          <button 
+                            onClick={() => {
+                              setSearchTerm('');
+                              setStatusFilter('all');
+                            }}
+                            className="text-[#5D2A8B] hover:text-[#4a216d] hover:underline"
+                          >
+                            Clear all filters
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center">
+                          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                            <Plus className="w-8 h-8 text-gray-400" />
+                          </div>
+                          <p className="text-lg font-medium text-gray-600">No subscription packages yet</p>
+                          <p className="text-gray-500 mb-6">Get started by creating your first subscription package</p>
+                          <button 
+                            className="flex items-center justify-center bg-[#5D2A8B] text-white px-6 py-3 rounded-lg hover:bg-[#4a216d] transition-colors"
+                            onClick={() => router.push('/super-admin/subscription/create')}
+                          >
+                            <Plus className="w-5 h-5 mr-2" />
+                            Create First Package
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
-
-      {/* Packages Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => {
-                    setSortBy('packageName');
-                    setSortOrder(sortBy === 'packageName' && sortOrder === 'asc' ? 'desc' : 'asc');
-                  }}
+      
+      {/* Features Modal */}
+      {showFeaturesModal && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowFeaturesModal(false)}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-900 manrope-text">Features for {currentPackageTitle}</h3>
+                <button
+                  onClick={() => setShowFeaturesModal(false)}
+                  className="text-gray-400 hover:text-gray-600 manrope-text"
                 >
-                  Package Name
-                  {sortBy === 'packageName' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => {
-                    setSortBy('monthlyPrice');
-                    setSortOrder(sortBy === 'monthlyPrice' && sortOrder === 'asc' ? 'desc' : 'asc');
-                  }}
-                >
-                  Monthly Price
-                  {sortBy === 'monthlyPrice' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
-                </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => {
-                    setSortBy('quarterlyPrice');
-                    setSortOrder(sortBy === 'quarterlyPrice' && sortOrder === 'asc' ? 'desc' : 'asc');
-                  }}
-                >
-                  Quarterly Price
-                  {sortBy === 'quarterlyPrice' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
-                </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => {
-                    setSortBy('yearlyPrice');
-                    setSortOrder(sortBy === 'yearlyPrice' && sortOrder === 'asc' ? 'desc' : 'asc');
-                  }}
-                >
-                  Yearly Price
-                  {sortBy === 'yearlyPrice' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Services</th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => {
-                    setSortBy('status');
-                    setSortOrder(sortBy === 'status' && sortOrder === 'asc' ? 'desc' : 'asc');
-                  }}
-                >
-                  Status
-                  {sortBy === 'status' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
-                </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => {
-                    setSortBy('subscriberCount');
-                    setSortOrder(sortBy === 'subscriberCount' && sortOrder === 'asc' ? 'desc' : 'asc');
-                  }}
-                >
-                  Subscriber Count
-                  {sortBy === 'subscriberCount' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {packages.length > 0 ? (
-                packages.map((pkg) => (
-                  <tr key={pkg.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{pkg.packageName}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-500 max-w-xs truncate">{pkg.description}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">₦{pkg.monthlyPrice}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">₦{pkg.quarterlyPrice}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">₦{pkg.yearlyPrice}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{pkg.services}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        pkg.status === 'active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {pkg.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{pkg.subscriberCount}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          ref={(el) => {
-                            actionButtonRefs.current[pkg.id] = el;
-                          }}
-                          onClick={(e) => handleActionClick(pkg, e)}
-                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-                          title="More actions"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {currentFeatures.length > 0 ? (
+                  currentFeatures.map((feature, index) => (
+                    <div 
+                      key={index}
+                      className="flex items-start p-3 bg-gray-50 rounded-lg border border-gray-200"
+                    >
+                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#5D2A8B] flex items-center justify-center mt-0.5">
+                        <span className="text-white text-xs font-bold manrope-text">{index + 1}</span>
                       </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
-                    No subscription packages found. Create a new package to get started.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                      <div className="ml-3 text-gray-700 manrope-text">{feature}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500 manrope-text">
+                    <p className="manrope-text">No features available</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowFeaturesModal(false)}
+                  className="px-4 py-2 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d] transition-colors manrope-text"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-
-      {/* Action Modal */}
-      {actionModal.isOpen && actionModal.packageId && (
-        <SuperAdminActionModal
-          isOpen={actionModal.isOpen}
-          onClose={closeActionModal}
-          onEdit={handleEditPackage}
-          onDelete={handleDeletePackage}
-          onView={handleViewPackage}
-          itemName={packages.find(p => p.id === actionModal.packageId)?.packageName || 'Package'}
-          position={actionModal.position}
-        />
       )}
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        isOpen={deleteModal.isOpen}
-        onClose={cancelDeletePackage}
-        onConfirm={confirmDeletePackage}
-        itemName={deleteModal.packageName}
-        itemType="subscription package"
-      />
+      
+      {/* Note Modal */}
+      {showNoteModal && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowNoteModal(false)}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-900 manrope-text">Note</h3>
+                <button
+                  onClick={() => setShowNoteModal(false)}
+                  className="text-gray-400 hover:text-gray-600 manrope-text"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-gray-700 whitespace-pre-wrap manrope-text">{currentNote}</p>
+              </div>
+              
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowNoteModal(false)}
+                  className="px-4 py-2 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d] transition-colors manrope-text"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Delete Confirmation Modal - No Background */}
+      {showDeleteModal && subscriptionToDelete && (
+        <div 
+          className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4"
+          onClick={cancelDelete}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-900">Confirm Deletion</h3>
+              </div>
+              
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete <span className="font-semibold">"{subscriptionToDelete.title}"</span>? This action cannot be undone.
+              </p>
+              
+              <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-700">
+                  <strong>Warning:</strong> Deleting this package will remove it permanently. Any subscribers to this package may be affected.
+                </p>
+              </div>
+              
+              {deleteMessage && (
+                <div className={`mb-4 p-3 rounded-lg text-sm ${
+                  deleteMessage.includes('successfully') 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {deleteMessage}
+                </div>
+              )}
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={cancelDelete}
+                  disabled={isDeleting}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center transition-colors"
+                >
+                  {isDeleting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete Package'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-
 
 export default SubscriptionPage;

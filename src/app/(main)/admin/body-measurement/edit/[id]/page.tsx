@@ -105,27 +105,54 @@ export default function AdminBodyMeasurementEdit({ params }: { params: Promise<{
           // Transform measurement data to form values
           const sections: MeasurementSection[] = [];
           
-          // Check if there are measurements to display
-          const measurementEntries = Object.entries(measurementData.measurements);
-          if (measurementEntries.length > 0) {
-            // Group measurements into a single section for editing
-            const section: MeasurementSection = {
-              name: "Body Measurements",
-              fields: []
-            };
-            
-            measurementEntries.forEach(([key, value]) => {
-              if (value !== undefined && value !== null) {
-                section.fields.push({
-                  name: key.charAt(0).toUpperCase() + key.slice(1),
-                  value: value.toString()
+          // Check if there are measurements in sections format
+          if (measurementData.sections && Array.isArray(measurementData.sections) && measurementData.sections.length > 0) {
+            // Process measurements from sections format
+            measurementData.sections.forEach((section: any) => {
+              if (section.measurements && Array.isArray(section.measurements) && section.measurements.length > 0) {
+                const newSection: MeasurementSection = {
+                  name: section.sectionName || "Body Measurements",
+                  fields: []
+                };
+                
+                section.measurements.forEach((measurement: any) => {
+                  if (measurement.bodyPartName && measurement.size !== undefined && measurement.size !== null) {
+                    newSection.fields.push({
+                      name: measurement.bodyPartName.charAt(0).toUpperCase() + measurement.bodyPartName.slice(1),
+                      value: measurement.size.toString()
+                    });
+                  }
                 });
+                
+                sections.push(newSection);
               }
             });
-            
-            sections.push(section);
-          } else {
-            // Default section if no measurements exist
+          }
+          // Fallback to old format (measurements object)
+          else if (measurementData.measurements && typeof measurementData.measurements === 'object') {
+            const measurementEntries = Object.entries(measurementData.measurements);
+            if (measurementEntries.length > 0) {
+              // Group measurements into a single section for editing
+              const section: MeasurementSection = {
+                name: "Body Measurements",
+                fields: []
+              };
+              
+              measurementEntries.forEach(([key, value]) => {
+                if (value !== undefined && value !== null) {
+                  section.fields.push({
+                    name: key.charAt(0).toUpperCase() + key.slice(1),
+                    value: value.toString()
+                  });
+                }
+              });
+              
+              sections.push(section);
+            }
+          }
+          
+          // Add default section if no measurements exist
+          if (sections.length === 0) {
             sections.push({
               name: "Upper Body",
               fields: [

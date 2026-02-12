@@ -2,6 +2,7 @@
 
 import { SuperAdminSidebar } from "@/app/components/SuperAdminSidebar";
 import { useState } from "react";
+import SubscriptionGuard from "@/components/SubscriptionGuard";
 
 export default function RootLayout({
   children,
@@ -11,12 +12,14 @@ export default function RootLayout({
   const [showSidebar, setShowSidebar] = useState(false); // Start with sidebar closed on mobile
 
   return (
-    <div className="min-h-screen relative">
-      <SuperAdminSidebar onShow={showSidebar} setShow={setShowSidebar} />
-      
-      <div className="relative w-full pt-0 md:pt-0">
-        {children}
+    <SubscriptionGuard>
+      <div className="min-h-screen relative">
+        <SuperAdminSidebar onShow={showSidebar} setShow={setShowSidebar} />
+        
+        <div className="relative w-full pt-0 md:pt-0">
+          {children}
+        </div>
       </div>
-    </div>
+    </SubscriptionGuard>
   );
 }

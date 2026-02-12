@@ -15,8 +15,10 @@ function AiBodyMeasurementContent() {
   const saveMeasurementMutation = useSaveManualMeasurement();
   const [step, setStep] = useState<'capture' | 'height' | 'processing' | 'results'>('capture');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [sideImage, setSideImage] = useState<string | null>(null);
   const [height, setHeight] = useState<string>("");
   const [alignmentStatus, setAlignmentStatus] = useState<'not-aligned' | 'aligned' | 'processing'>('not-aligned');
+  const [currentImageType, setCurrentImageType] = useState<'front' | 'side'>('front');
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -83,8 +85,19 @@ function AiBodyMeasurementContent() {
         canvasRef.current.height = videoRef.current.videoHeight;
         context.drawImage(videoRef.current, 0, 0);
         const imageData = canvasRef.current.toDataURL('image/jpeg');
-        setCapturedImage(imageData);
-        setStep('height');
+        
+        if (currentImageType === 'front') {
+          setCapturedImage(imageData);
+        } else {
+          setSideImage(imageData);
+        }
+        
+        // If we have front image, suggest taking side image
+        if (currentImageType === 'front' && !sideImage) {
+          setCurrentImageType('side');
+        } else {
+          setStep('height');
+        }
       }
     }
   };
@@ -95,8 +108,20 @@ function AiBodyMeasurementContent() {
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
-          setCapturedImage(event.target.result as string);
-          setStep('height');
+          const imageData = event.target.result as string;
+          
+          if (currentImageType === 'front') {
+            setCapturedImage(imageData);
+          } else {
+            setSideImage(imageData);
+          }
+          
+          // If we have front image, suggest taking side image
+          if (currentImageType === 'front' && !sideImage) {
+            setCurrentImageType('side');
+          } else {
+            setStep('height');
+          }
         }
       };
       reader.readAsDataURL(file);
@@ -133,18 +158,15 @@ function AiBodyMeasurementContent() {
     reset(); // Clear any previous errors/results
     
     try {
-      // Convert base64 image to the format expected by the API
-      let base64Data = capturedImage;
-      // Remove data URL prefix if present
-      if (capturedImage && capturedImage.startsWith('data:image') && capturedImage.includes(',')) {
-        base64Data = capturedImage.split(',')[1];
-      }
-      
+      // The captured images are already in data URL format, so we can pass them directly
       const requestData = {
-        imageData: base64Data,
+        frontImageData: capturedImage,
+        sideImageData: sideImage || undefined,
         userHeight: parseFloat(height),
         scanTimestamp: new Date().toISOString(),
-        deviceInfo: navigator.userAgent
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        subject: formData.subject
       };
       
       await analyzeBodyScan(requestData);
@@ -161,7 +183,9 @@ function AiBodyMeasurementContent() {
 
   const retakeImage = () => {
     setCapturedImage(null);
+    setSideImage(null);
     setHeight("");
+    setCurrentImageType('front');
     setStep('capture');
     reset();
   };
@@ -224,7 +248,7 @@ function AiBodyMeasurementContent() {
               AI Body Measurement
             </h1>
             <p className="text-sm text-gray-500 text-center mt-1">
-              {step === 'capture' && 'Position yourself in the frame'}
+              {step === 'capture' && `Take ${currentImageType} view photo`}
               {step === 'height' && 'Enter your height'}
               {step === 'processing' && 'Analyzing your measurements'}
               {step === 'results' && 'Your measurements'}
@@ -264,11 +288,35 @@ function AiBodyMeasurementContent() {
             {/* Capture Step */}
             {step === 'capture' && (
               <div className="space-y-4">
+                {/* Image Type Selector */}
+                <div className="flex justify-center space-x-4 mb-4">
+                  <button
+                    onClick={() => setCurrentImageType('front')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                      currentImageType === 'front' 
+                        ? 'bg-purple-600 text-white' 
+                        : 'bg-gray-200 text-gray-700'
+                    }`}
+                  >
+                    Front View {capturedImage && '✓'}
+                  </button>
+                  <button
+                    onClick={() => setCurrentImageType('side')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                      currentImageType === 'side' 
+                        ? 'bg-purple-600 text-white' 
+                        : 'bg-gray-200 text-gray-700'
+                    }`}
+                  >
+                    Side View {sideImage && '✓'}
+                  </button>
+                </div>
+
                 <div className="relative bg-gray-100 rounded-lg overflow-hidden aspect-[3/4] flex items-center justify-center">
-                  {capturedImage ? (
+                  {(currentImageType === 'front' && capturedImage) || (currentImageType === 'side' && sideImage) ? (
                     <img 
-                      src={capturedImage} 
-                      alt="Captured" 
+                      src={currentImageType === 'front' ? capturedImage! : sideImage!} 
+                      alt={`${currentImageType} view`} 
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -289,7 +337,7 @@ function AiBodyMeasurementContent() {
                             <div className="w-8 h-8 border-2 border-purple-500 rounded-full"></div>
                           </div>
                           <p className="text-white font-medium mt-2 bg-black bg-opacity-50 px-2 py-1 rounded">
-                            Stand here
+                            {currentImageType === 'front' ? 'Stand facing camera' : 'Stand sideways'}
                           </p>
                         </div>
                       </div>
@@ -298,7 +346,7 @@ function AiBodyMeasurementContent() {
                 </div>
                 
                 <div className="flex justify-center gap-4">
-                  {!capturedImage ? (
+                  {!(currentImageType === 'front' && capturedImage) && !(currentImageType === 'side' && sideImage) ? (
                     <>
                       <button
                         onClick={captureImage}
@@ -319,17 +367,35 @@ function AiBodyMeasurementContent() {
                     </>
                   ) : (
                     <button
-                      onClick={retakeImage}
+                      onClick={() => {
+                        if (currentImageType === 'front') {
+                          setCapturedImage(null);
+                        } else {
+                          setSideImage(null);
+                        }
+                      }}
                       className="px-4 py-2 bg-gray-200 rounded-lg text-gray-700 flex items-center gap-2 hover:bg-gray-300 transition-colors"
                     >
                       <RotateCcw className="w-4 h-4" />
-                      Retake
+                      Retake {currentImageType}
                     </button>
                   )}
                 </div>
+
+                {/* Continue Button */}
+                {capturedImage && (
+                  <div className="flex justify-center mt-4">
+                    <button
+                      onClick={() => setStep('height')}
+                      className="px-6 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors"
+                    >
+                      {sideImage ? 'Continue with both images' : 'Continue with front image only'}
+                    </button>
+                  </div>
+                )}
                 
                 <div className="text-center text-sm text-gray-500">
-                  <p>Position yourself in the frame with arms slightly away from your body</p>
+                  <p>Front image is required. Side image is optional but recommended for better accuracy.</p>
                 </div>
               </div>
             )}
@@ -338,20 +404,37 @@ function AiBodyMeasurementContent() {
             {step === 'height' && (
               <div className="space-y-6">
                 <div className="text-center">
-                  <div className="w-32 h-32 mx-auto bg-gray-100 rounded-lg overflow-hidden">
+                  <div className="flex justify-center gap-4 mb-4">
                     {capturedImage && (
-                      <img 
-                        src={capturedImage} 
-                        alt="Preview" 
-                        className="w-full h-full object-cover"
-                      />
+                      <div className="text-center">
+                        <div className="w-24 h-32 mx-auto bg-gray-100 rounded-lg overflow-hidden">
+                          <img 
+                            src={capturedImage} 
+                            alt="Front view" 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Front</p>
+                      </div>
+                    )}
+                    {sideImage && (
+                      <div className="text-center">
+                        <div className="w-24 h-32 mx-auto bg-gray-100 rounded-lg overflow-hidden">
+                          <img 
+                            src={sideImage} 
+                            alt="Side view" 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Side</p>
+                      </div>
                     )}
                   </div>
                   <button
                     onClick={retakeImage}
                     className="mt-2 text-sm text-purple-600 hover:text-purple-800"
                   >
-                    Change Image
+                    Change Images
                   </button>
                 </div>
                 
@@ -414,7 +497,7 @@ function AiBodyMeasurementContent() {
                         {key.replace(/([A-Z])/g, ' $1').trim()}
                       </span>
                       <span className="font-medium">
-                        {typeof value === 'number' ? `${value} cm` : value}
+                        {typeof value === 'number' ? `${value.toFixed(2)} cm` : value}
                       </span>
                     </div>
                   ))}
@@ -448,7 +531,16 @@ function AiBodyMeasurementContent() {
         
         <div className="mt-4 text-center">
           <button
-            onClick={() => router.back()}
+            onClick={() => {
+              // Reset state when going back
+              setStep('capture');
+              setCapturedImage(null);
+              setSideImage(null);
+              setHeight('');
+              setCurrentImageType('front');
+              reset();
+              router.back();
+            }}
             className="text-gray-500 hover:text-gray-700 text-sm"
           >
             Back to Measurements

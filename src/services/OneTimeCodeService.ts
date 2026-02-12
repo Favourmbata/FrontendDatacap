@@ -53,4 +53,8 @@ export class OneTimeCodeService {
   async getOneTimeCodes(page: number = 1, limit: number = 10): Promise<PaginatedOneTimeCodesResponse> {
     return this.httpService.getData(routes.getOneTimeCodes(page, limit));
   }
+
+  async sendOneTimeCodeEmail(code: string): Promise<any> {
+    return this.httpService.postData({ code }, routes.sendOneTimeCodeEmail());
+  }
 }

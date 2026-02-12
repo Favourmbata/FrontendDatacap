@@ -1,96 +1,242 @@
-// services/subscriptionService.ts
+﻿// services/subscriptionService.ts
 import { HttpService } from './HttpService';
 import { routes } from './apiRoutes';
 
 // Define the subscription package interface to match the API response
-interface SubscriptionPackage {
+export interface SubscriptionPackage {
   id: string;
-  packageName: string;
-  services: string;
-  monthlyPrice: number;
-  quarterlyPrice: number;
-  yearlyPrice: number;
-  setupDate: string;
+  _id?: string; // For MongoDB compatibility
+  title: string;
+  description: string;
+  services: Array<{ 
+    serviceId: string;
+    serviceName: string;
+    duration: 'monthly' | 'quarterly' | 'yearly';
+    price: number;
+    _id?: string;
+  }>;
+  totalServiceCost?: number;
+  promoCode?: string;
+  discountPercentage?: number;
   promoStartDate?: string;
   promoEndDate?: string;
-  updatedDate: string;
+  discountAmount?: number;
+  finalPriceAfterDiscount?: number;
+  features: string[];
+  note?: string;
+  price: number;
+  monthlyPrice?: number;
+  quarterlyPrice?: number;
+  yearlyPrice?: number;
+  setupDate?: string;
+  updatedDate?: string;
   status: 'active' | 'inactive';
-  description: string;
-  subscriberCount: number;
+  isActive?: boolean; // Some APIs use isActive instead of status
+  subscriberCount?: number;
+  maxUsers?: number;
   createdAt: string;
   updatedAt: string;
-  promoCode?: string; // Add this field for the form
+  // Additional fields from API
+  createdBy?: string;
+  __v?: number; // MongoDB version key
+}
+
+// Extended interface for form data (used in create/edit pages)
+export interface SubscriptionPackageFormData extends SubscriptionPackage {
+  featuresInput?: string;
+  financialDetails?: Array<{
+    id: string;
+    amount: number;
+    platformChargePercent: number;
+    platformChargeValue: number;
+    actualAmount: number;
+    discountPercentage: number;
+  }>;
 }
 
 // Interface for creating a subscription package
-interface CreateSubscriptionPackageData {
-  packageName: string;
-  services: string;
-  monthlyPrice: number;
-  quarterlyPrice: number;
-  yearlyPrice: number;
+export interface CreateSubscriptionPackageData {
+  title: string;
+  description: string;
+  services: Array<{
+    serviceId: string;
+    serviceName: string;
+    duration: 'monthly' | 'quarterly' | 'yearly';
+    price: number;
+  }>;
+  totalServiceCost: number;
+  promoCode?: string;
+  discountPercentage?: number;
   promoStartDate?: string;
   promoEndDate?: string;
-  description: string;
+  discountAmount: number;
+  finalPriceAfterDiscount: number;
+  features: string[];
+  maxUsers: number;
+  note?: string;
+  isActive: boolean;
+  createdBy: string;
+  // Optional field not included in the basic interface
+  // applyTo?: {
+  //   individual: boolean;
+  //   industries: string[];
+  //   categories: string[];
+  // };
 }
 
 // Interface for updating subscription status
-interface UpdateSubscriptionStatusData {
+export interface UpdateSubscriptionStatusData {
   status: 'active' | 'inactive';
 }
 
-// Interface for the response from the API
+// Interface for the API response structure
 interface SubscriptionPackageResponse {
   success: boolean;
   data: {
-    package: SubscriptionPackage;
+    package: {
+      _id: string;
+      title: string;
+      description: string;
+      services: Array<{ 
+        serviceId: string;
+        serviceName: string;
+        duration: 'monthly' | 'quarterly' | 'yearly';
+        price: number;
+        _id?: string;
+      }>;
+      totalServiceCost?: number;
+      promoCode?: string;
+      discountPercentage?: number;
+      promoStartDate?: string;
+      promoEndDate?: string;
+      discountAmount?: number;
+      finalPriceAfterDiscount?: number;
+      features: string[];
+      note?: string;
+      isActive: boolean;
+      createdBy?: string;
+      maxUsers?: number;
+      createdAt: string;
+      updatedAt: string;
+      __v?: number;
+    };
+    message?: string;
   };
-  message: string;
 }
 
 interface SubscriptionPackagesResponse {
   success: boolean;
   data: {
-    packages: SubscriptionPackage[];
+    packages: Array<{ 
+      _id: string;
+      title: string;
+      description: string;
+      services: Array<{
+        serviceId: string;
+        serviceName: string;
+        duration: 'monthly' | 'quarterly' | 'yearly';
+        price: number;
+        _id?: string;
+      }>;
+      totalServiceCost?: number;
+      promoCode?: string;
+      discountPercentage?: number;
+      promoStartDate?: string;
+      promoEndDate?: string;
+      discountAmount?: number;
+      finalPriceAfterDiscount?: number;
+      features: string[];
+      note?: string;
+      price: number;
+      monthlyPrice?: number;
+      quarterlyPrice?: number;
+      yearlyPrice?: number;
+      setupDate?: string;
+      updatedDate?: string;
+      isActive?: boolean;
+      subscriberCount?: number;
+      createdAt: string;
+      updatedAt: string;
+      createdBy?: string;
+      maxUsers?: number;
+      __v?: number;
+    }>; 
     total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
+    message?: string;
   };
-  message: string;
 }
 
 class SubscriptionService {
   private httpService: HttpService;
 
   constructor() {
-    this.httpService = new HttpService();
+    this.httpService = new HttpService(process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com');
   }
 
-  // Get all subscription packages with pagination and filtering
-  async getSubscriptionPackages(
-    page: number = 1,
-    limit: number = 10,
-    search?: string,
-    sortBy?: string,
-    sortOrder?: 'asc' | 'desc',
-    status?: 'active' | 'inactive'
-  ): Promise<{ packages: SubscriptionPackage[]; total: number; page: number; limit: number; totalPages: number }> {
+  // Helper function to transform API package to SubscriptionPackage interface
+  private transformPackage(pkg: any): SubscriptionPackage {
+    return {
+      id: pkg._id, // Map _id to id
+      _id: pkg._id,
+      title: pkg.title || '',
+      description: pkg.description || '',
+      services: Array.isArray(pkg.services) ? pkg.services : [],
+      totalServiceCost: pkg.totalServiceCost || pkg.price || 0,
+      promoCode: pkg.promoCode,
+      discountPercentage: pkg.discountPercentage,
+      promoStartDate: pkg.promoStartDate,
+      promoEndDate: pkg.promoEndDate,
+      discountAmount: pkg.discountAmount || 0,
+      finalPriceAfterDiscount: pkg.finalPriceAfterDiscount || pkg.price || 0,
+      features: Array.isArray(pkg.features) ? pkg.features : [],
+      note: pkg.note,
+      price: pkg.price || pkg.finalPriceAfterDiscount || 0,
+      monthlyPrice: pkg.monthlyPrice,
+      quarterlyPrice: pkg.quarterlyPrice,
+      yearlyPrice: pkg.yearlyPrice,
+      setupDate: pkg.setupDate,
+      updatedDate: pkg.updatedDate,
+      status: pkg.isActive ? 'active' : 'inactive', // Convert isActive to status
+      isActive: pkg.isActive,
+      subscriberCount: pkg.subscriberCount,
+      maxUsers: pkg.maxUsers,
+      createdAt: pkg.createdAt || new Date().toISOString(),
+      updatedAt: pkg.updatedAt || new Date().toISOString(),
+      createdBy: pkg.createdBy,
+      __v: pkg.__v
+    };
+  }
+
+  // Get all subscription packages
+  async getSubscriptionPackages(): Promise<{ packages: SubscriptionPackage[]; total: number }> {
     try {
-      const url = routes.getSubscriptionPackages(page, limit, search, sortBy, sortOrder, status);
+      const url = routes.getAllSubscriptionPackage();
       const response = await this.httpService.getData<SubscriptionPackagesResponse>(url);
       
       if (response.success) {
+        // Transform all packages to match our interface
+        const transformedPackages = response.data.packages.map(pkg => 
+          this.transformPackage(pkg)
+        );
+        
         return {
-          packages: response.data.packages,
-          total: response.data.total,
-          page: response.data.page,
-          limit: response.data.limit,
-          totalPages: response.data.totalPages
+          packages: transformedPackages,
+          total: response.data.total
         };
       } else {
-        throw new Error(response.message || 'Failed to fetch subscription packages');
+        throw new Error(response.data?.message || 'Failed to fetch subscription packages');
       }
+    } catch (error) {
+      console.error('Error fetching subscription packages:', error);
+      throw error;
+    }
+  }
+
+  // Get all subscription packages (alias for compatibility)
+  async getAllSubscriptionPackages(): Promise<SubscriptionPackage[]> {
+    try {
+      const { packages } = await this.getSubscriptionPackages();
+      return packages;
     } catch (error) {
       console.error('Error fetching subscription packages:', error);
       throw error;
@@ -104,9 +250,9 @@ class SubscriptionService {
       const response = await this.httpService.getData<SubscriptionPackageResponse>(url);
       
       if (response.success) {
-        return response.data.package;
+        return this.transformPackage(response.data.package);
       } else {
-        throw new Error(response.message || 'Failed to fetch subscription package');
+        throw new Error(response.data?.message || 'Failed to fetch subscription package');
       }
     } catch (error) {
       console.error('Error fetching subscription package:', error);
@@ -121,9 +267,9 @@ class SubscriptionService {
       const response = await this.httpService.postData<SubscriptionPackageResponse>(data, url);
       
       if (response.success) {
-        return response.data.package;
+        return this.transformPackage(response.data.package);
       } else {
-        throw new Error(response.message || 'Failed to create subscription package');
+        throw new Error(response.data?.message || 'Failed to create subscription package');
       }
     } catch (error) {
       console.error('Error creating subscription package:', error);
@@ -135,12 +281,22 @@ class SubscriptionService {
   async updateSubscriptionPackage(id: string, data: Partial<CreateSubscriptionPackageData>): Promise<SubscriptionPackage> {
     try {
       const url = routes.updateSubscriptionPackage(id);
-      const response = await this.httpService.putData<SubscriptionPackageResponse>(data, url);
+      
+      // Clean the data to remove undefined values
+      const cleanedData: any = {};
+      Object.keys(data).forEach(key => {
+        const value = data[key as keyof CreateSubscriptionPackageData];
+        if (value !== undefined && value !== null) {
+          cleanedData[key] = value;
+        }
+      });
+      
+      const response = await this.httpService.putData<SubscriptionPackageResponse>(cleanedData, url);
       
       if (response.success) {
-        return response.data.package;
+        return this.transformPackage(response.data.package);
       } else {
-        throw new Error(response.message || 'Failed to update subscription package');
+        throw new Error(response.data?.message || 'Failed to update subscription package');
       }
     } catch (error) {
       console.error('Error updating subscription package:', error);
@@ -165,12 +321,14 @@ class SubscriptionService {
   async updateSubscriptionStatus(id: string, status: 'active' | 'inactive'): Promise<SubscriptionPackage> {
     try {
       const url = routes.updateSubscriptionStatus(id);
-      const response = await this.httpService.putData<SubscriptionPackageResponse>({ status }, url);
+      // Convert status to isActive for the API
+      const isActive = status === 'active';
+      const response = await this.httpService.putData<SubscriptionPackageResponse>({ isActive }, url);
       
       if (response.success) {
-        return response.data.package;
+        return this.transformPackage(response.data.package);
       } else {
-        throw new Error(response.message || 'Failed to update subscription status');
+        throw new Error(response.data?.message || 'Failed to update subscription status');
       }
     } catch (error) {
       console.error('Error updating subscription status:', error);
@@ -191,4 +349,3 @@ class SubscriptionService {
 }
 
 export default new SubscriptionService();
-export type { SubscriptionPackage, CreateSubscriptionPackageData, UpdateSubscriptionStatusData };

@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import UserActionModal from '@/app/components/userActionModal';
 import DeleteConfirmationModal from '@/app/components/DeleteConfirmationModal';
+import PasswordModal from '@/app/components/PasswordModal';
 import { useRouter } from 'next/navigation';
 import { AdminUserService, AdminUser } from '@/services/AdminUserService';
 import { HttpService } from '@/services/HttpService';
@@ -66,6 +67,11 @@ const UsersManagementPage = () => {
     isOpen: false,
     userId: null as string | null,
     userName: ''
+  });
+  const [passwordModal, setPasswordModal] = useState({
+    isOpen: false,
+    password: '',
+    userId: null as string | null,
   });
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -297,9 +303,9 @@ const UsersManagementPage = () => {
     try {
       const httpService = new HttpService();
       await httpService.postData<any>({
-        adminMessage: 'Hello!',
-        generateNewPassword: false
-      }, `/api/org-user/users/${userId}/send-email`);
+        adminMessage: 'Welcome to our organization!',
+        generateNewPassword: true
+      }, `/api/admin/users/${userId}/send-email`);
       
       toast({ 
         title: 'Email Sent', 
@@ -318,24 +324,177 @@ const UsersManagementPage = () => {
     }
   };
 
+  // Handle password change - navigate to change password page
+  const handleChangePassword = (userId: string) => {
+    router.push(`/admin/users/change-password/${userId}`);
+  };
+
+  // Handle reset password - generate new password and show it in modal
   const handleResetPassword = async (userId: string) => {
     try {
       const adminUserService = new AdminUserService();
-      await adminUserService.updateAdminUserPassword(userId, { generateNew: true });
+      const response = await adminUserService.updateAdminUserPassword(userId, { generateNew: true });
       
-      toast({ 
-      title: 'Password Reset', 
-      description: 'Password has been reset successfully',
-      variant: 'default'
-      });
+      if (response.success && response.data?.generatedPassword) {
+        setPasswordModal({
+          isOpen: true,
+          password: response.data.generatedPassword,
+          userId: userId
+        });
+        
+        toast({ 
+          title: 'Password Generated', 
+          description: response.data.message || 'Password has been generated successfully',
+          variant: 'default'
+        });
+      } else {
+        toast({ 
+          title: 'Password Reset', 
+          description: response.data?.message || 'Password has been reset successfully',
+          variant: 'default'
+        });
+      }
       
       closeActionModal();
     } catch (error: any) {
       console.error('Error resetting password:', error);
       toast({ 
-      title: 'Error', 
-      description: error.message || 'Failed to reset password',
-      variant: 'destructive'
+        title: 'Error', 
+        description: error.message || 'Failed to reset password',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // Handle generate custom ID
+  const handleGenerateCustomId = async (userId: string) => {
+    try {
+      const adminUserService = new AdminUserService();
+      const response = await adminUserService.generateCustomUserId(userId);
+      
+      // Update the user's customUserId in the local state
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === userId ? { ...user, customerUserId: response.data.customUserId } : user
+        )
+      );
+      
+      toast({ 
+        title: 'Success', 
+        description: response.data.message || 'Custom ID generated successfully',
+        variant: 'default'
+      });
+      
+      closeActionModal();
+    } catch (error: any) {
+      console.error('Error generating custom ID:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to generate custom ID',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const closePasswordModal = () => {
+    setPasswordModal({
+      isOpen: false,
+      password: '',
+      userId: null
+    });
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
+  // Handle status change
+  const handleStatusChange = async (userId: string, newStatus: 'pending' | 'active' | 'disabled' | 'archived') => {
+    try {
+      const adminUserService = new AdminUserService();
+      await adminUserService.updateAdminUserStatus(userId, { status: newStatus });
+      
+      // Update the user status in the local state
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === userId ? { ...user, status: newStatus } : user
+        )
+      );
+      
+      toast({ 
+        title: 'Success', 
+        description: 'User status updated successfully',
+        variant: 'default'
+      });
+      
+      closeActionModal();
+    } catch (error: any) {
+      console.error('Error updating user status:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to update user status',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDelete = (userId: string) => {
+    handleDeleteUser(userId);
+  };
+
+  const handleSetActive = async (userId: string) => {
+    try {
+      const adminUserService = new AdminUserService();
+      const updatedUser = await adminUserService.updateAdminUserStatus(userId, { status: 'active' });
+      
+      // Update the user status in the local state
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === userId ? { ...user, status: 'active' } : user
+        )
+      );
+      
+      toast({ 
+        title: 'Success', 
+        description: 'User activated successfully',
+        variant: 'default'
+      });
+      
+      closeActionModal();
+    } catch (error: any) {
+      console.error('Error activating user:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to activate user',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleSendWelcomeEmail = async (userId: string) => {
+    try {
+      const httpService = new HttpService();
+      await httpService.postData<any>({
+        adminMessage: "Welcome to our organization!",
+        generateNewPassword: true
+      }, `/api/admin/users/${userId}/send-email`);
+      
+      toast({ 
+        title: 'Welcome Email Sent', 
+        description: 'Welcome email sent successfully',
+        variant: 'default'
+      });
+      
+      closeActionModal();
+    } catch (error: any) {
+      console.error('Error sending welcome email:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to send welcome email',
+        variant: 'destructive'
       });
     }
   };
@@ -398,135 +557,7 @@ const UsersManagementPage = () => {
     }
   };
 
-  const handleSendWelcomeEmail = async (userId: string) => {
-    try {
-      const httpService = new HttpService();
-      await httpService.postData<any>({
-        adminMessage: 'Welcome!',
-        generateNewPassword: true
-      }, `/api/org-user/users/${userId}/send-email`);
-      
-      toast({ 
-        title: 'Welcome Email Sent', 
-        description: 'Welcome email sent successfully',
-        variant: 'default'
-      });
-      
-      closeActionModal();
-    } catch (error: any) {
-      console.error('Error sending welcome email:', error);
-      toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to send welcome email',
-        variant: 'destructive'
-      });
-    }
-  };
 
-  const handleSetActive = async (userId: string) => {
-    try {
-      const adminUserService = new AdminUserService();
-      await adminUserService.updateAdminUserStatus(userId, { status: 'active' });
-      
-      // Update the user status in the local state
-      setUsers(prevUsers => 
-        prevUsers.map(user => 
-          user.id === userId ? { ...user, status: 'active' } : user
-        )
-      );
-      
-      toast({ 
-        title: 'Success', 
-        description: 'User activated successfully',
-        variant: 'default'
-      });
-      
-      closeActionModal();
-    } catch (error: any) {
-      console.error('Error activating user:', error);
-      toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to activate user',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleDelete = (userId: string) => {
-    handleDeleteUser(userId);
-  };
-
-  // Handle page change
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-    }
-  };
-
-  // Handle status change
-  const handleStatusChange = async (userId: string, newStatus: 'pending' | 'active' | 'disabled' | 'archived') => {
-    try {
-      const adminUserService = new AdminUserService();
-      await adminUserService.updateAdminUserStatus(userId, { status: newStatus });
-      
-      // Update the user status in the local state
-      setUsers(prevUsers => 
-        prevUsers.map(user => 
-          user.id === userId ? { ...user, status: newStatus } : user
-        )
-      );
-      
-      toast({ 
-        title: 'Success', 
-        description: 'User status updated successfully',
-        variant: 'default'
-      });
-      
-      closeActionModal();
-    } catch (error: any) {
-      console.error('Error updating user status:', error);
-      toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to update user status',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  // Handle password change
-  const handleChangePassword = (userId: string) => {
-    router.push(`/admin/users/change-password/${userId}`);
-  };
-
-  // Handle generate custom ID
-  const handleGenerateCustomId = async (userId: string) => {
-    try {
-      const adminUserService = new AdminUserService();
-      const response = await adminUserService.generateCustomUserId(userId);
-      
-      // Update the user's customUserId in the local state
-      setUsers(prevUsers => 
-        prevUsers.map(user => 
-          user.id === userId ? { ...user, customerUserId: response.data.customUserId } : user
-        )
-      );
-      
-      toast({ 
-        title: 'Success', 
-        description: response.data.message || 'Custom ID generated successfully',
-        variant: 'default'
-      });
-      
-      closeActionModal();
-    } catch (error: any) {
-      console.error('Error generating custom ID:', error);
-      toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to generate custom ID',
-        variant: 'destructive'
-      });
-    }
-  };
 
   // Handle assign permissions
   const handleAssignPermissions = async (userId: string, permissions: string[]) => {
@@ -702,18 +733,25 @@ const UsersManagementPage = () => {
           
           {/* Status Filter */}
           <div className="mt-4 flex flex-wrap gap-2">
+              <button
+              className={`px-4 py-2 rounded-lg ${statusFilter === 'all' ? 'bg-[#5D2A8B] text-white' : 'bg-gray-200 text-gray-700'}`}
+              onClick={() => setStatusFilter('all')}
+            >
+              All Users
+            </button>
+              <button
+              className={`px-4 py-2 rounded-lg ${statusFilter === 'active' ? 'bg-[#5D2A8B] text-white' : 'bg-gray-200 text-gray-700'}`}
+              onClick={() => setStatusFilter('active')}
+            >
+              Active
+            </button>
             <button
               className={`px-4 py-2 rounded-lg ${statusFilter === 'pending' ? 'bg-[#5D2A8B] text-white' : 'bg-gray-200 text-gray-700'}`}
               onClick={() => setStatusFilter('pending')}
             >
               Pending
             </button>
-            <button
-              className={`px-4 py-2 rounded-lg ${statusFilter === 'active' ? 'bg-[#5D2A8B] text-white' : 'bg-gray-200 text-gray-700'}`}
-              onClick={() => setStatusFilter('active')}
-            >
-              Active
-            </button>
+          
            
             <button
               className={`px-4 py-2 rounded-lg ${statusFilter === 'archived' ? 'bg-[#5D2A8B] text-white' : 'bg-gray-200 text-gray-700'}`}
@@ -721,12 +759,7 @@ const UsersManagementPage = () => {
             >
               Archived
             </button>
-            <button
-              className={`px-4 py-2 rounded-lg ${statusFilter === 'all' ? 'bg-[#5D2A8B] text-white' : 'bg-gray-200 text-gray-700'}`}
-              onClick={() => setStatusFilter('all')}
-            >
-              All Users
-            </button>
+          
           </div>
         </div>
 
@@ -892,10 +925,19 @@ const UsersManagementPage = () => {
           onArchiveUser={() => handleArchiveUser(actionModal.userId!)}
           onSendWelcomeEmail={() => handleSendWelcomeEmail(actionModal.userId!)}
           onSetActive={() => handleSetActive(actionModal.userId!)}
-         
+          currentUserStatus={users.find(u => u.id === actionModal.userId)?.status}
           position={actionModal.position}
         />
       )}
+      
+      {/* Password Modal */}
+      <PasswordModal
+        isOpen={passwordModal.isOpen}
+        onClose={closePasswordModal}
+        password={passwordModal.password}
+        title="Password Generated"
+        message="The new password has been generated successfully:"
+      />
       
       {/* Delete Confirmation Modal */}
       {/* <DeleteConfirmationModal
@@ -903,7 +945,7 @@ const UsersManagementPage = () => {
         onClose={() => setDeleteModal({ isOpen: false, userId: null, userName: '' })}
         onConfirm={confirmDeleteUser}
         itemName={deleteModal.userName}
-        itemType="user"
+        loading={deleteLoading}
       /> */}
     </div>
   );

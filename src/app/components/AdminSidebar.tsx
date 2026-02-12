@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import React, { Dispatch, SetStateAction, ReactNode, useState, useEffect, useRef } from 'react';
@@ -42,7 +44,7 @@ interface MenuItem {
 const MenuBtn: React.FC<MenuBtnProps> = ({ icon, positioning = '', onClick, toggleLeftPadding = '' }) => (
   <button
     type="button"
-    className={`${positioning} inline-flex cursor-pointer items-center justify-center rounded-md p-2 pl-0 text-gray-400 ${toggleLeftPadding}`}
+    className={`${positioning} inline-flex cursor-pointer items-center justify-center rounded-md p-2 text-gray-600 hover:text-gray-900 ${toggleLeftPadding}`}
     onClick={onClick}
   >
     <span className="sr-only">Toggle menu</span>
@@ -57,6 +59,7 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
   const sidebarRef = useRef<HTMLDivElement>(null);
   
   const toggleSidebar = (): string => onShow ? "block" : "hidden";
+  const toggleLeftPadding = (): string => onShow ? "pl-4 md:pl-12" : "";
 
   // Helper function to check if a route is active
   const isActive = (route: string): boolean => {
@@ -128,16 +131,41 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
       route: '/admin/questionaire', 
       icon: <Image src="/List Dropdown Streamline Carbon.png" alt="Questionnaire" width={24} height={24} className="object-contain" />,
     },
+     { 
+      id: 'group-management', 
+      name: 'Group Management', 
+      route: '/admin/group-management', 
+      icon: <Image src="/List Dropdown Streamline Carbon.png" alt="Questionnaire" width={24} height={24} className="object-contain" />,
+    },
+
+    { 
+      id: 'verification-badge', 
+      name: 'Verification Badge', 
+      route: "/admin/subscription/verification-badge",
+      icon: <Image src="/List Dropdown Streamline Carbon.png" alt="Verification Badge" width={24} height={24} className="object-contain" />,
+    },
     { 
       id: 'subscription', 
       name: 'Subscription', 
-      route: '/admin/subscription', 
+      route: "/admin/subscription/packages",
       icon: <Image src="/List Dropdown Streamline Carbon.png" alt="Subscription" width={24} height={24} className="object-contain" />,
+    },
+    { 
+      id: 'gallery', 
+      name: 'Gallery Item Management', 
+      route: "/admin/gallery",
+      icon: <Image src="/List Dropdown Streamline Carbon.png" alt="Gallery" width={24} height={24} className="object-contain" />,
+    },
+    {
+      id: 'role-management',
+      name: 'Role Management',
+      route: '/admin/role-management',
+      icon: <Shield className="w-6 h-6" />,
     },
     { 
       id: 'users', 
       name: 'User Management', 
-      icon: <User className="w-6 h-6" />,
+      icon: <User className="w-6 h-6" />, 
       subItems: [
         {
           id: 'users-list',
@@ -156,19 +184,20 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
         }
       ]
     },
-    { 
-      id: 'role-management', 
-      name: 'Role Management', 
-      route: '/admin/role-management', 
-      icon: <Shield className="w-6 h-6" />,
-    },
-    { 
-      id: 'group-management', 
-      name: 'Group Management', 
-      route: '/admin/group-management', 
-      icon: <User className="w-6 h-6" />, // Using User icon as a placeholder
-    },
+  
   ];
+
+  // Auto-expand menu based on current route
+  useEffect(() => {
+    adminMenuItems.forEach(item => {
+      if (item.subItems) {
+        const isActiveSubmenu = item.subItems.some(subItem => isActive(subItem.route));
+        if (isActiveSubmenu) {
+          setExpandedMenu(item.id);
+        }
+      }
+    });
+  }, [pathname]);
 
   return (
     <aside>
@@ -304,7 +333,7 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
           <button
             type="button"
             onClick={() => setShow(!onShow)}
-            className="cursor-pointer"
+            className="cursor-pointer hover:opacity-80 transition-opacity"
           >
             <Image 
               src="/Panel Left Close Streamline Lucide Line.png" 
@@ -328,7 +357,7 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
             {/* Admin Menu Items */}
             {adminMenuItems.map((item: MenuItem) => (
               <div key={item.id}>
-                {item.route ? (
+                {item.route && !item.subItems ? (
                   // Menu item with route (no submenu)
                   <Link href={item.route}>
                     <div 
@@ -388,7 +417,7 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
                           gap: '12px'
                         }}
                       >
-                        <div className="w-6 h-6 flex items-center justify-center flex-shrink-0" style={{ filter: getIconFilter(item.subItems?.[0].route || '') }}>
+                        <div className="w-6 h-6 flex items-center justify-center flex-shrink-0" style={{ filter: isSubmenuActive(item.subItems) ? 'brightness(0) invert(1)' : 'none' }}>
                           {item.icon}
                         </div>
                         <span 
@@ -498,8 +527,9 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
       {!onShow && (
         <MenuBtn
           positioning="fixed left-4 z-[1000]"
-          icon={<Menu className="h-6 w-6" />}
+          icon={<Menu className="h-6 w-6 text-gray-600 hover:text-gray-900" />}
           onClick={() => setShow(!onShow)}
+          toggleLeftPadding={toggleLeftPadding()}
         />
       )}
     </aside>

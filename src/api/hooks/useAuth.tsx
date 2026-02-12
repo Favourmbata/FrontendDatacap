@@ -9,7 +9,7 @@ export const apiUrl = process.env.NEXT_PUBLIC_BACKEND_API;
 const BASE_URL = apiUrl || 'https://datacapture-backend.onrender.com';
 
 export const useAuth = () => {
-  const { token, signOut } = useAuthContext();
+  const { token, user, signOut } = useAuthContext();
 
   const client = axios.create({
     baseURL: BASE_URL,
@@ -45,5 +45,5 @@ export const useAuth = () => {
     }
   );
 
-  return { client, SignOut: signOut };
+  return { client, user, SignOut: signOut };
 };

@@ -44,6 +44,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  MoreVertical,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import OrganizationService from "@/services/OrganizationService";
@@ -55,6 +56,9 @@ const OrganisationManagementPage = () => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [actionModalPosition, setActionModalPosition] = useState({ top: 0, left: 0 });
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -119,6 +123,44 @@ const OrganisationManagementPage = () => {
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString();
+
+  const handleActionClick = (org: Organization, e: React.MouseEvent) => {
+    e.preventDefault();
+    setSelectedOrg(org);
+    
+    // Calculate position to ensure modal stays within viewport
+    const buttonRect = (e.target as Element).getBoundingClientRect();
+    const top = buttonRect.bottom + window.scrollY;
+    const left = Math.max(buttonRect.left - 150, 10); // Position to the left of the button, with minimum 10px from left edge
+    
+    setActionModalPosition({
+      top,
+      left,
+    });
+    setShowActionModal(true);
+  };
+
+  const handleViewOrg = () => {
+    if (selectedOrg) {
+      router.push(`/super-admin/organisation/view/${selectedOrg.id}`);
+      setShowActionModal(false);
+    }
+  };
+
+  const handleEditOrg = () => {
+    if (selectedOrg) {
+      router.push(`/super-admin/organisation/edit/${selectedOrg.id}`);
+      setShowActionModal(false);
+    }
+  };
+
+  const handleDeleteOrg = () => {
+    if (selectedOrg) {
+      // Implement delete functionality
+      console.log('Delete organization:', selectedOrg.id);
+      setShowActionModal(false);
+    }
+  };
 
   const handleExport = async (format: "csv" | "excel") => {
     setExportLoading(true);
@@ -216,7 +258,7 @@ const OrganisationManagementPage = () => {
 </p>
 
 {/* Date Range Inputs */}
-<div className="flex gap-3 max-w-xl">
+<div className="flex flex-col sm:flex-row gap-3 max-w-xl">
   {/* Start Date */}
   <div className="w-full">
     <label className="block text-xs text-gray-600 mb-1">
@@ -229,7 +271,7 @@ const OrganisationManagementPage = () => {
         setStartDate(e.target.value);
         setPage(1);
       }}
-      className="w-full px-3 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-purple-500"
+      className="w-full px-2 py-1.5 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-purple-500"
     />
   </div>
 
@@ -246,7 +288,7 @@ const OrganisationManagementPage = () => {
         setEndDate(e.target.value);
         setPage(1);
       }}
-      className="w-full px-3 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-purple-500"
+      className="w-full px-2 py-1.5 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-purple-500"
     />
   </div>
 </div>
@@ -276,7 +318,7 @@ const OrganisationManagementPage = () => {
 
           {/* TABLE */}
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-500 border border-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   {[
@@ -299,7 +341,7 @@ const OrganisationManagementPage = () => {
                 </tr>
               </thead>
 
-              <tbody className="divide-y">
+              <tbody className="divide-y ">
                 {loading ? (
                   <tr>
                     <td colSpan={8} className="text-center py-12">
@@ -336,24 +378,16 @@ const OrganisationManagementPage = () => {
                           {org.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 flex gap-2">
-                        <Eye
-                          className="w-4 h-4 text-blue-600 cursor-pointer"
-                          onClick={() =>
-                            router.push(
-                              `/super-admin/organisation/view/${org.id}`
-                            )
-                          }
-                        />
-                        <Edit
-                          className="w-4 h-4 text-green-600 cursor-pointer"
-                          onClick={() =>
-                            router.push(
-                              `/super-admin/organisation/edit/${org.id}`
-                            )
-                          }
-                        />
-                        <Trash2 className="w-4 h-4 text-red-600 cursor-pointer" />
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={(e) => handleActionClick(org, e)}
+                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                            title="More actions"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -386,6 +420,83 @@ const OrganisationManagementPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Action Modal */}
+      {showActionModal && selectedOrg && (
+        <>
+          <div 
+            className="fixed inset-0 z-40 bg-transparent" 
+            onClick={() => setShowActionModal(false)}
+          />
+          
+          <div 
+            className="fixed bg-white shadow-lg rounded-lg z-50"
+            style={{
+              top: `${actionModalPosition.top}px`,
+              left: `${actionModalPosition.left}px`,
+              width: '155px',
+              borderRadius: '20px',
+              padding: '16px',
+              boxShadow: '0px 2px 8px 0px #5D2A8B1A',
+              border: '1px solid #E4D8F3'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col gap-2">
+              <button 
+                className="text-left hover:bg-gray-50 p-2 rounded transition-colors"
+                style={{
+                  fontSize: '14px',
+                  color: '#1A1A1A',
+                  border: 'none',
+                  background: 'none',
+                  width: '100%'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleViewOrg();
+                }}
+              >
+                View
+              </button>
+              
+              <button 
+                className="text-left hover:bg-gray-50 p-2 rounded transition-colors"
+                style={{
+                  fontSize: '14px',
+                  color: '#1A1A1A',
+                  border: 'none',
+                  background: 'none',
+                  width: '100%'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEditOrg();
+                }}
+              >
+                Edit
+              </button>
+              
+              <button 
+                className="text-left hover:bg-gray-50 p-2 rounded transition-colors"
+                style={{
+                  fontSize: '14px',
+                  color: '#FF6161',
+                  border: 'none',
+                  background: 'none',
+                  width: '100%'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteOrg();
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

@@ -600,7 +600,7 @@
 // }
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -717,6 +717,14 @@ export default function Signup() {
           <div
             onClick={() => setSelectedType("user")}
             className={`mobile-option ${selectedType === "user" ? "selected" : ""}`}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setSelectedType("user");
+              }
+            }}
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
@@ -737,6 +745,14 @@ export default function Signup() {
           <div
             onClick={() => setSelectedType("admin")}
             className={`mobile-option ${selectedType === "admin" ? "selected" : ""}`}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setSelectedType("admin");
+              }
+            }}
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
@@ -762,6 +778,7 @@ export default function Signup() {
             ${selectedType 
               ? "bg-[#5D2A8B] text-white cursor-pointer" 
               : "bg-[#D1D5DB] text-gray-500 cursor-not-allowed"}`}
+          onTouchStart={() => {}} // Fixes potential iOS Safari click delay
         >
           Continue
         </button>
@@ -883,6 +900,14 @@ export default function Signup() {
                     background: selectedType === "user" ? "#F4EFFA" : "white",
                     marginBottom: "16px"
                   }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelectedType("user");
+                    }
+                  }}
                 >
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div>
@@ -947,6 +972,14 @@ export default function Signup() {
                     cursor: "pointer",
                     transition: "all 0.2s",
                     background: selectedType === "admin" ? "#F4EFFA" : "white"
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelectedType("admin");
+                    }
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -1021,6 +1054,7 @@ export default function Signup() {
                   transition: "all 0.2s",
                   marginBottom: "24px"
                 }}
+                onTouchStart={() => {}} // Fixes potential iOS Safari click delay
               >
                 Continue
               </button>

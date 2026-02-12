@@ -51,7 +51,7 @@ const GenerateCodeModal: React.FC<GenerateCodeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-lg w-full max-w-md">
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
@@ -99,6 +99,8 @@ const GenerateCodeModal: React.FC<GenerateCodeModalProps> = ({
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D2A8B]"
               >
+                <option value={1}>1 hour</option>
+                <option value={6}>6 hours</option>
                 <option value={18}>18 hours</option>
                 <option value={24}>24 hours</option>
                 <option value={48}>48 hours</option>

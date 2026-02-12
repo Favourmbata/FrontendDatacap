@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -592,6 +592,7 @@ export default function SignupPage() {
             onClick={handleSubmit}
             disabled={isPending}
             className="w-full h-12 bg-[#5D2A8B] rounded-lg text-white manrope font-semibold text-base disabled:opacity-70 disabled:cursor-not-allowed mb-4"
+            onTouchStart={() => {}} // Fixes potential iOS Safari click delay
           >
             {isPending ? 'Signing up...' : 'Sign Up'}
           </button>
@@ -948,7 +949,8 @@ export default function SignupPage() {
               {/* Sign Up Button */}
               <div 
                 className="absolute"
-                style={{
+                style={
+                  {
                   top: "928px",
                   left: "50px"
                 }}
@@ -970,6 +972,7 @@ export default function SignupPage() {
                     cursor: isPending ? "not-allowed" : "pointer",
                     opacity: isPending ? 0.7 : 1
                   }}
+                  onTouchStart={() => {}} // Fixes potential iOS Safari click delay
                 >
                   {isPending ? 'Signing up...' : 'Sign Up'}
                 </button>
