@@ -1351,14 +1351,12 @@ const LocationStep: React.FC<LocationStepProps> = ({
       console.log('⚠️ IMPORTANT: Location will NOT be saved to profile yet');
       console.log('📦 Location will be created AFTER successful payment');
       
-      // ✅ CORRECT: Don't save location to profile before payment
-      // The location will be passed directly to the combined payment endpoint
-      // and created AFTER successful payment
+      
       
       setLocationSuccess(true);
       setLocationError(null);
       
-      // Navigate to payment step immediately
+      
       setTimeout(() => {
         setCurrentStep('payment');
       }, 500);
