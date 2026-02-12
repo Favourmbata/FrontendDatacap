@@ -77,6 +77,10 @@ const CreateGalleryItemPage = () => {
   const [loadingCommission, setLoadingCommission] = useState(false);
   const [loadingCodePreview, setLoadingCodePreview] = useState(true);
 
+
+  const [commissionError, setCommissionError] = useState<string | null>(null);
+const [commissionLoading, setCommissionLoading] = useState(false);
+
   const [locations, setLocations] = useState<Array<{
     value: number;
     label: string;
