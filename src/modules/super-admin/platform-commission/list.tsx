@@ -475,21 +475,7 @@ const PlatformCommissionList = () => {
                         >
                           <Edit className="w-5 h-5" />
                         </button>
-                        <button 
-                          onClick={() => handleToggleStatus(commission)}
-                          className={`p-2 rounded-lg transition-colors ${
-                            commission.status === 'active' 
-                              ? 'text-orange-600 hover:text-orange-800 hover:bg-orange-50'
-                              : 'text-green-600 hover:text-green-800 hover:bg-green-50'
-                          }`}
-                          title={commission.status === 'active' ? 'Deactivate' : 'Activate'}
-                        >
-                          {commission.status === 'active' ? (
-                            <AlertCircle className="w-5 h-5" />
-                          ) : (
-                            <Plus className="w-5 h-5" />
-                          )}
-                        </button>
+                       
                         <button 
                           onClick={() => handleDelete(commission)}
                           className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"

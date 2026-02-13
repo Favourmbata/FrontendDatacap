@@ -245,36 +245,50 @@ useEffect(() => {
   }, [token, formData.industryId]);
 
   // Fetch platform commission when category is selected
-  useEffect(() => {
-    const fetchPlatformCommission = async () => {
-      if (!token || !formData.categoryId) {
-        setPlatformCommission(null);
-        setFormData(prev => ({ ...prev, platformChargePercentage: 0, platformCommissionId: undefined }));
-        return;
-      }
+ // Fetch platform commission when category is selected - USING ADMIN ENDPOINT
+useEffect(() => {
+  const fetchPlatformCommission = async () => {
+    if (!token || !formData.categoryId) {
+      setPlatformCommission(null);
+      setFormData(prev => ({ ...prev, platformChargePercentage: 0, platformCommissionId: undefined }));
+      return;
+    }
+    
+    try {
+      setCommissionLoading(true);
+      setCommissionError(null);
       
-      try {
-        setLoadingCommission(true);
-        const result = await GalleryService.getPlatformCommissionByCategory(token, formData.categoryId);
-        
-        if (result.success && result.data?.commission) {
-          const commission = result.data.commission;
-          setPlatformCommission(commission);
-          setFormData(prev => ({
-            ...prev,
-            platformChargePercentage: commission.commissionRate,
-            platformCommissionId: commission.id
-          }));
-        }
-      } catch (error) {
-        console.error('Error fetching platform commission:', error);
-      } finally {
-        setLoadingCommission(false);
+      // Use the admin endpoint instead of super-admin
+      const result = await GalleryService.getCommissionByCategory(token, formData.categoryId);
+      
+      if (result.success && result.data?.commission) {
+        const commission = result.data.commission;
+        setPlatformCommission(commission);
+        setFormData(prev => ({
+          ...prev,
+          platformChargePercentage: commission.commissionRate,
+          platformCommissionId: commission.id
+        }));
+      } else {
+        // No commission found for this category
+        setPlatformCommission(null);
+        setFormData(prev => ({
+          ...prev,
+          platformChargePercentage: 0,
+          platformCommissionId: undefined
+        }));
+        setCommissionError('No commission rate found for this category');
       }
-    };
+    } catch (error) {
+      console.error('Error fetching platform commission:', error);
+      setCommissionError('Failed to load commission rate');
+    } finally {
+      setCommissionLoading(false);
+    }
+  };
 
-    fetchPlatformCommission();
-  }, [token, formData.categoryId]);
+  fetchPlatformCommission();
+}, [token, formData.categoryId]);
 
   const checkMediaLimits = async () => {
     if (!token) return false;
@@ -884,7 +898,7 @@ useEffect(() => {
                 <p className="text-xs text-gray-500 mt-1">Optional</p>
               </div>
 
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Platform Charge
                 </label>
@@ -906,7 +920,42 @@ useEffect(() => {
                     Select a category to view platform commission
                   </p>
                 )}
-              </div>
+              </div> */}
+
+
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Platform Charge
+  </label>
+  <div className="relative">
+    <input
+      type="text"
+      value={commissionLoading ? 'Loading...' : commissionError ? 'N/A' : `${formData.platformChargePercentage}%`}
+      readOnly
+      className={`w-full px-3 py-2 bg-gray-100 border rounded-lg text-gray-700 cursor-not-allowed ${
+        commissionError ? 'border-red-300' : 'border-gray-300'
+      }`}
+    />
+  </div>
+  {commissionLoading && (
+    <p className="text-xs text-gray-500 mt-1">Loading commission rate...</p>
+  )}
+  {commissionError && (
+    <p className="text-xs text-red-600 mt-1">{commissionError}</p>
+  )}
+  {platformCommission && !commissionError && (
+    <p className="text-xs text-gray-500 mt-1">
+      Commission: {platformCommission.commissionName}
+    </p>
+  )}
+  {!formData.categoryId && !commissionLoading && (
+    <p className="text-xs text-amber-600 mt-1">
+      Select a category to view platform commission
+    </p>
+  )}
+</div>
+
+
             </div>
             
             {/* Price Calculation Summary - NGN */}

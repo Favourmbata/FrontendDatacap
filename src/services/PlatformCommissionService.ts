@@ -33,7 +33,39 @@ class PlatformCommissionService {
       throw new Error(result.message || 'Operation failed');
     }
 
-    return result.data || result;
+    // Return the full result object
+    return result;
+  }
+
+  // Helper to map API response to PlatformCommission type
+  private static mapToPlatformCommission(item: any): PlatformCommission {
+    return {
+      id: item.id || item._id,
+      commissionName: item.commissionName,
+      commissionRate: item.commissionRate,
+      categoryId: item.categoryId,
+      categoryName: item.categoryName,
+      industryId: item.industryId,
+      industryName: item.industryName,
+      description: item.description,
+      // Map isActive to status
+      status: item.isActive ? 'active' : 'inactive',
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    };
+  }
+
+  // Helper to map PlatformCommission to API request format
+  private static mapToApiRequest(data: Partial<PlatformCommission> | CreatePlatformCommissionRequest | UpdatePlatformCommissionRequest): any {
+    const apiData: any = { ...data };
+    
+    // Map status to isActive for the API
+    if ('status' in apiData && apiData.status !== undefined) {
+      apiData.isActive = apiData.status === 'active';
+      delete apiData.status;
+    }
+    
+    return apiData;
   }
 
   static async getPlatformCommissions(params: GetPlatformCommissionsParams = {}): Promise<{
@@ -75,6 +107,7 @@ class PlatformCommissionService {
       });
 
       const result = await this.handleResponse(response);
+      const data = result.data || result;
 
       // Handle different response formats
       let commissionsArray: any[] = [];
@@ -83,35 +116,26 @@ class PlatformCommissionService {
       let limit = params.limit || 10;
       let totalPages = 1;
 
-      if (Array.isArray(result)) {
-        commissionsArray = result;
-        total = result.length;
+      // Check if data has commissions array (for list endpoints)
+      if (data.commissions && Array.isArray(data.commissions)) {
+        commissionsArray = data.commissions;
+        total = data.total || data.commissions.length;
+        page = data.page || page;
+        limit = data.limit || limit;
+        totalPages = data.totalPages || Math.ceil(total / limit);
+      } else if (Array.isArray(data)) {
+        commissionsArray = data;
+        total = data.length;
         totalPages = Math.ceil(total / limit);
-      } else if (result.commissions && Array.isArray(result.commissions)) {
-        commissionsArray = result.commissions;
-        total = result.total || result.commissions.length;
-        page = result.page || page;
-        limit = result.limit || limit;
-        totalPages = result.totalPages || Math.ceil(total / limit);
       } else {
-        commissionsArray = [result];
+        commissionsArray = [data];
         total = 1;
         totalPages = 1;
       }
 
-      const commissions: PlatformCommission[] = commissionsArray.map((item: any) => ({
-        id: item.id || item._id,
-        commissionName: item.commissionName,
-        commissionRate: item.commissionRate,
-        categoryId: item.categoryId,
-        categoryName: item.categoryName,
-        industryId: item.industryId,
-        industryName: item.industryName,
-        description: item.description,
-        status: item.status || 'active',
-        createdAt: item.createdAt || new Date().toISOString(),
-        updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
-      }));
+      const commissions: PlatformCommission[] = commissionsArray.map((item: any) => 
+        this.mapToPlatformCommission(item)
+      );
 
       return {
         commissions,
@@ -141,22 +165,11 @@ class PlatformCommissionService {
       });
 
       const result = await this.handleResponse(response);
+      
+      // Handle nested commission object
+      const commissionData = result.data?.commission || result.commission || result.data || result;
 
-      const commission: PlatformCommission = {
-        id: result.id || result._id,
-        commissionName: result.commissionName,
-        commissionRate: result.commissionRate,
-        categoryId: result.categoryId,
-        categoryName: result.categoryName,
-        industryId: result.industryId,
-        industryName: result.industryName,
-        description: result.description,
-        status: result.status || 'active',
-        createdAt: result.createdAt || new Date().toISOString(),
-        updatedAt: result.updatedAt || result.createdAt || new Date().toISOString(),
-      };
-
-      return commission;
+      return this.mapToPlatformCommission(commissionData);
     } catch (error) {
       console.error('Error fetching platform commission by ID:', error);
       throw error;
@@ -178,31 +191,18 @@ class PlatformCommissionService {
       });
 
       const result = await this.handleResponse(response);
+      const data = result.data || result;
 
       let commissionsArray: any[] = [];
-      if (Array.isArray(result)) {
-        commissionsArray = result;
-      } else if (result.commissions && Array.isArray(result.commissions)) {
-        commissionsArray = result.commissions;
+      if (Array.isArray(data)) {
+        commissionsArray = data;
+      } else if (data.commissions && Array.isArray(data.commissions)) {
+        commissionsArray = data.commissions;
       } else {
-        commissionsArray = [result];
+        commissionsArray = [data];
       }
 
-      const commissions: PlatformCommission[] = commissionsArray.map((item: any) => ({
-        id: item.id || item._id,
-        commissionName: item.commissionName,
-        commissionRate: item.commissionRate,
-        categoryId: item.categoryId,
-        categoryName: item.categoryName,
-        industryId: item.industryId,
-        industryName: item.industryName,
-        description: item.description,
-        status: item.status || 'active',
-        createdAt: item.createdAt || new Date().toISOString(),
-        updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
-      }));
-
-      return commissions;
+      return commissionsArray.map((item: any) => this.mapToPlatformCommission(item));
     } catch (error) {
       console.error('Error fetching platform commissions by category ID:', error);
       throw error;
@@ -214,32 +214,22 @@ class PlatformCommissionService {
       const token = this.getToken();
       const fullUrl = `${process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://datacapture-backend.onrender.com'}${this.BASE_URL}`;
       
+      // Convert to API format
+      const apiData = this.mapToApiRequest(data);
+      
       const response = await fetch(fullUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token && { 'Authorization': `Bearer ${token}` }),
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(apiData),
       });
 
       const result = await this.handleResponse(response);
+      const commissionData = result.data?.commission || result.commission || result.data || result;
 
-      const commission: PlatformCommission = {
-        id: result.id || result._id,
-        commissionName: result.commissionName,
-        commissionRate: result.commissionRate,
-        categoryId: result.categoryId,
-        categoryName: result.categoryName,
-        industryId: result.industryId,
-        industryName: result.industryName,
-        description: result.description,
-        status: result.status || 'active',
-        createdAt: result.createdAt || new Date().toISOString(),
-        updatedAt: result.updatedAt || result.createdAt || new Date().toISOString(),
-      };
-
-      return commission;
+      return this.mapToPlatformCommission(commissionData);
     } catch (error) {
       console.error('Error creating platform commission:', error);
       throw error;
@@ -255,32 +245,22 @@ class PlatformCommissionService {
       const url = `${this.BASE_URL}/${id}`;
       const fullUrl = `${process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://datacapture-backend.onrender.com'}${url}`;
       
+      // Convert to API format
+      const apiData = this.mapToApiRequest(data);
+      
       const response = await fetch(fullUrl, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           ...(token && { 'Authorization': `Bearer ${token}` }),
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(apiData),
       });
 
       const result = await this.handleResponse(response);
+      const commissionData = result.data?.commission || result.commission || result.data || result;
 
-      const commission: PlatformCommission = {
-        id: result.id || result._id,
-        commissionName: result.commissionName,
-        commissionRate: result.commissionRate,
-        categoryId: result.categoryId,
-        categoryName: result.categoryName,
-        industryId: result.industryId,
-        industryName: result.industryName,
-        description: result.description,
-        status: result.status || 'active',
-        createdAt: result.createdAt || new Date().toISOString(),
-        updatedAt: result.updatedAt || result.createdAt || new Date().toISOString(),
-      };
-
-      return commission;
+      return this.mapToPlatformCommission(commissionData);
     } catch (error) {
       console.error('Error updating platform commission:', error);
       throw error;

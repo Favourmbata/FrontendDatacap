@@ -387,6 +387,8 @@ export class GalleryService {
     }
   }
 
+
+  
   // Upload video to gallery item
   static async uploadVideo(
     token: string, 
@@ -469,28 +471,28 @@ static async getCategoriesByIndustry(token: string, industryId: string): Promise
    * Get platform commission for a category
    * GET /api/super-admin/platform-commissions/category/{categoryId}
    */
-  static async getPlatformCommissionByCategory(token: string, categoryId: string): Promise<{ success: boolean; data?: { commission: PlatformCommission }; message?: string }> {
-    try {
-      console.log('GalleryService: Fetching platform commission for category:', categoryId);
-      const url = `${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}/api/super-admin/platform-commissions/category/${categoryId}`;
-      const response = await fetch(url, {
-        headers: this.getHeaders(token)
-      });
+static async getPlatformCommissionByCategory(token: string, categoryId: string): Promise<{ success: boolean; data?: { commission: PlatformCommission }; message?: string }> {
+  try {
+    console.log('GalleryService: Fetching platform commission for category:', categoryId);
+    const url = `${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}/api/super-admin/platform-commissions/category/${categoryId}`;
+    const response = await fetch(url, {
+      headers: this.getHeaders(token)
+    });
 
-      console.log('GalleryService: Platform commission response status:', response.status);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      console.log('GalleryService: Platform commission result:', result);
-      return result;
-    } catch (error) {
-      console.error('Error fetching platform commission:', error);
-      return { success: false, message: 'Failed to fetch platform commission' };
+    console.log('GalleryService: Platform commission response status:', response.status);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
+
+    const result = await response.json();
+    console.log('GalleryService: Platform commission result:', result);
+    return result;
+  } catch (error) {
+    console.error('Error fetching platform commission:', error);
+    return { success: false, message: 'Failed to fetch platform commission' };
   }
+}
 
  
   static async getPlatformCodePreview(token: string): Promise<{ success: boolean; data?: PlatformCodePreview; message?: string }> {
@@ -598,6 +600,29 @@ static async getLocationsForSelect(token: string): Promise<Array<{
   }
 }
 
+
+static async getCommissionByCategory(token: string, categoryId: string): Promise<{ success: boolean; data?: { commission: PlatformCommission }; message?: string }> {
+  try {
+    console.log('GalleryService: Fetching commission for category via admin endpoint:', categoryId);
+    const url = `${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}/api/admin/gallery/commission/${categoryId}`;
+    const response = await fetch(url, {
+      headers: this.getHeaders(token)
+    });
+
+    console.log('GalleryService: Commission response status:', response.status);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log('GalleryService: Commission result:', result);
+    return result;
+  } catch (error) {
+    console.error('Error fetching commission:', error);
+    return { success: false, message: 'Failed to fetch commission' };
+  }
+}
   // Get media usage statistics
   static async getMediaUsage(token: string): Promise<{ success: boolean; data?: MediaUsage; message?: string }> {
     try {
