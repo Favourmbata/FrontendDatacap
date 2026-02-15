@@ -30,15 +30,25 @@ interface LocationStepProps {
   locationPaymentData: any;
   setLocationPaymentData: React.Dispatch<React.SetStateAction<any>>;
   handleLocationPayment: () => void;
-  // Add selected package info
+
   selectedPackageInfo?: {
     packageName: string;
     billingCycle: string;
     amount: number;
   };
+
+  getFilteredCountries?: (searchTerm: string) => any[];
+  getFilteredStatesForLocation?: (index: number, searchTerm: string) => (string | { name: string; isoCode?: string })[];
+  getFilteredLgasForLocation?: (index: number, searchTerm: string) => (string | { name: string })[];
+  getFilteredCitiesForLocation?: (index: number, searchTerm: string) => (string | { name: string })[];
+  getFilteredCityRegionsForLocation?: (index: number, searchTerm: string) => { name: string; fee: number; _id: string }[];
+  loadStatesForLocation?: (index: number, countryName: string) => Promise<void>;
+  loadLgasForLocation?: (index: number, countryName: string, stateName: string) => Promise<void>;
+  loadCitiesForLocation?: (index: number, countryName: string, stateName: string, lgaName: string) => Promise<void>;
+  loadCityRegionsForLocation?: (index: number, countryName: string, stateName: string, lgaName: string, cityName: string) => Promise<void>;
 }
 
-// Define types for location data
+
 type LocationData = {
   locationType: 'headquarters' | 'branch';
   brandName: string;
@@ -107,9 +117,23 @@ const LocationStep: React.FC<LocationStepProps> = ({
   setLocationPaymentData,
   handleLocationPayment,
   selectedPackageInfo,
+  // Add main page functions with renamed props
+  getFilteredCountries: getFilteredCountriesProp,
+  getFilteredStatesForLocation: getFilteredStatesForLocationProp,
+  getFilteredLgasForLocation: getFilteredLgasForLocationProp,
+  getFilteredCitiesForLocation: getFilteredCitiesForLocationProp,
+  getFilteredCityRegionsForLocation: getFilteredCityRegionsForLocationProp,
+  loadStatesForLocation: loadStatesForLocationProp,
+  loadLgasForLocation: loadLgasForLocationProp,
+  loadCitiesForLocation: loadCitiesForLocationProp,
+  loadCityRegionsForLocation: loadCityRegionsForLocationProp,
 }) => {
-  // Helper functions for filtering
+  // Helper functions for filtering - use main page functions when available
   const getFilteredCountries = (searchTerm: string = '') => {
+    // Use the prop function if available, otherwise use fallback
+    if (getFilteredCountriesProp) {
+      return getFilteredCountriesProp(searchTerm);
+    }
     if (!countries) return [];
     return countries.filter(country =>
       country.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -118,6 +142,10 @@ const LocationStep: React.FC<LocationStepProps> = ({
   };
 
   const getFilteredStatesForLocation = (index: number, searchTerm: string = ''): (string | { name: string; isoCode?: string })[] => {
+    // Use the prop function if available, otherwise use fallback
+    if (getFilteredStatesForLocationProp) {
+      return getFilteredStatesForLocationProp(index, searchTerm);
+    }
     const states = locationDropdownStates[index]?.statesForCountry || [];
     return states.filter((state) =>
       (typeof state === 'string' && state.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -127,6 +155,10 @@ const LocationStep: React.FC<LocationStepProps> = ({
   };
 
   const getFilteredLgasForLocation = (index: number, searchTerm: string = ''): (string | { name: string })[] => {
+    // Use the prop function if available, otherwise use fallback
+    if (getFilteredLgasForLocationProp) {
+      return getFilteredLgasForLocationProp(index, searchTerm);
+    }
     const lgas = locationDropdownStates[index]?.lgasForState || [];
     return lgas.filter((lga) =>
       (typeof lga === 'string' && lga.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -135,6 +167,10 @@ const LocationStep: React.FC<LocationStepProps> = ({
   };
 
   const getFilteredCitiesForLocation = (index: number, searchTerm: string = ''): (string | { name: string })[] => {
+    // Use the prop function if available, otherwise use fallback
+    if (getFilteredCitiesForLocationProp) {
+      return getFilteredCitiesForLocationProp(index, searchTerm);
+    }
     const cities = locationDropdownStates[index]?.citiesForLga || [];
     return cities.filter((city) =>
       (typeof city === 'string' && city.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -143,13 +179,133 @@ const LocationStep: React.FC<LocationStepProps> = ({
   };
 
   const getFilteredCityRegionsForLocation = (index: number, searchTerm: string = ''): { name: string; fee: number; _id: string }[] => {
+    // Use the prop function if available, otherwise use fallback
+    if (getFilteredCityRegionsForLocationProp) {
+      return getFilteredCityRegionsForLocationProp(index, searchTerm);
+    }
     const regions = locationDropdownStates[index]?.cityRegionsForCity || [];
     return regions.filter((region) =>
       (region.name && region.name.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   };
 
-  // Functions to load location data
+  // Data loading functions - use main page functions when available
+  const loadStatesForLocationFn = async (index: number, countryName: string) => {
+    // Use the prop function if available, otherwise use fallback
+    if (loadStatesForLocationProp) {
+      return loadStatesForLocationProp(index, countryName);
+    }
+    // Fallback to component's own implementation
+    try {
+      const { Country, State } = await import('country-state-city');
+      const allCountries = Country.getAllCountries();
+      const country = allCountries.find(c => c.name === countryName);
+      
+      if (country) {
+        const states = State.getStatesOfCountry(country.isoCode);
+        const stateList = states.map(state => ({
+          name: state.name,
+          isoCode: state.isoCode
+        }));
+        
+        const newDropdownStates = [...locationDropdownStates];
+        newDropdownStates[index].statesForCountry = stateList;
+        setLocationDropdownStates(newDropdownStates);
+        console.log(`✅ Loaded ${stateList.length} states for ${countryName}`);
+      }
+    } catch (error) {
+      console.error('Error loading states:', error);
+    }
+  };
+
+  const loadLgasForLocationFn = async (index: number, countryName: string, stateName: string) => {
+    // Use the prop function if available, otherwise use fallback
+    if (loadLgasForLocationProp) {
+      return loadLgasForLocationProp(index, countryName, stateName);
+    }
+    // Fallback implementation
+    try {
+      const HttpService = (await import('@/services/HttpService')).HttpService;
+      const httpService = new HttpService();
+      
+      const data = await httpService.getData<any>(`/api/locations/lgas?country=${encodeURIComponent(countryName)}&state=${encodeURIComponent(stateName)}`);
+      const lgaList = data.data?.lgas?.map((lga: any) => typeof lga === 'string' ? lga : lga.name) || [];
+      
+      const newDropdownStates = [...locationDropdownStates];
+      newDropdownStates[index].lgasForState = lgaList;
+      setLocationDropdownStates(newDropdownStates);
+      
+      if (lgaList.length > 0) {
+        console.log(`✅ Loaded ${lgaList.length} LGAs for ${stateName}`);
+      } else {
+        console.log(`⚠️ No LGAs available for ${stateName} (LGA is optional)`);
+      }
+    } catch (error) {
+      console.error('Error loading LGAs:', error);
+      const newDropdownStates = [...locationDropdownStates];
+      newDropdownStates[index].lgasForState = [];
+      setLocationDropdownStates(newDropdownStates);
+    }
+  };
+
+  const loadCitiesForLocationFn = async (index: number, countryName: string, stateName: string, lgaName: string) => {
+    // Use the prop function if available, otherwise use fallback
+    if (loadCitiesForLocationProp) {
+      return loadCitiesForLocationProp(index, countryName, stateName, lgaName);
+    }
+    // Fallback implementation
+    try {
+      const { Country, State, City } = await import('country-state-city');
+      const allCountries = Country.getAllCountries();
+      const country = allCountries.find(c => c.name === countryName);
+      
+      if (country) {
+        const states = State.getStatesOfCountry(country.isoCode);
+        const state = states.find(s => s.name === stateName);
+        
+        if (state) {
+          const cities = City.getCitiesOfState(country.isoCode, state.isoCode);
+          const cityList = cities.map(city => ({
+            name: city.name
+          }));
+          
+          const newDropdownStates = [...locationDropdownStates];
+          newDropdownStates[index].citiesForLga = cityList;
+          setLocationDropdownStates(newDropdownStates);
+          console.log(`✅ Loaded ${cityList.length} cities for ${stateName}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading cities:', error);
+    }
+  };
+
+  const loadCityRegionsForLocationFn = async (index: number, countryName: string, stateName: string, lgaName: string, cityName: string) => {
+    // Use the prop function if available, otherwise use fallback
+    if (loadCityRegionsForLocationProp) {
+      return loadCityRegionsForLocationProp(index, countryName, stateName, lgaName, cityName);
+    }
+    // Fallback implementation
+    try {
+      const HttpService = (await import('@/services/HttpService')).HttpService;
+      const httpService = new HttpService();
+      
+      const data = await httpService.getData<any>(`/api/locations/city-regions?country=${encodeURIComponent(countryName)}&state=${encodeURIComponent(stateName)}&lga=${encodeURIComponent(lgaName)}&city=${encodeURIComponent(cityName)}`);
+      const regionList = data.data?.cityRegions?.map((region: any) => ({
+        name: region.name || region,
+        fee: region.fee,
+        _id: region._id || region.name || region
+      })) || [];
+      
+      const newDropdownStates = [...locationDropdownStates];
+      newDropdownStates[index].cityRegionsForCity = regionList;
+      setLocationDropdownStates(newDropdownStates);
+    } catch (error) {
+      console.error('Error loading city regions:', error);
+    }
+  };
+
+  // Functions to load location data (keeping the original names for backward compatibility)
   const loadStatesForLocation = async (index: number, countryName: string) => {
     try {
       const HttpService = (await import('@/services/HttpService')).HttpService;
@@ -259,37 +415,38 @@ const LocationStep: React.FC<LocationStepProps> = ({
         };
       }
 
-      throw new Error('No pricing available for this location');
+      // Handle the specific error message from the API
+      if (!response.success && response.message) {
+        throw new Error(response.message);
+      }
+
+      throw new Error('No pricing available for this location. Please contact administrator.');
     } catch (error: any) {
       console.error('❌ Error fetching location pricing:', error);
       throw error;
     }
   };
 
-  // Function to update location pricing when location details change
   const updateLocationPricing = async (index: number) => {
     const location = locations[index];
-    
-    // CRITICAL: Only fetch pricing if we DON'T have an existing cityRegionFee
-    // This respects existing fees and only uses hierarchical pricing when needed
+   
     if (location.country && location.state && location.city && !location.cityRegionFee) {
       try {
         const pricingResult = await getLocationPricing(location);
         
-        // Validate that we got a valid fee
         if (pricingResult.fee && typeof pricingResult.fee === 'number') {
-          // Update the location with the fetched pricing
           const newLocations = [...locations];
           newLocations[index].cityRegionFee = pricingResult.fee;
           newLocations[index].pricingSource = pricingResult.source;
           setLocations(newLocations);
-          
-          console.log(`💰 Updated pricing for location ${index + 1}: ₦${pricingResult.fee.toLocaleString()} (${pricingResult.source})`);
+          console.log(`💰 Updated location ${index + 1} with fee: ₦${pricingResult.fee.toLocaleString()} from ${pricingResult.source}`);
         } else {
           console.warn(`⚠️ No valid fee returned for location ${index + 1}`);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error updating location pricing:', error);
+        // Set location error to show to the user
+        setLocationError(error.message || 'No pricing available for this location. Please contact administrator.');
       }
     } else if (location.cityRegionFee) {
       console.log(`💰 Location ${index + 1} already has fee: ₦${location.cityRegionFee.toLocaleString()} - not overriding`);
@@ -417,9 +574,6 @@ const LocationStep: React.FC<LocationStepProps> = ({
               </div>
             )}
             
-           
-            
-           
             <div className="mt-8 flex justify-between">
               <button
                 onClick={() => setCurrentStep('locations')}
@@ -610,6 +764,9 @@ const LocationStep: React.FC<LocationStepProps> = ({
                                       newLocations[index].country = country.name;
                                       setLocations(newLocations);
                                       
+                                      // Load states for the selected country
+                                      loadStatesForLocationFn(index, country.name);
+                                      
                                       // Close dropdown and clear search
                                       const newDropdownStates = [...locationDropdownStates];
                                       newDropdownStates[index].countryDropdownOpen = false;
@@ -656,7 +813,7 @@ const LocationStep: React.FC<LocationStepProps> = ({
                                 onClick={() => {
                                   // Load states for this location if not already loaded
                                   if (!locationDropdownStates[index]?.statesForCountry.length) {
-                                    loadStatesForLocation(index, location.country);
+                                    loadStatesForLocationFn(index, location.country);
                                   }
                                   
                                   const newDropdownStates = [...locationDropdownStates];
@@ -708,6 +865,9 @@ const LocationStep: React.FC<LocationStepProps> = ({
                                             const newLocations = [...locations];
                                             newLocations[index].state = stateName;
                                             setLocations(newLocations);
+                                            
+                                            // Load cities for the selected state
+                                            loadCitiesForLocationFn(index, location.country, stateName, '');
                                             
                                             // Close dropdown and clear search
                                             const newDropdownStates = [...locationDropdownStates];
@@ -764,7 +924,7 @@ const LocationStep: React.FC<LocationStepProps> = ({
                                   onClick={() => {
                                     // Load LGAs for this location if not already loaded
                                     if (!locationDropdownStates[index]?.lgasForState.length) {
-                                      loadLgasForLocation(index, location.country, location.state);
+                                      loadLgasForLocationFn(index, location.country, location.state);
                                     }
                                     
                                     const newDropdownStates = [...locationDropdownStates];
@@ -817,6 +977,9 @@ const LocationStep: React.FC<LocationStepProps> = ({
                                               const newLocations = [...locations];
                                               newLocations[index].lga = lgaName;
                                               setLocations(newLocations);
+                                              
+                                              // Load cities for the selected LGA
+                                              loadCitiesForLocationFn(index, location.country, location.state, lgaName);
                                               
                                               // Close dropdown and clear search
                                               const newDropdownStates = [...locationDropdownStates];
@@ -873,7 +1036,7 @@ const LocationStep: React.FC<LocationStepProps> = ({
                                 onClick={() => {
                                   // Load cities for this location if not already loaded
                                   if (!locationDropdownStates[index]?.citiesForLga.length) {
-                                    loadCitiesForLocation(index, location.country, location.state, location.lga);
+                                    loadCitiesForLocationFn(index, location.country, location.state, location.lga);
                                   }
                                   
                                   const newDropdownStates = [...locationDropdownStates];
@@ -985,7 +1148,7 @@ const LocationStep: React.FC<LocationStepProps> = ({
                                     onClick={() => {
                                       // Load city regions for this location if not already loaded
                                       if (!locationDropdownStates[index]?.cityRegionsForCity.length) {
-                                        loadCityRegionsForLocation(index, location.country, location.state, location.lga, location.city);
+                                        loadCityRegionsForLocationFn(index, location.country, location.state, location.lga, location.city);
                                       }
                                       
                                       const newDropdownStates = [...locationDropdownStates];
@@ -1080,7 +1243,9 @@ const LocationStep: React.FC<LocationStepProps> = ({
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">House Number</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">House Number 
+                          <span className="text-red-500">* </span>
+                        </label>
                         <input
                           type="text"
                           value={location.houseNumber}
@@ -1119,7 +1284,9 @@ const LocationStep: React.FC<LocationStepProps> = ({
                     )}
                     
                     <div className="mb-6">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Street</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Street 
+                        <span className="text-red-500">* </span>
+                      </label>
                       <input
                         type="text"
                         value={location.street}
@@ -1180,28 +1347,13 @@ const LocationStep: React.FC<LocationStepProps> = ({
                           placeholder="Type of building"
                         />
                       </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">City Region Fee</label>
-                        <input
-                          type="number"
-                          value={location.cityRegionFee || ''}
-                          onChange={(e) => {
-                            const newLocations = [...locations];
-                            newLocations[index].cityRegionFee = e.target.value ? Number(e.target.value) : undefined;
-                            setLocations(newLocations);
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          placeholder="Delivery/service fee for region"
-                        />
-                      </div>
                     </div>
                   </div>
                 ))}
                 
                 <button
                   onClick={() => {
-                    // Add new location
+                    
                     setLocations([...locations, {
                       locationType: 'branch',
                       brandName: '',
@@ -1235,18 +1387,7 @@ const LocationStep: React.FC<LocationStepProps> = ({
                       lgaSearch: '',
                       citySearch: '',
                       cityRegionSearch: '',
-                      // Manual input states
-                      showManualCountry: false,
-                      manualCountry: '',
-                      showManualState: false,
-                      manualState: '',
-                      showManualLGA: false,
-                      manualLGA: '',
-                      showManualCity: false,
-                      manualCity: '',
-                      showManualRegion: false,
-                      manualRegion: '',
-                      // Loading states
+                    
                       loadingStates: false,
                       loadingLgas: false,
                       loadingCities: false,
@@ -1263,9 +1404,6 @@ const LocationStep: React.FC<LocationStepProps> = ({
                   <Plus className="w-4 h-4 mr-2" />
                   Add Another Location
                 </button>
-                
-              
-               
               </div>
               
               <div className="mt-8 flex justify-between">
@@ -1276,115 +1414,109 @@ const LocationStep: React.FC<LocationStepProps> = ({
                   Back to Profile
                 </button>
                 <button
-  onClick={async () => {
-    setLocationSubmitting(true);
-    setLocationError(null);
-    
-    try {
-      // Basic validation
-      if (locations.length === 0) {
-        setLocationError('Please add at least one location');
-        setLocationSubmitting(false);
-        return;
-      }
-      
-      // Check if unverified organization is trying to add more than one location
-      if (organizationProfile?.verificationStatus === 'unverified' && locations.length > 1) {
-        setLocationError('Unverified organizations can only add one location (headquarters). Please subscribe to verified badge to add more locations.');
-        setLocationSubmitting(false);
-        return;
-      }
-      
-      // Prepare location to send - always send first location for now
-      const locationToSend: LocationData = { ...locations[0] };
-      
-      // For unverified organizations, ensure it's headquarters
-      if (organizationProfile?.verificationStatus === 'unverified') {
-        locationToSend.locationType = 'headquarters';
-        
-        // Additional validation for unverified orgs
-        if (locations.length === 1 && locationToSend.locationType !== 'headquarters') {
-          setLocationError('Unverified organizations must have exactly one headquarters location.');
-          setLocationSubmitting(false);
-          return;
-        }
-      }
-      
-      // Validate required fields
-      if (!locationToSend.brandName?.trim()) {
-        setLocationError('Brand name is required');
-        setLocationSubmitting(false);
-        return;
-      }
-      
-      if (!locationToSend.country?.trim()) {
-        setLocationError('Country is required');
-        setLocationSubmitting(false);
-        return;
-      }
-      
-      if (!locationToSend.state?.trim()) {
-        setLocationError('State is required');
-        setLocationSubmitting(false);
-        return;
-      }
-      
-      if (!locationToSend.city?.trim()) {
-        setLocationError('City is required');
-        setLocationSubmitting(false);
-        return;
-      }
-      
-      if (!locationToSend.houseNumber?.trim()) {
-        setLocationError('House number is required');
-        setLocationSubmitting(false);
-        return;
-      }
-      
-      if (!locationToSend.street?.trim()) {
-        setLocationError('Street is required');
-        setLocationSubmitting(false);
-        return;
-      }
-      
-      console.log('✅ Location validated, proceeding to payment step');
-      console.log('⚠️ IMPORTANT: Location will NOT be saved to profile yet');
-      console.log('📦 Location will be created AFTER successful payment');
-      
-      
-      
-      setLocationSuccess(true);
-      setLocationError(null);
-      
-      
-      setTimeout(() => {
-        setCurrentStep('payment');
-      }, 500);
-      
-    } catch (error: any) {
-      console.error('🚨 Error validating location:', error);
-      setLocationError(error.message || 'An error occurred while validating location');
-      setLocationSuccess(false);
-    } finally {
-      setLocationSubmitting(false);
-    }
-  }}
-  disabled={locationSubmitting}
-  className={`px-6 py-3 rounded-lg font-semibold text-white transition-colors ${
-    locationSubmitting 
-      ? 'bg-gray-400 cursor-not-allowed' 
-      : 'bg-purple-600 hover:bg-purple-700'
-  }`}
->
-  {locationSubmitting ? (
-    <>
-      <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-      Validating...
-    </>
-  ) : (
-    'Continue to Payment'
-  )}
-</button>
+                  onClick={async () => {
+                    setLocationSubmitting(true);
+                    setLocationError(null);
+                    
+                    try {
+                      // Basic validation
+                      if (locations.length === 0) {
+                        setLocationError('Please add at least one location');
+                        setLocationSubmitting(false);
+                        return;
+                      }
+                      
+                      // Check if unverified organization is trying to add more than one location
+                      if (organizationProfile?.verificationStatus === 'unverified' && locations.length > 1) {
+                        setLocationError('Unverified organizations can only add one location (headquarters). Please subscribe to verified badge to add more locations.');
+                        setLocationSubmitting(false);
+                        return;
+                      }
+                      
+                      // Prepare location to send - always send first location for now
+                      const locationToSend: LocationData = { ...locations[0] };
+                      
+                      // For unverified organizations, ensure it's headquarters
+                      if (organizationProfile?.verificationStatus === 'unverified') {
+                        locationToSend.locationType = 'headquarters';
+                        
+                        // Additional validation for unverified orgs
+                        if (locations.length === 1 && locationToSend.locationType !== 'headquarters') {
+                          setLocationError('Unverified organizations must have exactly one headquarters location.');
+                          setLocationSubmitting(false);
+                          return;
+                        }
+                      }
+                      
+                      // Validate required fields
+                      if (!locationToSend.brandName?.trim()) {
+                        setLocationError('Brand name is required');
+                        setLocationSubmitting(false);
+                        return;
+                      }
+                      
+                      if (!locationToSend.country?.trim()) {
+                        setLocationError('Country is required');
+                        setLocationSubmitting(false);
+                        return;
+                      }
+                      
+                      if (!locationToSend.state?.trim()) {
+                        setLocationError('State is required');
+                        setLocationSubmitting(false);
+                        return;
+                      }
+                      
+                      if (!locationToSend.city?.trim()) {
+                        setLocationError('City is required');
+                        setLocationSubmitting(false);
+                        return;
+                      }
+                      
+                      if (!locationToSend.houseNumber?.trim()) {
+                        setLocationError('House number is required');
+                        setLocationSubmitting(false);
+                        return;
+                      }
+                      
+                      if (!locationToSend.street?.trim()) {
+                        setLocationError('Street is required');
+                        setLocationSubmitting(false);
+                        return;
+                      }
+                      
+                
+                      setLocationSuccess(true);
+                      setLocationError(null);
+                      
+                      setTimeout(() => {
+                        setCurrentStep('payment');
+                      }, 500);
+                      
+                    } catch (error: any) {
+                      
+                      setLocationError(error.message || 'An error occurred while validating location');
+                      setLocationSuccess(false);
+                    } finally {
+                      setLocationSubmitting(false);
+                    }
+                  }}
+                  disabled={locationSubmitting}
+                  className={`px-6 py-3 rounded-lg font-semibold text-white transition-colors ${
+                    locationSubmitting 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-purple-600 hover:bg-purple-700'
+                  }`}
+                >
+                  {locationSubmitting ? (
+                    <>
+                      <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Validating...
+                    </>
+                  ) : (
+                    'Continue to Payment'
+                  )}
+                </button>
               </div>
             </>
           )}

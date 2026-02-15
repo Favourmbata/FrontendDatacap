@@ -625,21 +625,20 @@ const SubscriptionPage: React.FC = () => {
       const servicesForDuration = selectedPackage?.services?.filter(service => service.duration === subscriptionDuration) || [];
       const totalCost = servicesForDuration.reduce((sum, service) => sum + (service.price || 0), 0);
       
-      // Apply discount if available
+ 
       const discountPercentage = selectedPackage?.discountPercentage || 0;
       const discountAmount = discountPercentage > 0 ? (totalCost * discountPercentage / 100) : 0;
       const packageAmount = totalCost - discountAmount;
       
-      console.log(`💰 Package calculation for ${subscriptionDuration}:`);
-      console.log(`   - Total cost (before discount): ₦${totalCost.toLocaleString()}`);
-      console.log(`   - Discount (${discountPercentage}%): ₦${discountAmount.toLocaleString()}`);
-      console.log(`   - Final amount: ₦${packageAmount.toLocaleString()}`);
-      console.log(`💰 Services for ${subscriptionDuration}:`, servicesForDuration);
+      // console.log(`💰 Package calculation for ${subscriptionDuration}:`);
+      // console.log(`   - Total cost (before discount): ₦${totalCost.toLocaleString()}`);
+      // console.log(`   - Discount (${discountPercentage}%): ₦${discountAmount.toLocaleString()}`);
+      // console.log(`   - Final amount: ₦${packageAmount.toLocaleString()}`);
+      // console.log(`💰 Services for ${subscriptionDuration}:`, servicesForDuration);
 
       const appliedPromo = appliedPromoCodes[firstPackageId];
 
-      // Check if we have locations for combined payment
-      // CRITICAL: Only use combined payment if locations have fees
+   
       const hasLocations = organizationProfile.isPublicProfile && locations.length > 0 && 
                           locations.some(loc => loc.country && loc.state && loc.city && loc.cityRegionFee);
       
@@ -1232,6 +1231,16 @@ const SubscriptionPage: React.FC = () => {
               amount: packageAmount
             };
           })()}
+          // Pass main page functions
+          getFilteredCountries={getFilteredCountries}
+          getFilteredStatesForLocation={getFilteredStatesForLocation}
+          getFilteredLgasForLocation={getFilteredLgasForLocation}
+          getFilteredCitiesForLocation={getFilteredCitiesForLocation}
+          getFilteredCityRegionsForLocation={getFilteredCityRegionsForLocation}
+          loadStatesForLocation={loadStatesForLocation}
+          loadLgasForLocation={loadLgasForLocation}
+          loadCitiesForLocation={loadCitiesForLocation}
+          loadCityRegionsForLocation={loadCityRegionsForLocation}
         />
 
 
