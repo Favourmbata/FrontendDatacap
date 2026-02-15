@@ -174,13 +174,58 @@ const OrganisationManagementPage = () => {
         endDate: endDate || undefined,
       };
 
-      const res = await OrganizationService.exportOrganizations(format, params);
-      const link = document.createElement("a");
-      link.href = res.downloadUrl;
-      link.download = res.fileName;
+      // Directly call the export endpoint with all parameters
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      
+      // Build query string from params
+      const queryParams = new URLSearchParams();
+      if (params.search) queryParams.append('search', params.search);
+      if (params.status) queryParams.append('status', params.status);
+      if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+      if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+      if (params.startDate) queryParams.append('startDate', params.startDate);
+      if (params.endDate) queryParams.append('endDate', params.endDate);
+
+      const queryString = queryParams.toString();
+      const url = queryString 
+        ? `https://datacapture-backend.onrender.com/api/super-admin/organizations/export/${format}?${queryString}` 
+        : `https://datacapture-backend.onrender.com/api/super-admin/organizations/export/${format}`;
+
+      const response = await fetch(url, {
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to export organizations as ${format}`);
+      }
+
+      // Get the filename from the Content-Disposition header or use a default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `organizations.${format}`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Convert response to blob and create download
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Export failed. Please try again.");
     } finally {
       setExportLoading(false);
     }

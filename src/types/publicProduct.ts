@@ -42,6 +42,7 @@ export interface PublicProduct {
   } | null;
   businessName: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface PublicProductDetails {

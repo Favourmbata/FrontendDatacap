@@ -173,7 +173,7 @@ const VerifiedLocationVerificationsPage = () => {
                   <th className="py-3 px-4 text-left text-gray-600 font-medium whitespace-nowrap">Address</th>
                   <th className="py-3 px-4 text-left text-gray-600 font-medium whitespace-nowrap">Verified At</th>
                   <th className="py-3 px-4 text-left text-gray-600 font-medium whitespace-nowrap">Verified By</th>
-                  <th className="py-3 px-4 text-left text-gray-600 font-medium whitespace-nowrap">Actions</th>
+                  {/* <th className="py-3 px-4 text-left text-gray-600 font-medium whitespace-nowrap">Actions</th> */}
                 </tr>
               </thead>
               <tbody>
@@ -202,14 +202,7 @@ const VerifiedLocationVerificationsPage = () => {
                       <td className="py-4 px-4 text-gray-600 text-sm max-w-xs">{location.location.address}</td>
                       <td className="py-4 px-4 text-gray-600 text-sm">{formatDate(location.verifiedAt)}</td>
                       <td className="py-4 px-4 text-gray-600 text-sm">{location.verifiedBy}</td>
-                      <td className="py-4 px-4 text-sm">
-                        <button
-                          className="flex items-center justify-center gap-1 bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors text-xs font-medium whitespace-nowrap"
-                        >
-                          <Eye className="w-4 h-4" />
-                          View
-                        </button>
-                      </td>
+                     
                     </tr>
                   ))
                 ) : (

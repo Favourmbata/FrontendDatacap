@@ -166,6 +166,11 @@ export const SuperAdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) =
           route: '/super-admin/subscription/verified-badge' 
         },
         {
+          id: 'pending-locations',
+          name: 'Pending Locations',
+          route: '/super-admin/subscription/verified-badge/pending-locations'  
+        },
+        {
           id: 'rejected-locations',
           name: 'Rejected Locations',
           route: '/super-admin/subscription/verified-badge/rejected-locations'  

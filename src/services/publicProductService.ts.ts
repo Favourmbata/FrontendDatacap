@@ -4,6 +4,7 @@ export interface PublicProductSearchParams {
   search?: string;
   itemType?: 'product' | 'service';
   categoryId?: string;
+  categoryName?: string;
   industryId?: string;
   minPrice?: number;
   maxPrice?: number;
@@ -42,6 +43,7 @@ export interface PublicProduct {
   } | null;
   businessName: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface PublicProductDetails {
@@ -129,14 +131,16 @@ export interface PublicProductDetailsResponse {
   message: string;
 }
 
+export interface CategoryListResponse {
+  success: boolean;
+  data: Array<{ id: string; name: string; count: number }>;
+  message: string;
+}
+
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com';
 
 export class PublicProductService {
-  /**
-   * Search products/services (Grid View)
-   * GET /api/public/products/search
-   * No authentication required
-   */
+ 
   static async searchProducts(params: PublicProductSearchParams = {}): Promise<PublicSearchResponse> {
     try {
       const queryParams = new URLSearchParams();
@@ -148,7 +152,7 @@ export class PublicProductService {
         }
       });
 
-      // Set defaults
+     
       if (!params.page) queryParams.append('page', '1');
       if (!params.limit) queryParams.append('limit', '20');
       if (!params.sortBy) queryParams.append('sortBy', 'createdAt');
@@ -188,11 +192,6 @@ export class PublicProductService {
     }
   }
 
-  /**
-   * Get product/service details
-   * GET /api/public/products/:itemId
-   * No authentication required
-   */
   static async getProductDetails(itemId: string): Promise<PublicProductDetailsResponse> {
     try {
       const url = `${BASE_URL}/api/public/products/${itemId}`;
@@ -220,10 +219,64 @@ export class PublicProductService {
     }
   }
 
-  /**
-   * Get all categories (for filter dropdown)
-   * Helper method to extract unique categories from products
-   */
+ 
+  static async getProductByCode(platformCode: string): Promise<PublicProductDetailsResponse> {
+    try {
+      const url = `${BASE_URL}/api/public/products/code/${platformCode}`;
+      console.log('PublicProductService: Fetching product by code from:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Product not found with this platform code');
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Error fetching product by code:', error);
+      throw error;
+    }
+  }
+
+  
+  static async getAllCategories(): Promise<CategoryListResponse> {
+    try {
+      const url = `${BASE_URL}/api/public/products/categories`;
+      console.log('PublicProductService: Fetching categories from:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      return {
+        success: false,
+        data: [],
+        message: 'Failed to fetch categories',
+      };
+    }
+  }
+
+ 
   static extractCategories(products: PublicProduct[]): Array<{ id: string; name: string }> {
     const categoryMap = new Map<string, string>();
     
@@ -239,10 +292,7 @@ export class PublicProductService {
     }));
   }
 
-  /**
-   * Get all industries (for filter dropdown)
-   * Helper method to extract unique industries from products
-   */
+ 
   static extractIndustries(products: PublicProduct[]): Array<{ id: string; name: string }> {
     const industryMap = new Map<string, string>();
     
@@ -258,10 +308,7 @@ export class PublicProductService {
     }));
   }
 
-  /**
-   * Get all locations (for filter dropdown)
-   * Helper method to extract unique cities/states from products
-   */
+  
   static extractLocations(products: PublicProduct[]): {
     cities: string[];
     states: string[];

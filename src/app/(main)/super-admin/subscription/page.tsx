@@ -22,6 +22,8 @@ const SubscriptionPage = () => {
   const [currentPackageTitle, setCurrentPackageTitle] = useState('');
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [currentNote, setCurrentNote] = useState('');
+  const [showServicesModal, setShowServicesModal] = useState(false);
+  const [currentServices, setCurrentServices] = useState<any[]>([]);
 
   const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
@@ -420,16 +422,16 @@ const SubscriptionPage = () => {
                           </div>
                         </td>
                         <td className="py-4 px-4">
-                          <div className="space-y-1 manrope-text">
-                            {subscription.services && Array.isArray(subscription.services) && subscription.services.map((service, idx) => (
-                              <div key={idx} className="text-xs bg-gray-100 px-2 py-1 rounded manrope-text">
-                                {typeof service === 'string' ? service : service.serviceName || service.serviceId}
-                              </div>
-                            ))}
-                            {(subscription.services === undefined || subscription.services.length === 0) && (
-                              <div className="text-xs text-gray-500 manrope-text">-</div>
-                            )}
-                          </div>
+                          <button 
+                            onClick={() => {
+                              setCurrentServices(subscription.services || []);
+                              setCurrentPackageTitle(subscription.title);
+                              setShowServicesModal(true);
+                            }}
+                            className="text-[#5D2A8B] hover:text-[#4a216d] hover:underline text-sm manrope-text"
+                          >
+                            View Services ({Array.isArray(subscription.services) ? subscription.services.length : 0})
+                          </button>
                         </td>
                         <td className="py-4 px-4">
                           <button 
@@ -628,6 +630,62 @@ const SubscriptionPage = () => {
               <div className="mt-6 flex justify-end">
                 <button
                   onClick={() => setShowFeaturesModal(false)}
+                  className="px-4 py-2 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d] transition-colors manrope-text"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Services Modal */}
+      {showServicesModal && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowServicesModal(false)}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-900 manrope-text">Services for {currentPackageTitle}</h3>
+                <button
+                  onClick={() => setShowServicesModal(false)}
+                  className="text-gray-400 hover:text-gray-600 manrope-text"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {currentServices.length > 0 ? (
+                  currentServices.map((service, index) => (
+                    <div 
+                      key={index}
+                      className="flex items-start p-3 bg-gray-50 rounded-lg border border-gray-200"
+                    >
+                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#5D2A8B] flex items-center justify-center mt-0.5">
+                        <span className="text-white text-xs font-bold manrope-text">{index + 1}</span>
+                      </div>
+                      <div className="ml-3 text-gray-700 manrope-text">
+                        {typeof service === 'string' ? service : service.serviceName || service.serviceId || 'Unknown Service'}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500 manrope-text">
+                    <p className="manrope-text">No services available</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowServicesModal(false)}
                   className="px-4 py-2 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d] transition-colors manrope-text"
                 >
                   Close
