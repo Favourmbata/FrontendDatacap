@@ -470,6 +470,7 @@ const SubscriptionPage: React.FC = () => {
   // State for promo codes
   const [appliedPromoCodes, setAppliedPromoCodes] = useState<Record<string, {code: string, discount: number}>>({});
   const [promoCodeInputs, setPromoCodeInputs] = useState<Record<string, string>>({});
+  const [promoValidationStates, setPromoValidationStates] = useState<Record<string, {isValid: boolean, error?: string}>>({});
   
   const packages: SubscriptionPackage[] = apiPackages?.map(pkg => {
     // Calculate original prices from services
@@ -483,15 +484,10 @@ const SubscriptionPage: React.FC = () => {
     const originalQuarterlyPrice = servicesByDuration.quarterly.reduce((sum, service) => sum + (service.price || 0), 0);
     const originalYearlyPrice = servicesByDuration.yearly.reduce((sum, service) => sum + (service.price || 0), 0);
     
-    // Apply discount to get final prices
-    const discountPercentage = pkg.discountPercentage || 0;
-    const monthlyDiscount = discountPercentage > 0 ? (originalMonthlyPrice * discountPercentage / 100) : 0;
-    const quarterlyDiscount = discountPercentage > 0 ? (originalQuarterlyPrice * discountPercentage / 100) : 0;
-    const yearlyDiscount = discountPercentage > 0 ? (originalYearlyPrice * discountPercentage / 100) : 0;
-    
-    const finalMonthlyPrice = originalMonthlyPrice - monthlyDiscount;
-    const finalQuarterlyPrice = originalQuarterlyPrice - quarterlyDiscount;
-    const finalYearlyPrice = originalYearlyPrice - yearlyDiscount;
+    // Show original prices - no discount applied by default
+    const finalMonthlyPrice = originalMonthlyPrice;
+    const finalQuarterlyPrice = originalQuarterlyPrice;
+    const finalYearlyPrice = originalYearlyPrice;
     
     // Check for user-applied promo codes
     const appliedPromo = appliedPromoCodes[pkg._id];
@@ -509,7 +505,7 @@ const SubscriptionPage: React.FC = () => {
       originalMonthlyPrice: originalMonthlyPrice,
       originalQuarterlyPrice: originalQuarterlyPrice,
       originalYearlyPrice: originalYearlyPrice,
-      hasApiDiscount: discountPercentage > 0,
+      hasApiDiscount: (pkg.discountPercentage || 0) > 0,
       hasUserPromo: hasUserPromo,
       features: pkg.features || [],
       services: pkg.services?.map(service => ({
@@ -538,14 +534,23 @@ const SubscriptionPage: React.FC = () => {
         const servicesForDuration = pkg.services.filter(service => service.duration === billingCycle);
         const totalCost = servicesForDuration.reduce((sum, service) => sum + (service.price || 0), 0);
         
-        // Apply discount if available
-        const discountPercentage = pkg.discountPercentage || 0;
-        const discountAmount = discountPercentage > 0 ? (totalCost * discountPercentage / 100) : 0;
-        const durationAmount = totalCost - discountAmount;
+        // Apply discount only if valid promo code is applied
+        const appliedPromo = appliedPromoCodes[packageId];
+        const promoValidation = promoValidationStates[packageId];
+        
+        let durationAmount = totalCost;
+        
+        if (appliedPromo && promoValidation?.isValid) {
+          const discountPercentage = appliedPromo.discount || 0;
+          const discountAmount = discountPercentage > 0 ? (totalCost * discountPercentage / 100) : 0;
+          durationAmount = totalCost - discountAmount;
+          
+          console.log(`💰 Package ${pkg.packageName} (${billingCycle}): ₦${durationAmount.toLocaleString()} (${discountPercentage}% discount applied)`);
+        } else {
+          console.log(`💰 Package ${pkg.packageName} (${billingCycle}): ₦${durationAmount.toLocaleString()} (no discount)`);
+        }
         
         packageTotal += durationAmount;
-        
-        console.log(`💰 Package ${pkg.packageName} (${billingCycle}): ₦${durationAmount.toLocaleString()} (${discountPercentage}% discount applied)`);
       }
     });
 
@@ -578,6 +583,69 @@ const SubscriptionPage: React.FC = () => {
       return { ...prev, [packageId]: billingCycle }
     })
   }
+
+  // Validate promo code with backend API
+  const validatePromoCode = async (packageId: string, promoCode: string) => {
+    if (!promoCode.trim()) {
+      return;
+    }
+
+    try {
+      const HttpService = (await import('@/services/HttpService')).HttpService;
+      const httpService = new HttpService();
+      
+      const response = await httpService.postData<any>({
+        packageId,
+        promoCode: promoCode.trim()
+      }, `/api/user-subscriptions/validate-promo`);
+      
+      if (response.success && response.data?.isValid) {
+        // Apply the valid promo code
+        setAppliedPromoCodes(prev => ({
+          ...prev,
+          [packageId]: {
+            code: promoCode.trim(),
+            discount: response.data.discountPercentage
+          }
+        }));
+        
+        // Clear validation state on success
+        setPromoValidationStates(prev => {
+          const newState = {...prev};
+          delete newState[packageId];
+          return newState;
+        });
+      } else {
+        // Show validation error
+        setPromoValidationStates(prev => ({
+          ...prev,
+          [packageId]: { 
+            isValid: false, 
+            error: response.message || 'Invalid promo code'
+          }
+        }));
+        
+        // Remove any previously applied promo
+        const newApplied = {...appliedPromoCodes};
+        delete newApplied[packageId];
+        setAppliedPromoCodes(newApplied);
+      }
+    } catch (error: any) {
+      console.error('Error validating promo code:', error);
+      setPromoValidationStates(prev => ({
+        ...prev,
+        [packageId]: { 
+          isValid: false, 
+          error: error.message || 'Failed to validate promo code'
+        }
+      }));
+      
+      // Remove any previously applied promo
+      const newApplied = {...appliedPromoCodes};
+      delete newApplied[packageId];
+      setAppliedPromoCodes(newApplied);
+    }
+  };
 
   const handlePayment = async () => {
     setPaymentInitializationError(null);
@@ -625,10 +693,18 @@ const SubscriptionPage: React.FC = () => {
       const servicesForDuration = selectedPackage?.services?.filter(service => service.duration === subscriptionDuration) || [];
       const totalCost = servicesForDuration.reduce((sum, service) => sum + (service.price || 0), 0);
       
- 
-      const discountPercentage = selectedPackage?.discountPercentage || 0;
-      const discountAmount = discountPercentage > 0 ? (totalCost * discountPercentage / 100) : 0;
-      const packageAmount = totalCost - discountAmount;
+      // Apply discount only if valid promo code is applied
+      const selectedAppliedPromo = appliedPromoCodes[firstPackageId];
+      const selectedPromoValidation = promoValidationStates[firstPackageId];
+      
+      let packageAmount = totalCost;
+      let discountAmount = 0;
+      
+      if (selectedAppliedPromo && selectedPromoValidation?.isValid) {
+        const discountPercentage = selectedAppliedPromo.discount || 0;
+        discountAmount = discountPercentage > 0 ? (totalCost * discountPercentage / 100) : 0;
+        packageAmount = totalCost - discountAmount;
+      }
       
       // console.log(`💰 Package calculation for ${subscriptionDuration}:`);
       // console.log(`   - Total cost (before discount): ₦${totalCost.toLocaleString()}`);
@@ -636,9 +712,10 @@ const SubscriptionPage: React.FC = () => {
       // console.log(`   - Final amount: ₦${packageAmount.toLocaleString()}`);
       // console.log(`💰 Services for ${subscriptionDuration}:`, servicesForDuration);
 
-      const appliedPromo = appliedPromoCodes[firstPackageId];
+      // Get validated promo code info
+      const paymentAppliedPromo = appliedPromoCodes[firstPackageId];
+      const paymentPromoValidation = promoValidationStates[firstPackageId];
 
-   
       const hasLocations = organizationProfile.isPublicProfile && locations.length > 0 && 
                           locations.some(loc => loc.country && loc.state && loc.city && loc.cityRegionFee);
       
@@ -647,7 +724,8 @@ const SubscriptionPage: React.FC = () => {
         locationsCount: locations.length,
         locations: locations,
         hasLocations: hasLocations,
-        locationWithFee: locations.find(loc => loc.cityRegionFee)
+        locationWithFee: locations.find(loc => loc.cityRegionFee),
+        hasValidPromo: paymentAppliedPromo && paymentPromoValidation?.isValid
       });
 
       if (hasLocations) {
@@ -702,10 +780,9 @@ const SubscriptionPage: React.FC = () => {
           returnUrl: `${window.location.origin}/payment/verify?status=success&type=combined`,
           cancelUrl: `${window.location.origin}/payment/verify?status=cancelled&type=combined`,
           
-          // Optional promo code
-          ...(appliedPromo && {
-            promoCode: appliedPromo.code,
-            discountPercentage: appliedPromo.discount
+          // Optional promo code - only include if validated
+          ...(paymentAppliedPromo && paymentPromoValidation?.isValid && {
+            promoCode: paymentAppliedPromo.code
           })
         };
 
@@ -745,9 +822,9 @@ const SubscriptionPage: React.FC = () => {
           phone: cleanPaymentData.phoneNumber,
           returnUrl: `${window.location.origin}/payment/verify?status=success&type=package`,
           cancelUrl: `${window.location.origin}/payment/verify?status=cancelled&type=package`,
-          ...(appliedPromo && {
-            promoCode: appliedPromo.code,
-            discountPercentage: appliedPromo.discount
+          // Optional promo code - only include if validated
+          ...(paymentAppliedPromo && paymentPromoValidation?.isValid && {
+            promoCode: paymentAppliedPromo.code
           })
         };
         
@@ -782,6 +859,19 @@ const SubscriptionPage: React.FC = () => {
         return pkg.yearlyPrice
       default:
         return pkg.monthlyPrice
+    }
+  }
+
+  const getOriginalPrice = (pkg: SubscriptionPackage, billingCycle: "monthly" | "quarterly" | "yearly") => {
+    switch (billingCycle) {
+      case "monthly":
+        return pkg.originalMonthlyPrice
+      case "quarterly":
+        return pkg.originalQuarterlyPrice
+      case "yearly":
+        return pkg.originalYearlyPrice
+      default:
+        return pkg.originalMonthlyPrice
     }
   }
 
@@ -990,64 +1080,92 @@ const SubscriptionPage: React.FC = () => {
 
         
         <div className="mb-4 space-y-2">
-          <select
-            value={selectedPackages[pkg.id] || ""}
-            onChange={(e) => {
-              if (e.target.value) {
-                handlePackageSelection(pkg.id, e.target.value as "monthly" | "quarterly" | "yearly")
-              }
-            }}
-            className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          >
-            <option value="">Select Plan</option>
-            <option value="monthly">Monthly - ₦{Math.round(pkg.monthlyPrice).toLocaleString('en-NG')}</option>
-            <option value="quarterly">Quarterly - ₦{Math.round(pkg.quarterlyPrice).toLocaleString('en-NG')}</option>
-            <option value="yearly">Yearly - ₦{Math.round(pkg.yearlyPrice).toLocaleString('en-NG')}</option>
-          </select>
+          <div className="space-y-2">
+            <select
+              value={selectedPackages[pkg.id] || ""}
+              onChange={(e) => {
+                if (e.target.value) {
+                  handlePackageSelection(pkg.id, e.target.value as "monthly" | "quarterly" | "yearly")
+                }
+              }}
+              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+              <option value="">Select Plan</option>
+              <option value="monthly">Monthly - ₦{Math.round(pkg.monthlyPrice).toLocaleString('en-NG')}</option>
+              <option value="quarterly">Quarterly - ₦{Math.round(pkg.quarterlyPrice).toLocaleString('en-NG')}</option>
+              <option value="yearly">Yearly - ₦{Math.round(pkg.yearlyPrice).toLocaleString('en-NG')}</option>
+            </select>
+                        
+            {/* Discount breakdown when promo is applied */}
+            {selectedPackages[pkg.id] && appliedPromoCodes[pkg.id] && (
+              <div className="text-xs p-2 bg-green-50 text-green-700 border border-green-200 rounded">
+                <div className="flex justify-between">
+                  <span>Original Price:</span>
+                  <span className="line-through">₦{Math.round(getOriginalPrice(pkg, selectedPackages[pkg.id])).toLocaleString('en-NG')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Discount:</span>
+                  <span>-₦{Math.round(getOriginalPrice(pkg, selectedPackages[pkg.id]) * (appliedPromoCodes[pkg.id].discount || 0) / 100).toLocaleString('en-NG')} ({appliedPromoCodes[pkg.id].discount}% off)</span>
+                </div>
+                <div className="flex justify-between font-semibold pt-1 border-t border-green-200">
+                  <span>You Pay:</span>
+                  <span>₦{Math.round(getBillingPrice(pkg, selectedPackages[pkg.id])).toLocaleString('en-NG')}</span>
+                </div>
+              </div>
+            )}
+          </div>
 
           
           {pkg.promoCode && (
-            <div className="flex gap-2 items-center">
-              <input
-                type="text"
-                value={promoCodeInputs[pkg.id] || ''}
-                onChange={(e) => setPromoCodeInputs(prev => ({
-                  ...prev,
-                  [pkg.id]: e.target.value
-                }))}
-                placeholder="Enter promo code"
-                className="flex-1 px-3 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-transparent"
-              />
-              <button
-                onClick={() => {
-                  const enteredCode = promoCodeInputs[pkg.id]?.trim();
-                  if (enteredCode && pkg.promoCode && enteredCode.toLowerCase() === pkg.promoCode.toLowerCase()) {
-                    setAppliedPromoCodes(prev => ({
+            <div className="space-y-2">
+              <div className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={promoCodeInputs[pkg.id] || ''}
+                  onChange={(e) => {
+                    setPromoCodeInputs(prev => ({
                       ...prev,
-                      [pkg.id]: {
-                        code: enteredCode,
-                        discount: pkg.discountPercentage || 0
-                      }
+                      [pkg.id]: e.target.value
                     }));
-                  } else {
-                    const newApplied = {...appliedPromoCodes};
-                    delete newApplied[pkg.id];
-                    setAppliedPromoCodes(newApplied);
-                  }
-                }}
-                className={`px-3 py-1.5 text-xs rounded whitespace-nowrap ${
-                  appliedPromoCodes[pkg.id] 
-                    ? 'bg-green-100 text-green-800 border border-green-200' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-                }`}
-              >
-                {appliedPromoCodes[pkg.id] ? 'Applied ✓' : 'Apply'}
-              </button>
+                    
+                    // Clear error when user types
+                    if (promoValidationStates[pkg.id]) {
+                      setPromoValidationStates(prev => {
+                        const newState = {...prev};
+                        delete newState[pkg.id];
+                        return newState;
+                      });
+                    }
+                  }}
+                  placeholder="Enter promo code"
+                  className="flex-1 px-3 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                />
+                <button
+                  onClick={() => validatePromoCode(pkg.id, promoCodeInputs[pkg.id] || '')}
+                  disabled={!promoCodeInputs[pkg.id]?.trim()}
+                  className={`px-3 py-1.5 text-xs rounded whitespace-nowrap ${
+                    appliedPromoCodes[pkg.id] 
+                      ? 'bg-green-100 text-green-800 border border-green-200' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                  } ${!promoCodeInputs[pkg.id]?.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {appliedPromoCodes[pkg.id] 
+                    ? 'Applied ✓' 
+                    : 'Apply'}
+                </button>
+              </div>
+              
+              {/* Error message display */}
+              {promoValidationStates[pkg.id] && !promoValidationStates[pkg.id].isValid && (
+                <div className="text-xs p-2 bg-red-50 text-red-700 border border-red-200 rounded">
+                  ❌ {promoValidationStates[pkg.id].error}
+                </div>
+              )}
             </div>
           )}
         </div>
 
-       
+        
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Number of Users
