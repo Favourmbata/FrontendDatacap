@@ -41,19 +41,18 @@ const CreateSubscriptionPage = () => {
       categories: string[];
     };
     maxUsers: number;
-    calculatedPrice: number; // Auto-calculated based on selected services
+    calculatedPrice: number;
   }
   
   const [availableServices, setAvailableServices] = useState<ServiceOption[]>([]);
   const [loadingServices, setLoadingServices] = useState<boolean>(true);
   
-  // State for dropdowns with search functionality
+
   const [showIndustriesDropdown, setShowIndustriesDropdown] = useState<boolean>(false);
   const [industriesSearch, setIndustriesSearch] = useState<string>('');
   const [showCategoriesDropdown, setShowCategoriesDropdown] = useState<boolean>(false);
   const [categoriesSearch, setCategoriesSearch] = useState<string>('');
   
-  // Available options for dropdowns
   const allIndustries = ['Fashion', 'Technology', 'Healthcare', 'Education', 'Finance', 'Retail', 'Manufacturing', 'Transportation', 'Hospitality', 'Real Estate'];
   const allCategories = ['Basic', 'Professional', 'Enterprise', 'Startup', 'Premium', 'Standard', 'Essential', 'Advanced'];
 
@@ -85,7 +84,7 @@ const CreateSubscriptionPage = () => {
         const serviceService = new ServiceService();
         const services = await serviceService.getAllServices();
           
-        // Map services to the format expected by the form
+     
         const serviceOptions: ServiceOption[] = services.map(service => ({
           id: service.id,
           name: service.serviceName,
@@ -97,13 +96,8 @@ const CreateSubscriptionPage = () => {
         setAvailableServices(serviceOptions);
       } catch (error) {
         console.error('Error fetching services:', error);
-        // Set some default services in case of error
-        setAvailableServices([
-          { id: '65a1b2c3d4e5f6g7h8i9j0k1', name: 'Body Measurement', monthlyPrice: 5000, quarterlyPrice: 13500, yearlyPrice: 48000 },
-          { id: '65a1b2c3d4e5f6g7h8i9j0k2', name: 'Customer Service', monthlyPrice: 3000, quarterlyPrice: 8100, yearlyPrice: 28800 },
-          { id: '65a1b2c3d4e5f6g7h8i9j0k3', name: 'Premium Support', monthlyPrice: 8000, quarterlyPrice: 21600, yearlyPrice: 76800 },
-          { id: '65a1b2c3d4e5f6g7h8i9j0k4', name: 'Analytics Dashboard', monthlyPrice: 10000, quarterlyPrice: 27000, yearlyPrice: 96000 },
-        ]);
+       
+        setAvailableServices([]);
       } finally {
         setLoadingServices(false);
       }
@@ -135,7 +129,7 @@ const CreateSubscriptionPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  // Validation functions
+
   const validateTitle = (title: string): string | null => {
     if (!title.trim()) return 'Title is required';
     if (title.length < 2) return 'Title must be at least 2 characters';
@@ -173,8 +167,14 @@ const CreateSubscriptionPage = () => {
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
+      const today = new Date();
+      
+      today.setHours(0, 0, 0, 0);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(0, 0, 0, 0);
+      
       if (start > end) return 'Start date must be before end date';
-      if (start < new Date()) return 'Start date cannot be in the past';
+      if (start < today) return 'Start date cannot be in the past';
     }
     return null;
   };
@@ -202,11 +202,11 @@ const CreateSubscriptionPage = () => {
     const featuresError = validateFeatures(formData.features);
     if (featuresError) errors.features = featuresError;
     
-    // Validate services
+ 
     if (formData.services.length === 0) {
       errors.services = 'At least one service is required';
     } else {
-      // Validate each service has required fields
+  
       formData.services.forEach((service, index) => {
         if (!service.id) {
           errors[`service-${index}`] = `Service ${index + 1} must have a valid service ID`;
@@ -230,10 +230,7 @@ const CreateSubscriptionPage = () => {
     const maxUsersError = validateMaxUsers(formData.maxUsers);
     if (maxUsersError) errors.maxUsers = maxUsersError;
     
-    // ApplyTo is not required, so no validation needed
-    // const applyToError = validateApplyTo(formData.applyTo);
-    // if (applyToError) errors.applyTo = applyToError;
-    
+   
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -327,7 +324,7 @@ const CreateSubscriptionPage = () => {
         : 0;
       const finalPriceAfterDiscount = totalServiceCost - discountAmount;
       
-      // Prepare data for API submission - only include fields expected by the API
+      
       const formattedData: CreateSubscriptionPackageData = {
         title: formData.title,
         description: formData.description,
