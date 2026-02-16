@@ -1095,24 +1095,8 @@ const SubscriptionPage: React.FC = () => {
               <option value="quarterly">Quarterly - ₦{Math.round(pkg.quarterlyPrice).toLocaleString('en-NG')}</option>
               <option value="yearly">Yearly - ₦{Math.round(pkg.yearlyPrice).toLocaleString('en-NG')}</option>
             </select>
-                        
-            {/* Discount breakdown when promo is applied */}
-            {selectedPackages[pkg.id] && appliedPromoCodes[pkg.id] && (
-              <div className="text-xs p-2 bg-green-50 text-green-700 border border-green-200 rounded">
-                <div className="flex justify-between">
-                  <span>Original Price:</span>
-                  <span className="line-through">₦{Math.round(getOriginalPrice(pkg, selectedPackages[pkg.id])).toLocaleString('en-NG')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Discount:</span>
-                  <span>-₦{Math.round(getOriginalPrice(pkg, selectedPackages[pkg.id]) * (appliedPromoCodes[pkg.id].discount || 0) / 100).toLocaleString('en-NG')} ({appliedPromoCodes[pkg.id].discount}% off)</span>
-                </div>
-                <div className="flex justify-between font-semibold pt-1 border-t border-green-200">
-                  <span>You Pay:</span>
-                  <span>₦{Math.round(getBillingPrice(pkg, selectedPackages[pkg.id])).toLocaleString('en-NG')}</span>
-                </div>
-              </div>
-            )}
+        
+           
           </div>
 
           
@@ -1128,7 +1112,7 @@ const SubscriptionPage: React.FC = () => {
                       [pkg.id]: e.target.value
                     }));
                     
-                    // Clear error when user types
+                  
                     if (promoValidationStates[pkg.id]) {
                       setPromoValidationStates(prev => {
                         const newState = {...prev};
@@ -1584,19 +1568,7 @@ const SubscriptionPage: React.FC = () => {
               </div>
             </div>
             
-            {/* Payment Amount Banner */}
-            <div className="mb-8 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl p-6 text-white">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h3 className="text-xl font-semibold">Total Amount</h3>
-                  <p className="text-sm opacity-90">For all selected packages</p>
-                </div>
-                <div className="mt-3 md:mt-0">
-                  <p className="text-4xl font-bold">₦{Math.round(totalAmount).toLocaleString('en-NG')}</p>
-                  <p className="text-sm opacity-90">{Object.keys(selectedPackages).length} package(s)</p>
-                </div>
-              </div>
-            </div>
+           
 
             {userLimitError && (
               <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
