@@ -484,10 +484,15 @@ const SubscriptionPage: React.FC = () => {
     const originalQuarterlyPrice = servicesByDuration.quarterly.reduce((sum, service) => sum + (service.price || 0), 0);
     const originalYearlyPrice = servicesByDuration.yearly.reduce((sum, service) => sum + (service.price || 0), 0);
     
-    // Show original prices - no discount applied by default
-    const finalMonthlyPrice = originalMonthlyPrice;
-    const finalQuarterlyPrice = originalQuarterlyPrice;
-    const finalYearlyPrice = originalYearlyPrice;
+    // Apply discount to get final prices for packages with promo codes
+    const discountPercentage = pkg.discountPercentage || 0;
+    const monthlyDiscount = discountPercentage > 0 ? (originalMonthlyPrice * discountPercentage / 100) : 0;
+    const quarterlyDiscount = discountPercentage > 0 ? (originalQuarterlyPrice * discountPercentage / 100) : 0;
+    const yearlyDiscount = discountPercentage > 0 ? (originalYearlyPrice * discountPercentage / 100) : 0;
+    
+    const finalMonthlyPrice = originalMonthlyPrice - monthlyDiscount;
+    const finalQuarterlyPrice = originalQuarterlyPrice - quarterlyDiscount;
+    const finalYearlyPrice = originalYearlyPrice - yearlyDiscount;
     
     // Check for user-applied promo codes
     const appliedPromo = appliedPromoCodes[pkg._id];
@@ -505,7 +510,7 @@ const SubscriptionPage: React.FC = () => {
       originalMonthlyPrice: originalMonthlyPrice,
       originalQuarterlyPrice: originalQuarterlyPrice,
       originalYearlyPrice: originalYearlyPrice,
-      hasApiDiscount: (pkg.discountPercentage || 0) > 0,
+      hasApiDiscount: discountPercentage > 0,
       hasUserPromo: hasUserPromo,
       features: pkg.features || [],
       services: pkg.services?.map(service => ({
@@ -609,12 +614,14 @@ const SubscriptionPage: React.FC = () => {
           }
         }));
         
-        // Clear validation state on success
-        setPromoValidationStates(prev => {
-          const newState = {...prev};
-          delete newState[packageId];
-          return newState;
-        });
+        // Store success message
+        setPromoValidationStates(prev => ({
+          ...prev,
+          [packageId]: { 
+            isValid: true,
+            error: response.message || 'Promo code is valid'
+          }
+        }));
       } else {
         // Show validation error
         setPromoValidationStates(prev => ({
@@ -1067,7 +1074,7 @@ const SubscriptionPage: React.FC = () => {
             <h3 className="text-xl font-bold text-gray-900 line-clamp-1">{pkg.packageName}</h3>
             {pkg.hasApiDiscount && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 whitespace-nowrap">
-                🎉 {pkg.discountPercentage || 20}% OFF
+                🎉 {pkg.discountPercentage || 0}% OFF
               </span>
             )}
           </div>
@@ -1095,8 +1102,8 @@ const SubscriptionPage: React.FC = () => {
               <option value="quarterly">Quarterly - ₦{Math.round(pkg.quarterlyPrice).toLocaleString('en-NG')}</option>
               <option value="yearly">Yearly - ₦{Math.round(pkg.yearlyPrice).toLocaleString('en-NG')}</option>
             </select>
-        
-           
+
+          
           </div>
 
           
@@ -1139,10 +1146,17 @@ const SubscriptionPage: React.FC = () => {
                 </button>
               </div>
               
-              {/* Error message display */}
-              {promoValidationStates[pkg.id] && !promoValidationStates[pkg.id].isValid && (
-                <div className="text-xs p-2 bg-red-50 text-red-700 border border-red-200 rounded">
-                  ❌ {promoValidationStates[pkg.id].error}
+              {/* Message display - success or error */}
+              {promoValidationStates[pkg.id] && (
+                <div className={`text-xs p-2 rounded ${
+                  promoValidationStates[pkg.id].isValid 
+                    ? 'bg-green-50 text-green-700 border border-green-200' 
+                    : 'bg-red-50 text-red-700 border border-red-200'
+                }`}>
+                  {promoValidationStates[pkg.id].isValid 
+                    ? `✅ ${promoValidationStates[pkg.id].error}` 
+                    : `❌ ${promoValidationStates[pkg.id].error}`
+                  }
                 </div>
               )}
             </div>
