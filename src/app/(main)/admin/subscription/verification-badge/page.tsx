@@ -802,10 +802,10 @@ const VerificationBadgeSubscriptionPage: React.FC = () => {
           </div>
         )}
         
-        {/* Render location form or locations table based on workflowStep */}
+
         <div className="mb-8">
-          {/* Gallery Section Card at the top */}
-          {workflowStep === 'locations' && (
+        
+          {/* {workflowStep === 'locations' && (
             <div className="mb-6 p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
               <div className="mb-4">
                 <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -832,7 +832,7 @@ const VerificationBadgeSubscriptionPage: React.FC = () => {
                 maxItems={10}
               />
             </div>
-          )}
+          )} */}
 
           {/* Actions outside the container */}
           <div className="flex justify-between mb-4">

@@ -46,7 +46,8 @@ const CreateSubscriptionPage = () => {
   
   const [availableServices, setAvailableServices] = useState<ServiceOption[]>([]);
   const [loadingServices, setLoadingServices] = useState<boolean>(true);
-  
+  const [existingPackages, setExistingPackages] = useState<string[]>([]);
+  const [checkingPackageName, setCheckingPackageName] = useState<boolean>(false);
 
   const [showIndustriesDropdown, setShowIndustriesDropdown] = useState<boolean>(false);
   const [industriesSearch, setIndustriesSearch] = useState<string>('');
@@ -76,15 +77,16 @@ const CreateSubscriptionPage = () => {
     maxUsers: 1,
   });
     
-  // Load available services
+  // Load available services and existing packages
   useEffect(() => {
-    const fetchServices = async () => {
+    const fetchData = async () => {
       try {
         setLoadingServices(true);
+        
+        // Fetch services
         const serviceService = new ServiceService();
         const services = await serviceService.getAllServices();
-          
-     
+        
         const serviceOptions: ServiceOption[] = services.map(service => ({
           id: service.id,
           name: service.serviceName,
@@ -94,16 +96,21 @@ const CreateSubscriptionPage = () => {
         }));
           
         setAvailableServices(serviceOptions);
+        
+        // Fetch existing packages to check for unique names
+        const packages = await SubscriptionService.getAllSubscriptionPackages();
+        const packageNames = packages.map(pkg => pkg.title.toLowerCase());
+        setExistingPackages(packageNames);
+        
       } catch (error) {
-        console.error('Error fetching services:', error);
-       
+        console.error('Error fetching data:', error);
         setAvailableServices([]);
       } finally {
         setLoadingServices(false);
       }
     };
       
-    fetchServices();
+    fetchData();
   }, []);
     
   // Calculate the total price based on selected services and discount
@@ -129,6 +136,62 @@ const CreateSubscriptionPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  // Date validation function
+  const validateDates = (startDate: string, endDate: string): { isValid: boolean; startError?: string; endError?: string } => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const result = { isValid: true, startError: undefined as string | undefined, endError: undefined as string | undefined };
+    
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      
+      if (start < today) {
+        result.isValid = false;
+        result.startError = 'Start date cannot be in the past';
+      }
+    }
+    
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(0, 0, 0, 0);
+      
+      if (end < today) {
+        result.isValid = false;
+        result.endError = 'End date cannot be in the past';
+      }
+    }
+    
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(0, 0, 0, 0);
+      
+      if (start > end) {
+        result.isValid = false;
+        result.endError = 'End date must be after start date';
+      }
+    }
+    
+    return result;
+  };
+
+  // Package name uniqueness validation
+  const validatePackageName = async (name: string): Promise<string | null> => {
+    if (!name.trim()) return 'Package title is required';
+    if (name.length < 2) return 'Package title must be at least 2 characters';
+    if (name.length > 100) return 'Package title must not exceed 100 characters';
+    
+    // Check if name already exists (case-insensitive)
+    const nameLower = name.toLowerCase();
+    if (existingPackages.includes(nameLower)) {
+      return 'This package title already exists. Please use a unique name.';
+    }
+    
+    return null;
+  };
 
   const validateTitle = (title: string): string | null => {
     if (!title.trim()) return 'Title is required';
@@ -136,8 +199,6 @@ const CreateSubscriptionPage = () => {
     if (title.length > 100) return 'Title must not exceed 100 characters';
     return null;
   };
-
-
 
   const validateDescription = (description: string): string | null => {
     if (!description.trim()) return 'Description is required';
@@ -175,6 +236,7 @@ const CreateSubscriptionPage = () => {
       
       if (start > end) return 'Start date must be before end date';
       if (start < today) return 'Start date cannot be in the past';
+      if (end < today) return 'End date cannot be in the past';
     }
     return null;
   };
@@ -190,11 +252,12 @@ const CreateSubscriptionPage = () => {
     return null;
   };
 
-  const validateForm = (): boolean => {
+  const validateForm = async (): Promise<boolean> => {
     const errors: Record<string, string> = {};
     
-    const titleError = validateTitle(formData.title);
-    if (titleError) errors.title = titleError;
+    // Validate package name uniqueness
+    const packageNameError = await validatePackageName(formData.title);
+    if (packageNameError) errors.title = packageNameError;
     
     const descriptionError = validateDescription(formData.description);
     if (descriptionError) errors.description = descriptionError;
@@ -202,11 +265,10 @@ const CreateSubscriptionPage = () => {
     const featuresError = validateFeatures(formData.features);
     if (featuresError) errors.features = featuresError;
     
- 
+    // Validate services
     if (formData.services.length === 0) {
       errors.services = 'At least one service is required';
     } else {
-  
       formData.services.forEach((service, index) => {
         if (!service.id) {
           errors[`service-${index}`] = `Service ${index + 1} must have a valid service ID`;
@@ -224,15 +286,56 @@ const CreateSubscriptionPage = () => {
     const discountError = validateDiscount(formData.discountPercentage);
     if (discountError) errors.discountPercentage = discountError;
     
-    const promoDatesError = validatePromoDates(formData.promoStartDate, formData.promoEndDate);
-    if (promoDatesError) errors.promoDates = promoDatesError;
+    // Validate dates
+    const dateValidation = validateDates(formData.promoStartDate, formData.promoEndDate);
+    if (dateValidation.startError) {
+      errors.promoStartDate = dateValidation.startError;
+    }
+    if (dateValidation.endError) {
+      errors.promoEndDate = dateValidation.endError;
+    }
     
     const maxUsersError = validateMaxUsers(formData.maxUsers);
     if (maxUsersError) errors.maxUsers = maxUsersError;
     
-   
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
+  };
+
+  // Handle title change with uniqueness check
+  const handleTitleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    
+    setFormData(prev => ({
+      ...prev,
+      title: value
+    }));
+    
+    // Clear previous title error
+    if (fieldErrors.title) {
+      setFieldErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.title;
+        return newErrors;
+      });
+    }
+    
+    // Check uniqueness in real-time (with debounce)
+    if (value.trim().length >= 2) {
+      setCheckingPackageName(true);
+      
+      // Simulate debounce
+      setTimeout(async () => {
+        const error = await validatePackageName(value);
+        if (error) {
+          setFieldErrors(prev => ({
+            ...prev,
+            title: error
+          }));
+        }
+        setCheckingPackageName(false);
+      }, 500);
+    }
   };
 
   // Handle features input
@@ -299,11 +402,43 @@ const CreateSubscriptionPage = () => {
     }
   };
 
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Validate dates in real-time
+    const newFormData = { ...formData, [name]: value };
+    const dateValidation = validateDates(
+      name === 'promoStartDate' ? value : newFormData.promoStartDate,
+      name === 'promoEndDate' ? value : newFormData.promoEndDate
+    );
+    
+    // Clear previous date errors
+    const newErrors = { ...fieldErrors };
+    delete newErrors.promoStartDate;
+    delete newErrors.promoEndDate;
+    
+    // Add new errors if any
+    if (dateValidation.startError) {
+      newErrors.promoStartDate = dateValidation.startError;
+    }
+    if (dateValidation.endError) {
+      newErrors.promoEndDate = dateValidation.endError;
+    }
+    
+    setFieldErrors(newErrors);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Run validation before submitting
-    if (!validateForm()) {
+    const isValid = await validateForm();
+    if (!isValid) {
       return;
     }
     
@@ -442,25 +577,41 @@ const CreateSubscriptionPage = () => {
               </div>
             </div>
 
-            {/* Title */}
+            {/* Title with Uniqueness Validation */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Package Title *
               </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-colors ${
-                  fieldErrors.title ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Enter package title (e.g., Premium Plan, Business Suite)"
-                required
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleTitleChange}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-colors ${
+                    fieldErrors.title ? 'border-red-500' : formData.title && !fieldErrors.title && formData.title.length >= 2 ? 'border-green-500' : 'border-gray-300'
+                  }`}
+                  placeholder="Enter package title (e.g., Premium Plan, Business Suite)"
+                  required
+                />
+                {checkingPackageName && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </div>
+                )}
+              </div>
               {fieldErrors.title && (
                 <p className="mt-2 text-sm text-red-600">{fieldErrors.title}</p>
               )}
+              {!fieldErrors.title && formData.title && !checkingPackageName && formData.title.length >= 2 && (
+                <p className="mt-2 text-sm text-green-600">Package name is available</p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                Package title must be unique and at least 2 characters long
+              </p>
             </div>
 
             {/* Description */}
@@ -828,7 +979,9 @@ const CreateSubscriptionPage = () => {
                       name="promoCode"
                       value={formData.promoCode}
                       onChange={(e) => setFormData(prev => ({ ...prev, promoCode: e.target.value }))}
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                      className={`flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent ${
+                        fieldErrors.promoCode ? 'border-red-500' : 'border-gray-300'
+                      }`}
                       placeholder="Enter promo code"
                     />
                     <button
@@ -847,6 +1000,9 @@ const CreateSubscriptionPage = () => {
                       Generate
                     </button>
                   </div>
+                  {fieldErrors.promoCode && (
+                    <p className="mt-2 text-sm text-red-600">{fieldErrors.promoCode}</p>
+                  )}
                 </div>
 
                 {/* Discount Percentage */}
@@ -863,10 +1019,15 @@ const CreateSubscriptionPage = () => {
                       const value = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
                       setFormData(prev => ({ ...prev, discountPercentage: value }));
                     }}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent ${
+                      fieldErrors.discountPercentage ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     placeholder="0-100%"
                   />
                   <p className="mt-1 text-xs text-gray-500">Enter discount percentage (0-100%)</p>
+                  {fieldErrors.discountPercentage && (
+                    <p className="mt-2 text-sm text-red-600">{fieldErrors.discountPercentage}</p>
+                  )}
                 </div>
               </div>
 
@@ -879,12 +1040,19 @@ const CreateSubscriptionPage = () => {
                   <div className="relative">
                     <input
                       type="date"
+                      name="promoStartDate"
                       value={formData.promoStartDate}
-                      onChange={(e) => setFormData(prev => ({ ...prev, promoStartDate: e.target.value }))}
-                      className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                      onChange={handleDateChange}
+                      min={new Date().toISOString().split('T')[0]}
+                      className={`w-full px-4 py-3 pl-10 border rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent ${
+                        fieldErrors.promoStartDate ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     />
                     <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                   </div>
+                  {fieldErrors.promoStartDate && (
+                    <p className="mt-2 text-sm text-red-600">{fieldErrors.promoStartDate}</p>
+                  )}
                 </div>
 
                 {/* End Date */}
@@ -895,16 +1063,23 @@ const CreateSubscriptionPage = () => {
                   <div className="relative">
                     <input
                       type="date"
+                      name="promoEndDate"
                       value={formData.promoEndDate}
-                      onChange={(e) => setFormData(prev => ({ ...prev, promoEndDate: e.target.value }))}
-                      className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                      onChange={handleDateChange}
+                      min={formData.promoStartDate || new Date().toISOString().split('T')[0]}
+                      className={`w-full px-4 py-3 pl-10 border rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent ${
+                        fieldErrors.promoEndDate ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     />
                     <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                   </div>
+                  {fieldErrors.promoEndDate && (
+                    <p className="mt-2 text-sm text-red-600">{fieldErrors.promoEndDate}</p>
+                  )}
                 </div>
               </div>
 
-              {/* Real-time Calculation */}
+             
               <div className="mt-6 pt-4 border-t border-gray-200">
                 <h4 className="text-md font-medium text-gray-900 mb-3">Price Calculation</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1175,7 +1350,7 @@ const CreateSubscriptionPage = () => {
             <button
               type="submit"
               className="px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={loading}
+              disabled={loading || checkingPackageName || Object.keys(fieldErrors).some(key => key.includes('promo') || key === 'title')}
             >
               <Save className="w-5 h-5 mr-2" />
               {loading ? 'Creating...' : 'Create Package'}
