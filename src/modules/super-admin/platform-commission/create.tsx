@@ -56,14 +56,14 @@ const PlatformCommissionCreate = () => {
     fetchIndustries();
   }, []);
 
-  // Fetch categories when industry changes
+
   useEffect(() => {
     const fetchCategories = async () => {
       if (formData.industryId) {
         try {
           const categoriesList = await CategoryService.getCategoriesForSelect(formData.industryId);
           setCategories(categoriesList);
-          // Reset category selection if industry changes
+
           if (formData.categoryId) {
             setFormData(prev => ({ ...prev, categoryId: '' }));
           }
@@ -87,7 +87,7 @@ const PlatformCommissionCreate = () => {
       [name]: value
     }));
     
-    // Clear error when user starts typing
+
     if (error) {
       setError(null);
     }
@@ -96,7 +96,7 @@ const PlatformCommissionCreate = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate form
+   
     if (!formData.commissionName.trim()) {
       setError('Commission name is required');
       toast.error('Commission name is required');
@@ -137,7 +137,7 @@ const PlatformCommissionCreate = () => {
     setError(null);
 
     try {
-      // Call API to create the platform commission
+     
       const createData: CreatePlatformCommissionRequest = {
         commissionName: formData.commissionName.trim(),
         commissionRate: parseFloat(formData.commissionRate),
@@ -150,10 +150,10 @@ const PlatformCommissionCreate = () => {
       
       console.log('Platform commission created:', newCommission);
       
-      // Show success message
+   
       toast.success('Platform commission created successfully!');
       
-      // Navigate back to platform commission list page
+     
       setTimeout(() => {
         router.push('/super-admin/platform-commission');
       }, 1000);
@@ -172,7 +172,7 @@ const PlatformCommissionCreate = () => {
   };
 
   return (
-    <div className="manrope w-full min-h-screen bg-gray-50 p-4 md:p-8">
+    <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
       <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
         .manrope { font-family: 'Manrope', sans-serif; }

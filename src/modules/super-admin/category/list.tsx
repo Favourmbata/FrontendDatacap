@@ -1,41 +1,54 @@
+
+
+
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Eye, Trash2, Download, ChevronUp, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { Search, Plus, Edit, Eye, Trash2, ChevronUp, ChevronDown, Download } from 'lucide-react';
 import DeleteConfirmationModal from '@/app/components/DeleteConfirmationModal';
 import { SuperAdminActionModal } from '@/app/components/SuperAdminActionModal';
-
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import CategoryService, { Category, GetCategoriesParams } from '@/services/CategoryService';
+import CategoryService, { Category } from '@/services/CategoryService';
 import IndustryService from '@/services/industryService';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const CategoryList = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
+  const router = useRouter();
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
+  const [displayedCategories, setDisplayedCategories] = useState<Category[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [showActionModal, setShowActionModal] = useState(false);
   const [actionModalConfig, setActionModalConfig] = useState({
     action: '' as 'delete' | 'toggleStatus' | '',
     item: null as Category | null,
     statusToSet: '' as 'active' | 'inactive' | '',
   });
+  
+  
   const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0,
+    currentPage: 1,
+    itemsPerPage: 10,
+    totalItems: 0,
     totalPages: 1,
   });
+
+
   const [sortConfig, setSortConfig] = useState({
-    sortBy: 'name',
-    sortOrder: 'asc' as 'asc' | 'desc',
+    sortBy: 'createdAt',
+    sortOrder: 'desc' as 'asc' | 'desc', 
   });
+
+  // Filter state
   const [selectedIndustry, setSelectedIndustry] = useState<string>('all');
   const [industries, setIndustries] = useState<Array<{ value: string; label: string }>>([]);
-  const [exportLoading, setExportLoading] = useState(false);
-  const [showExportDropdown, setShowExportDropdown] = useState(false);
 
   // Fetch industries for filter dropdown
   useEffect(() => {
@@ -51,32 +64,21 @@ const CategoryList = () => {
     fetchIndustries();
   }, []);
 
-  // Fetch categories from API
-  const fetchCategories = async (params?: GetCategoriesParams) => {
+  // Fetch all categories
+  const fetchAllCategories = async () => {
     try {
       setLoading(true);
-      const defaultParams: GetCategoriesParams = {
-        page: pagination.page,
-        limit: pagination.limit,
-        search: searchTerm || undefined,
-        industryId: selectedIndustry !== 'all' ? selectedIndustry : undefined,
-        sortBy: sortConfig.sortBy,
-        sortOrder: sortConfig.sortOrder,
-      };
-
-      const response = await CategoryService.getCategories({
-        ...defaultParams,
-        ...params,
+      // Fetch all categories without pagination for client-side filtering
+      const response = await CategoryService.getCategories({ 
+        limit: 1000 // Get a large number for client-side filtering
       });
       
-      setCategories(response.categories);
-      setFilteredCategories(response.categories);
-      setPagination({
-        page: response.page,
-        limit: response.limit,
-        total: response.total,
-        totalPages: response.totalPages,
-      });
+      setAllCategories(response.categories);
+      setPagination(prev => ({
+        ...prev,
+        totalItems: response.categories.length,
+        totalPages: Math.ceil(response.categories.length / prev.itemsPerPage)
+      }));
       
     } catch (error: any) {
       console.error('Error fetching categories:', error);
@@ -86,29 +88,250 @@ const CategoryList = () => {
     }
   };
 
+  // Initial fetch and storage event listener
   useEffect(() => {
-    fetchCategories();
-  }, [pagination.page, sortConfig, selectedIndustry]);
-
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (pagination.page !== 1) {
-        setPagination(prev => ({ ...prev, page: 1 }));
-      } else {
-        fetchCategories();
+    fetchAllCategories();
+    
+    // Listen for storage events to refresh data when another tab updates
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'categories_lastUpdated') {
+        fetchAllCategories();
       }
-    }, 500);
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
+  // Filter and sort categories based on search, industry, and sort config
+  const filteredAndSortedCategories = useMemo(() => {
+    let filtered = [...allCategories];
+
+    // Apply search filter (searches in name, description, and industry)
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(category => 
+        category.name.toLowerCase().includes(searchLower) ||
+        category.description.toLowerCase().includes(searchLower) ||
+        (category.industryName || '').toLowerCase().includes(searchLower)
+      );
+      console.log(`Search for "${searchTerm}" found ${filtered.length} results`);
+    }
+
+    // Apply industry filter
+    if (selectedIndustry !== 'all') {
+      filtered = filtered.filter(category => category.industryId === selectedIndustry);
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue: any = a[sortConfig.sortBy as keyof Category];
+      let bValue: any = b[sortConfig.sortBy as keyof Category];
+
+      // Handle date fields
+      if (sortConfig.sortBy === 'createdAt' || sortConfig.sortBy === 'updatedAt') {
+        aValue = new Date(aValue).getTime();
+        bValue = new Date(bValue).getTime();
+      }
+
+      // Handle status field
+      if (sortConfig.sortBy === 'status') {
+        aValue = a.status;
+        bValue = b.status;
+      }
+
+      // Handle name field (case-insensitive)
+      if (sortConfig.sortBy === 'name') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+
+      if (aValue < bValue) {
+        return sortConfig.sortOrder === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.sortOrder === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+
+    return filtered;
+  }, [allCategories, searchTerm, selectedIndustry, sortConfig]);
+
+  // Update displayed categories based on pagination
+  useEffect(() => {
+    const startIndex = (pagination.currentPage - 1) * pagination.itemsPerPage;
+    const endIndex = startIndex + pagination.itemsPerPage;
+    const paginatedCategories = filteredAndSortedCategories.slice(startIndex, endIndex);
+    
+    setDisplayedCategories(paginatedCategories);
+    setPagination(prev => ({
+      ...prev,
+      totalItems: filteredAndSortedCategories.length,
+      totalPages: Math.ceil(filteredAndSortedCategories.length / prev.itemsPerPage)
+    }));
+  }, [filteredAndSortedCategories, pagination.currentPage, pagination.itemsPerPage]);
+
+  // Reset to first page when search or filter changes
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+  }, [searchTerm, selectedIndustry, sortConfig]);
+
+  // Export functions
+  const exportToCSV = () => {
+    try {
+      setExportLoading(true);
+      
+      // Prepare data for export
+      const exportData = filteredAndSortedCategories.map(category => ({
+        'Category Name': category.name,
+        'Industry': category.industryName || 'Unknown',
+        'Description': category.description,
+        'Status': category.status,
+        'Created Date': new Date(category.createdAt).toLocaleDateString(),
+        'Last Updated': new Date(category.updatedAt).toLocaleDateString(),
+        'Category ID': category.id,
+        'Industry ID': category.industryId
+      }));
+
+        if (exportData.length > 0) {
+      const headers = Object.keys(exportData[0]) as Array<keyof typeof exportData[0]>;
+      const csvContent = [
+        headers.join(','),
+        ...exportData.map(row => 
+          headers.map(header => {
+            const value = row[header];
+            // Handle values that might contain commas
+            return typeof value === 'string' && value.includes(',') 
+              ? `"${value}"` 
+              : value;
+          }).join(',')
+        )
+      ].join('\n');
+
+      // Download CSV
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `categories_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      toast.error('No data to export');
+    }
+    
+    toast.success('Categories exported as CSV successfully');
+  } catch (error) {
+    console.error('Error exporting to CSV:', error);
+    toast.error('Failed to export categories as CSV');
+  } finally {
+    setExportLoading(false);
+    setShowExportDropdown(false);
+  }
+};
+
+  const exportToExcel = () => {
+    try {
+      setExportLoading(true);
+      
+      // Prepare data for export
+      const exportData = filteredAndSortedCategories.map(category => ({
+        'Category Name': category.name,
+        'Industry': category.industryName || 'Unknown',
+        'Description': category.description,
+        'Status': category.status,
+        'Created Date': new Date(category.createdAt).toLocaleDateString(),
+        'Last Updated': new Date(category.updatedAt).toLocaleDateString(),
+        'Category ID': category.id,
+        'Industry ID': category.industryId
+      }));
+
+      // Create worksheet
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Categories');
+
+      // Generate Excel file
+      XLSX.writeFile(workbook, `categories_export_${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      toast.success('Categories exported as Excel successfully');
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast.error('Failed to export categories as Excel');
+    } finally {
+      setExportLoading(false);
+      setShowExportDropdown(false);
+    }
+  };
+
+  const exportToPDF = () => {
+    try {
+      setExportLoading(true);
+      
+      // Create PDF document
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(18);
+      doc.text('Categories Report', 14, 22);
+      doc.setFontSize(11);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
+      
+      // Add filters info
+      let filterInfo = 'Filters: ';
+      if (searchTerm) filterInfo += `Search: "${searchTerm}" `;
+      if (selectedIndustry !== 'all') {
+        const industry = industries.find(i => i.value === selectedIndustry);
+        filterInfo += `Industry: ${industry?.label || selectedIndustry} `;
+      }
+      if (filterInfo === 'Filters: ') filterInfo += 'None';
+      doc.text(filterInfo, 14, 38);
+
+      // Prepare table data
+      const tableHeaders = [['Name', 'Industry', 'Description', 'Status', 'Created Date']];
+      const tableData = filteredAndSortedCategories.map(category => [
+        category.name,
+        category.industryName || 'Unknown',
+        category.description.length > 50 ? category.description.substring(0, 50) + '...' : category.description,
+        category.status,
+        new Date(category.createdAt).toLocaleDateString()
+      ]);
+
+      // Generate table
+      autoTable(doc, {
+        head: tableHeaders,
+        body: tableData,
+        startY: 45,
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [93, 42, 139], textColor: [255, 255, 255] },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+      });
+
+      // Save PDF
+      doc.save(`categories_export_${new Date().toISOString().split('T')[0]}.pdf`);
+      
+      toast.success('Categories exported as PDF successfully');
+    } catch (error) {
+      console.error('Error exporting to PDF:', error);
+      toast.error('Failed to export categories as PDF');
+    } finally {
+      setExportLoading(false);
+      setShowExportDropdown(false);
+    }
+  };
 
   const handleView = (category: Category) => {
-    window.location.href = `/super-admin/category/view/${category.id}`;
+    router.push(`/super-admin/category/view/${category.id}`);
   };
 
   const handleEdit = (category: Category) => {
-    window.location.href = `/super-admin/category/edit/${category.id}`;
+    router.push(`/super-admin/category/edit/${category.id}`);
   };
 
   const handleDelete = (category: Category) => {
@@ -133,11 +356,13 @@ const CategoryList = () => {
     if (!actionModalConfig.item) return;
 
     try {
+      setDeleteLoading(true);
       if (actionModalConfig.action === 'delete') {
         const result = await CategoryService.deleteCategory(actionModalConfig.item.id);
         if (result.success) {
           toast.success('Category deleted successfully');
-          fetchCategories();
+          // Remove from local state
+          setAllCategories(prev => prev.filter(c => c.id !== actionModalConfig.item!.id));
         } else {
           toast.error(result.message || 'Failed to delete category');
         }
@@ -147,12 +372,20 @@ const CategoryList = () => {
           actionModalConfig.statusToSet as 'active' | 'inactive'
         );
         toast.success(`Category ${actionModalConfig.statusToSet === 'active' ? 'activated' : 'deactivated'} successfully`);
-        fetchCategories();
+        // Update local state
+        setAllCategories(prev => prev.map(c => 
+          c.id === actionModalConfig.item!.id ? updatedCategory : c
+        ));
       }
+      
+      // Update timestamp to notify other tabs
+      localStorage.setItem('categories_lastUpdated', Date.now().toString());
+      
     } catch (error: any) {
       console.error('Error performing action:', error);
       toast.error(error.message || 'Action failed');
     } finally {
+      setDeleteLoading(false);
       setShowActionModal(false);
       setActionModalConfig({
         action: '',
@@ -162,29 +395,30 @@ const CategoryList = () => {
     }
   };
 
-  const handleExport = async (format: 'csv' | 'excel' | 'pdf') => {
-    try {
-      setExportLoading(true);
-      await CategoryService.exportCategories(format, {
-        search: searchTerm || undefined,
-        industryId: selectedIndustry !== 'all' ? selectedIndustry : undefined,
-        sortBy: sortConfig.sortBy,
-        sortOrder: sortConfig.sortOrder,
-      });
-      toast.success(`Categories exported as ${format.toUpperCase()} successfully`);
-    } catch (error: any) {
-      console.error('Error exporting categories:', error);
-      toast.error(error.message || 'Failed to export categories');
-    } finally {
-      setExportLoading(false);
-      setShowExportDropdown(false);
-    }
-  };
-
   const handleSort = (column: string) => {
     setSortConfig(prev => ({
       sortBy: column,
       sortOrder: prev.sortBy === column && prev.sortOrder === 'asc' ? 'desc' : 'asc',
+    }));
+  };
+
+  const handlePageChange = (newPage: number) => {
+    console.log(`Changing from page ${pagination.currentPage} to ${newPage}`);
+    console.log(`Total pages available: ${pagination.totalPages}`);
+    
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      setPagination(prev => ({ ...prev, currentPage: newPage }));
+      // Scroll to top of table
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newItemsPerPage = Number(e.target.value);
+    setPagination(prev => ({
+      ...prev,
+      itemsPerPage: newItemsPerPage,
+      currentPage: 1
     }));
   };
 
@@ -206,7 +440,7 @@ const CategoryList = () => {
     return <span className={`${baseClasses} bg-red-100 text-red-800`}>Inactive</span>;
   };
 
-  if (loading && categories.length === 0) {
+  if (loading && allCategories.length === 0) {
     return (
       <div className="manrope">
         <style jsx>{`
@@ -266,11 +500,16 @@ const CategoryList = () => {
                 <input
                   type="text"
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5D2A8B] focus:border-[#5D2A8B] transition-all"
-                  placeholder="Search categories by name, description, or industry..."
+                  placeholder="Search by name, description, or industry..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
+              {searchTerm && (
+                <div className="mt-2 text-sm text-gray-600">
+                  Found {filteredAndSortedCategories.length} results for "{searchTerm}"
+                </div>
+              )}
             </div>
 
             {/* Industry Filter */}
@@ -289,88 +528,69 @@ const CategoryList = () => {
             </div>
           </div>
 
-          {/* Action Buttons Row */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-4 border-t border-gray-100">
-            {/* Sort Controls */}
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-gray-700">Sort by:</span>
-              <div className="flex items-center gap-2">
-                <select
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#5D2A8B] focus:border-[#5D2A8B] min-w-[140px]"
-                  value={sortConfig.sortBy}
-                  onChange={(e) => handleSort(e.target.value)}
-                >
-                  <option value="name">Name</option>
-                  <option value="createdAt">Date Created</option>
-                  <option value="updatedAt">Date Updated</option>
-                  <option value="status">Status</option>
-                </select>
-                <button
-                  className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  onClick={() => handleSort(sortConfig.sortBy)}
-                  title={sortConfig.sortOrder === 'asc' ? 'Sort ascending' : 'Sort descending'}
-                >
-                  {sortConfig.sortOrder === 'asc' ? (
-                    <ChevronUp className="w-4 h-4" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Export and Add Buttons */}
-            <div className="flex items-center gap-3">
-              {/* Export Dropdown */}
-              <div className="relative">
-                <button 
-                  className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[100px] justify-center"
-                  disabled={exportLoading}
-                  onClick={() => setShowExportDropdown(!showExportDropdown)}
-                >
-                  <Download className="w-5 h-5" />
-                  <span>Export</span>
-                </button>
-                
-                {showExportDropdown && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-10"
-                      onClick={() => setShowExportDropdown(false)}
-                    />
-                    <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
-                      <button
-                        onClick={() => handleExport('csv')}
-                        className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
-                      >
-                        Export as CSV
-                      </button>
-                      <button
-                        onClick={() => handleExport('excel')}
-                        className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
-                      >
-                        Export as Excel
-                      </button>
-                      <button
-                        onClick={() => handleExport('pdf')}
-                        className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors border-t border-gray-100"
-                      >
-                        Export as PDF
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Add Category Button */}
+          {/* Action Buttons Row - Moved to the right */}
+          <div className="flex justify-end items-center gap-3 pt-4 border-t border-gray-100">
+            {/* Export Dropdown */}
+            <div className="relative">
               <button 
-                className="flex items-center gap-2 bg-[#5D2A8B] text-white px-4 py-2.5 rounded-lg hover:bg-[#4a216d] transition-colors min-w-[140px] justify-center"
-                onClick={() => window.location.href = '/super-admin/category/create'}
+                className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[100px] justify-center"
+                disabled={exportLoading}
+                onClick={() => setShowExportDropdown(!showExportDropdown)}
               >
-                <Plus className="w-5 h-5" />
-                <span>Add Category</span>
+                <Download className="w-5 h-5" />
+                <span>Export</span>
               </button>
+              
+              {showExportDropdown && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowExportDropdown(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+                    <button
+                      onClick={exportToCSV}
+                      className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                    >
+                      Export as CSV
+                    </button>
+                    <button
+                      onClick={exportToExcel}
+                      className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                    >
+                      Export as Excel
+                    </button>
+                    <button
+                      onClick={exportToPDF}
+                      className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors border-t border-gray-100"
+                    >
+                      Export as PDF
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
+
+            {/* Items per page selector */}
+            <select
+              value={pagination.itemsPerPage}
+              onChange={handleItemsPerPageChange}
+              className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#5D2A8B] focus:border-[#5D2A8B] min-w-[120px]"
+            >
+              <option value="5">5 per page</option>
+              <option value="10">10 per page</option>
+              <option value="25">25 per page</option>
+              <option value="50">50 per page</option>
+            </select>
+
+            {/* Add Category Button */}
+            <button 
+              className="flex items-center gap-2 bg-[#5D2A8B] text-white px-4 py-2.5 rounded-lg hover:bg-[#4a216d] transition-colors min-w-[140px] justify-center"
+              onClick={() => router.push('/super-admin/category/create')}
+            >
+              <Plus className="w-5 h-5" />
+              <span>Add Category</span>
+            </button>
           </div>
         </div>
       </div>
@@ -421,8 +641,22 @@ const CategoryList = () => {
                     )}
                   </div>
                 </th>
-                <th className="py-4 px-6 text-left text-gray-700 font-semibold">
-                  Created Date
+                <th 
+                  className="py-4 px-6 text-left text-gray-700 font-semibold cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleSort('createdAt')}
+                >
+                  <div className="flex items-center gap-1">
+                    <span>Created Date</span>
+                    {sortConfig.sortBy === 'createdAt' && (
+                      <span>
+                        {sortConfig.sortOrder === 'asc' ? (
+                          <ChevronUp className="w-4 h-4" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" />
+                        )}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th className="py-4 px-6 text-left text-gray-700 font-semibold">
                   Actions
@@ -430,16 +664,16 @@ const CategoryList = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredCategories.length > 0 ? (
-                filteredCategories.map((category) => (
+              {displayedCategories.length > 0 ? (
+                displayedCategories.map((category) => (
                   <tr key={category.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="py-4 px-6">
                       <div className="font-medium text-gray-900">{category.name}</div>
-                      <div className="text-sm text-gray-500 mt-1">ID: {category.id}</div>
+                      <div className="text-sm text-gray-500 mt-1">ID: {category.id.slice(-8)}</div>
                     </td>
                     <td className="py-4 px-6">
                       <div className="text-gray-700 font-medium">{category.industryName || 'Unknown'}</div>
-                      <div className="text-sm text-gray-500 mt-1">ID: {category.industryId}</div>
+                      <div className="text-sm text-gray-500 mt-1">ID: {category.industryId.slice(-8)}</div>
                     </td>
                     <td className="py-4 px-6 text-gray-600 max-w-md">
                       <div className="line-clamp-2" title={category.description}>
@@ -468,7 +702,6 @@ const CategoryList = () => {
                         >
                           <Edit className="w-5 h-5" />
                         </button>
-                      
                         <button 
                           onClick={() => handleDelete(category)}
                           className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
@@ -494,7 +727,7 @@ const CategoryList = () => {
                       {!searchTerm && selectedIndustry === 'all' && (
                         <button 
                           className="flex items-center gap-2 bg-[#5D2A8B] text-white px-6 py-3 rounded-lg hover:bg-[#4a216d] transition-colors"
-                          onClick={() => window.location.href = '/super-admin/category/create'}
+                          onClick={() => router.push('/super-admin/category/create')}
                         >
                           <Plus className="w-5 h-5" />
                           Add Your First Category
@@ -509,44 +742,61 @@ const CategoryList = () => {
         </div>
 
         {/* Pagination */}
-        {filteredCategories.length > 0 && (
+        {filteredAndSortedCategories.length > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
             <div className="text-sm text-gray-600 mb-4 sm:mb-0">
-              Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
-              {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
-              {pagination.total} categories
+              Showing {(pagination.currentPage - 1) * pagination.itemsPerPage + 1} to{' '}
+              {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
+              {pagination.totalItems} categories
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
-                disabled={pagination.page === 1}
+                onClick={() => handlePageChange(pagination.currentPage - 1)}
+                disabled={pagination.currentPage === 1}
                 className={`px-4 py-2 rounded-lg border transition-colors ${
-                  pagination.page === 1
+                  pagination.currentPage === 1
                     ? 'border-gray-300 text-gray-400 cursor-not-allowed'
                     : 'border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400'
                 }`}
               >
                 Previous
               </button>
+              
               <div className="flex items-center gap-1">
+                {/* First page */}
+                {pagination.currentPage > 3 && pagination.totalPages > 5 && (
+                  <>
+                    <button
+                      onClick={() => handlePageChange(1)}
+                      className="min-w-[40px] h-10 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100"
+                    >
+                      1
+                    </button>
+                    {pagination.currentPage > 4 && (
+                      <span className="px-2 text-gray-500">...</span>
+                    )}
+                  </>
+                )}
+
+                {/* Page numbers */}
                 {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
                   let pageNum;
                   if (pagination.totalPages <= 5) {
                     pageNum = i + 1;
-                  } else if (pagination.page <= 3) {
+                  } else if (pagination.currentPage <= 3) {
                     pageNum = i + 1;
-                  } else if (pagination.page >= pagination.totalPages - 2) {
+                  } else if (pagination.currentPage >= pagination.totalPages - 2) {
                     pageNum = pagination.totalPages - 4 + i;
                   } else {
-                    pageNum = pagination.page - 2 + i;
+                    pageNum = pagination.currentPage - 2 + i;
                   }
                   
                   return (
                     <button
                       key={pageNum}
-                      onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
+                      onClick={() => handlePageChange(pageNum)}
                       className={`min-w-[40px] h-10 rounded-lg transition-colors ${
-                        pagination.page === pageNum
+                        pagination.currentPage === pageNum
                           ? 'bg-[#5D2A8B] text-white'
                           : 'border border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400'
                       }`}
@@ -555,12 +805,34 @@ const CategoryList = () => {
                     </button>
                   );
                 })}
+
+                {/* Last page */}
+                {pagination.currentPage < pagination.totalPages - 2 && pagination.totalPages > 5 && (
+                  <>
+                    {pagination.currentPage < pagination.totalPages - 3 && (
+                      <span className="px-2 text-gray-500">...</span>
+                    )}
+                    <button
+                      onClick={() => handlePageChange(pagination.totalPages)}
+                      className="min-w-[40px] h-10 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100"
+                    >
+                      {pagination.totalPages}
+                    </button>
+                  </>
+                )}
               </div>
+
               <button
-                onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-                disabled={pagination.page >= pagination.totalPages}
+                onClick={() => {
+                  console.log('Next button clicked');
+                  console.log('Current page:', pagination.currentPage);
+                  console.log('Total pages:', pagination.totalPages);
+                  console.log('Can go next:', pagination.currentPage < pagination.totalPages);
+                  handlePageChange(pagination.currentPage + 1);
+                }}
+                disabled={pagination.currentPage >= pagination.totalPages}
                 className={`px-4 py-2 rounded-lg border transition-colors ${
-                  pagination.page >= pagination.totalPages
+                  pagination.currentPage >= pagination.totalPages
                     ? 'border-gray-300 text-gray-400 cursor-not-allowed'
                     : 'border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400'
                 }`}

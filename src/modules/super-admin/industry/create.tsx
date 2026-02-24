@@ -70,7 +70,7 @@ const IndustryCreate = () => {
       
       console.log('Industry created:', result);
       
-      // Show success message
+      
       setModalMessage('Industry created successfully!');
       setShowSuccessModal(true);
     } catch (error: any) {
@@ -84,7 +84,7 @@ const IndustryCreate = () => {
 
   const handleSuccessClose = () => {
     setShowSuccessModal(false);
-    // Redirect to industry list page
+   
     window.location.href = '/super-admin/industry';
   };
 
@@ -93,7 +93,7 @@ const IndustryCreate = () => {
   };
 
   return (
-    <div className="manrope w-full min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
       <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
         .manrope { font-family: 'Manrope', sans-serif; }
