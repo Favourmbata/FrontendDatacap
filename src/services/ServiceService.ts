@@ -91,9 +91,24 @@ class ServiceService {
     }
   }
 
-  /**
-   * Get service by ID
-   */
+ 
+async validateServiceName(name: string, excludeId?: string): Promise<boolean> {
+  try {
+    const services = await this.getAllServices();
+    
+    // Check if any service has the same name (case-insensitive)
+    const existingService = services.find(
+      service => service.serviceName.toLowerCase() === name.toLowerCase() &&
+      service.id !== excludeId
+    );
+    
+    return !existingService;
+  } catch (error) {
+    console.error('Error validating service name:', error);
+ 
+    return true;
+  }
+}
   async getServiceById(id: string): Promise<Service> {
     try {
       const headers: Record<string, string> = {

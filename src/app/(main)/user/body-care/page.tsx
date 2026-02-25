@@ -1,7 +1,3 @@
-
-
-
-
 "use client";
 
 import { useState, useEffect, JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal } from 'react';
@@ -10,7 +6,7 @@ import { useAuth } from '@/api/hooks/useAuth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-import type { Category, Industry, PublicProduct, PublicProductDetails } from '@/types/publicProduct';
+import type { Industry, PublicProduct, PublicProductDetails } from '@/types/publicProduct';
 import { PublicProductService } from '@/services/publicProductService.ts';
 
 const BodyCarePage = () => {
@@ -39,11 +35,17 @@ const BodyCarePage = () => {
   });
 
   // Filter options
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
   const [industries, setIndustries] = useState<Industry[]>([]);
   const [cities, setCities] = useState<string[]>([]);
   const [states, setStates] = useState<string[]>([]);
-  const [allCategories, setAllCategories] = useState<Array<{ id: string; name: string; count: number }>>([]);
+  const [allCategories, setAllCategories] = useState<Array<{ 
+    id: string; 
+    name: string; 
+    description: string; 
+    industry: { id: string; name: string; }; 
+    productCount: number; 
+  }>>([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
 
   // Fetch products on mount and when filters change
@@ -115,7 +117,7 @@ const BodyCarePage = () => {
     try {
       const response = await PublicProductService.getAllCategories();
       if (response.success) {
-        setAllCategories(response.data);
+        setAllCategories(response.data.categories);
       }
     } catch (err) {
       console.error('Error fetching categories:', err);
@@ -528,7 +530,7 @@ const BodyCarePage = () => {
               </div>
 
               {/* Category Name Filter */}
-              {/* <div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Category Name</label>
                 <select
                   className="w-full px-4 py-3 border border-[#5d2a8b] rounded-lg focus:ring-2 focus:ring-[#5d2a8b] focus:border-[#5d2a8b]"
@@ -538,11 +540,11 @@ const BodyCarePage = () => {
                   <option value="">All Categories</option>
                   {allCategories.map(category => (
                     <option key={category.id} value={category.name}>
-                      {category.name} {category.count > 0 && `(${category.count})`}
+                      {category.name} - {category.industry.name} 
                     </option>
                   ))}
                 </select>
-              </div> */}
+              </div>
 
               {/* Industry Filter */}
               <div>

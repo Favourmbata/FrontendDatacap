@@ -130,11 +130,6 @@ export interface PublicProductDetailsResponse {
   message: string;
 }
 
-export interface Category {
-  id: string;
-  name: string;
-}
-
 export interface Industry {
   id: string;
   name: string;

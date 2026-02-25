@@ -210,7 +210,7 @@ const ViewServicePage = () => {
               <p className="text-gray-600">View and manage service information</p>
             </div>
             
-            <div className="flex gap-3">
+            {/* <div className="flex gap-3">
               <button
                 onClick={handleEdit}
                 className="flex items-center px-4 py-2.5 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d] transition-colors"
@@ -218,7 +218,7 @@ const ViewServicePage = () => {
                 <Edit className="w-4 h-4 mr-2" />
                 Edit Service
               </button>
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -292,7 +292,7 @@ const ViewServicePage = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end">
+          {/* <div className="flex justify-end">
             <button
               onClick={handleEdit}
               className="flex items-center px-6 py-2.5 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d] transition-colors"
@@ -300,7 +300,7 @@ const ViewServicePage = () => {
               <Edit className="w-5 h-5 mr-2" />
               Edit Service
             </button>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

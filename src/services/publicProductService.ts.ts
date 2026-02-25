@@ -131,9 +131,22 @@ export interface PublicProductDetailsResponse {
   message: string;
 }
 
+export interface PublicCategory {
+  id: string;
+  name: string;
+  description: string;
+  industry: {
+    id: string;
+    name: string;
+  };
+  productCount: number;
+}
+
 export interface CategoryListResponse {
   success: boolean;
-  data: Array<{ id: string; name: string; count: number }>;
+  data: {
+    categories: PublicCategory[];
+  };
   message: string;
 }
 
@@ -270,7 +283,9 @@ export class PublicProductService {
       console.error('Error fetching categories:', error);
       return {
         success: false,
-        data: [],
+        data: {
+          categories: []
+        },
         message: 'Failed to fetch categories',
       };
     }
