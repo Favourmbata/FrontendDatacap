@@ -1,235 +1,164 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, Package, Calendar, Users, Tag, Percent, Eye, Plus, ShieldCheck } from 'lucide-react';
+import { Search, Package, Calendar, Users, Tag, Percent, Eye, Plus, ShieldCheck, List } from 'lucide-react';
 import Link from 'next/link';
+import { useAuthContext } from '@/AuthContext';
+import ServicesModal from '@/components/modals/ServicesModal';
 
 interface Service {
   serviceId: string;
   serviceName: string;
   duration: string;
-  price: number;
-  _id: string;
+  _id?: string;
 }
 
-interface SubscriptionPackage {
+interface UserSubscription {
   _id: string;
-  title: string;
-  description: string;
+  userId: string;
+  userType: string;
+  packageId: string;
+  packageTitle: string;
+  subscriptionDuration: string;
+  startDate: string;
+  endDate: string;
+  status: 'active' | 'inactive' | 'expired';
+  autoRenew: boolean;
+  amountPaid: number;
+  originalAmount: number;
+  discountApplied: number;
+  promoCodeUsed: string | null;
+  paymentStatus: 'completed' | 'pending' | 'failed';
   services: Service[];
-  totalServiceCost: number;
-  promoCode: string;
-  discountPercentage: number;
-  promoStartDate: string | null;
-  promoEndDate: string | null;
-  discountAmount: number;
-  finalPriceAfterDiscount: number;
-  features: string[];
-  maxUsers: number;
-  note: string;
-  isActive: boolean;
-  createdBy: string;
   createdAt: string;
   updatedAt: string;
   __v: number;
 }
 
 const ViewSubscriptionPackagesPage = () => {
-  const [packages, setPackages] = useState<SubscriptionPackage[]>([]);
-  const [filteredPackages, setFilteredPackages] = useState<SubscriptionPackage[]>([]);
+  const { user, token } = useAuthContext();
+  const [isAuthRestored, setIsAuthRestored] = useState(false);
+  const userId = user?.id || null;
+  const [packages, setPackages] = useState<UserSubscription[]>([]);
+  const [filteredPackages, setFilteredPackages] = useState<UserSubscription[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isServicesModalOpen, setIsServicesModalOpen] = useState(false);
+  const [selectedPackageServices, setSelectedPackageServices] = useState<Service[]>([]);
+  const [selectedPackageTitle, setSelectedPackageTitle] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data since the endpoint is not available yet
-  const mockPackages: SubscriptionPackage[] = [
-    {
-      "_id": "696e9a043a530eb702697bc1",
-      "title": "House town",
-      "description": "house town and cold stone",
-      "services": [
-        {
-          "serviceId": "696df8e62b3c2531736e7dd6",
-          "serviceName": "Assert Management",
-          "duration": "monthly",
-          "price": 1200,
-          "_id": "696e9a043a530eb702697bc2"
-        },
-        {
-          "serviceId": "696aad0cf06274fd794798d9",
-          "serviceName": "Body Measurement Service",
-          "duration": "monthly",
-          "price": 1000,
-          "_id": "696e9a043a530eb702697bc3"
-        }
-      ],
-      "totalServiceCost": 2200,
-      "promoCode": "6A51H9VZ",
-      "discountPercentage": 0,
-      "promoStartDate": null,
-      "promoEndDate": null,
-      "discountAmount": 0,
-      "finalPriceAfterDiscount": 2200,
-      "features": [
-        "hfhhfhhhd",
-        "dhhhdhhd"
-      ],
-      "maxUsers": 17,
-      "note": "",
-      "isActive": true,
-      "createdBy": "366212a0-b7a1-4142-8b3a-8f547e5ac5a2",
-      "createdAt": "2026-01-19T20:54:28.177Z",
-      "updatedAt": "2026-01-19T20:54:28.177Z",
-      "__v": 0
-    },
-    {
-      "_id": "696e95473a530eb702697bad",
-      "title": "Entrepreneurs package",
-      "description": "Entrepreneurs package",
-      "services": [
-        {
-          "serviceId": "696aad0cf06274fd794798d9",
-          "serviceName": "Body Measurement Service",
-          "duration": "monthly",
-          "price": 1000,
-          "_id": "696e95473a530eb702697bae"
-        },
-        {
-          "serviceId": "696df8e62b3c2531736e7dd6",
-          "serviceName": "Assert Management",
-          "duration": "monthly",
-          "price": 1200,
-          "_id": "696e95473a530eb702697baf"
-        }
-      ],
-      "totalServiceCost": 2200,
-      "promoCode": "LS3H8ESL",
-      "discountPercentage": 5,
-      "promoStartDate": "2026-01-20T00:00:00.000Z",
-      "promoEndDate": "2026-01-24T00:00:00.000Z",
-      "discountAmount": 110,
-      "finalPriceAfterDiscount": 2090,
-      "features": [
-        "smoot",
-        "jjjnonses"
-      ],
-      "maxUsers": 18,
-      "note": "",
-      "isActive": true,
-      "createdBy": "366212a0-b7a1-4142-8b3a-8f547e5ac5a2",
-      "createdAt": "2026-01-19T20:34:15.573Z",
-      "updatedAt": "2026-01-19T20:34:15.573Z",
-      "__v": 0
-    },
-    {
-      "maxUsers": 10,
-      "_id": "696aadcbf06274fd794798e4",
-      "title": "Premium Business Package",
-      "description": "Premium Business Package",
-      "services": [
-        {
-          "serviceId": "696aad0cf06274fd794798d9",
-          "serviceName": "Body Measurement Service",
-          "duration": "quarterly",
-          "price": 2700,
-          "_id": "696aadcbf06274fd794798e5"
-        }
-      ],
-      "totalServiceCost": 2700,
-      "promoCode": "E6FVE8C9",
-      "discountPercentage": 5,
-      "promoStartDate": null,
-      "promoEndDate": null,
-      "discountAmount": 135,
-      "finalPriceAfterDiscount": 2565,
-      "features": [
-        "Smooth",
-        "Nice"
-      ],
-      "note": "",
-      "isActive": true,
-      "createdBy": "366212a0-b7a1-4142-8b3a-8f547e5ac5a2",
-      "createdAt": "2026-01-16T21:29:47.972Z",
-      "updatedAt": "2026-01-16T21:29:47.972Z",
-      "__v": 0
-    },
-    {
-      "maxUsers": 10,
-      "_id": "696a66e8815c85f0951840b7",
-      "title": "Body package",
-      "description": "body ppackage",
-      "services": [
-        {
-          "serviceId": "696a416a977126a9515f838c",
-          "serviceName": "Body Measurements",
-          "duration": "monthly",
-          "price": 5000,
-          "_id": "696a66e8815c85f0951840b8"
-        }
-      ],
-      "totalServiceCost": 5000,
-      "promoCode": "WKC77Q2I",
-      "discountPercentage": 5,
-      "promoStartDate": "2026-01-17T00:00:00.000Z",
-      "promoEndDate": "2026-01-23T00:00:00.000Z",
-      "discountAmount": 250,
-      "finalPriceAfterDiscount": 4750,
-      "features": [
-        "smoot",
-        "Suuus"
-      ],
-      "note": "",
-      "isActive": true,
-      "createdBy": "366212a0-b7a1-4142-8b3a-8f547e5ac5a2",
-      "createdAt": "2026-01-16T16:27:20.723Z",
-      "updatedAt": "2026-01-16T16:27:20.723Z",
-      "__v": 0
-    },
-    {
-      "totalServiceCost": 2000,
-      "discountPercentage": 0,
-      "discountAmount": 0,
-      "finalPriceAfterDiscount": 2000,
-      "maxUsers": 10,
-      "_id": "696895596fdc695972f5ad56",
-      "title": "Body Measurement",
-      "description": "Full access to all features",
-      "services": [],
-      "promoCode": "",
-      "promoStartDate": null,
-      "promoEndDate": null,
-      "features": [
-        "Unlimited AI body measurements",
-        "Manual measurement forms",
-        "Photo storage up to 1000 images"
-      ],
-      "note": "Best value for professional tailors and fashion designers",
-      "isActive": true,
-      "createdBy": "366212a0-b7a1-4142-8b3a-8f547e5ac5a2",
-      "createdAt": "2026-01-15T07:20:57.354Z",
-      "updatedAt": "2026-01-15T07:20:57.354Z",
-      "__v": 0
-    }
-  ];
-
+  // Track when auth is restored from localStorage
   useEffect(() => {
-    // Simulate API call delay
-    setTimeout(() => {
-      setPackages(mockPackages);
-      setFilteredPackages(mockPackages);
+    // Wait for the auth context to be properly initialized
+    const timer = setTimeout(() => {
+      // Check if we have a token or user data (meaning auth has been restored)
+      if ((token !== null && token !== undefined) || (user !== null && user !== undefined)) {
+        setIsAuthRestored(true);
+      }
+    }, 100); // Small delay to ensure context is fully loaded
+
+    return () => clearTimeout(timer);
+  }, [token, user]);
+
+  // Fetch subscriptions manually to have more control
+  useEffect(() => {
+    // Only fetch if auth is restored and we have the necessary data
+    if (!isAuthRestored) {
+      setLoading(true);
+      return;
+    }
+
+    if (!userId || !token) {
+      setPackages([]);
       setLoading(false);
-    }, 1000);
-  }, []);
+      return;
+    }
+
+    const fetchSubscriptions = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const backendUrl = `${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}/api/user-subscriptions/user/${userId}/active`;
+        
+        const response = await fetch(backendUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Handle the response structure from the active endpoint
+        let transformedSubscriptions: UserSubscription[] = [];
+        
+        // If it's a success response with subscription data
+        if (data.success && data.data && data.data.subscription) {
+          // Single subscription from active endpoint
+          transformedSubscriptions = [data.data.subscription];
+        }
+        // If it's a direct array of active subscriptions
+        else if (Array.isArray(data)) {
+          transformedSubscriptions = data;
+        }
+        // If it's a data wrapper with active subscriptions array
+        else if (data.data && Array.isArray(data.data)) {
+          transformedSubscriptions = data.data;
+        }
+        // If it's an activeSubscriptions array
+        else if (data.activeSubscriptions && Array.isArray(data.activeSubscriptions)) {
+          transformedSubscriptions = data.activeSubscriptions;
+        }
+        // If it's a packages array (active packages)
+        else if (data.packages && Array.isArray(data.packages)) {
+          transformedSubscriptions = data.packages;
+        }
+        // Handle single subscription object
+        else if (data.data) {
+          transformedSubscriptions = [data.data];
+        }
+        // Handle direct object
+        else {
+          transformedSubscriptions = [data];
+        }
+        
+        setPackages(transformedSubscriptions);
+      } catch (err) {
+        console.error('Error fetching user subscriptions:', err);
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        setPackages([]); // Set empty array on error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Add a small delay to ensure token is fully available
+    const fetchTimer = setTimeout(fetchSubscriptions, 200);
+
+    return () => clearTimeout(fetchTimer);
+  }, [userId, token, isAuthRestored]);
 
   // Filter packages based on search term
   useEffect(() => {
-    if (packages) {
-      const result = packages.filter(pkg => 
-        pkg.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pkg.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pkg.promoCode.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredPackages(result);
+    if (!packages || !Array.isArray(packages)) {
+      setFilteredPackages([]);
+      return;
     }
+    
+    const result = packages.filter(pkg => 
+      pkg?.packageTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      pkg?.userType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (pkg?.promoCodeUsed && pkg.promoCodeUsed.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+    setFilteredPackages(result);
   }, [searchTerm, packages]);
 
   const formatCurrency = (amount: number) => {
@@ -270,10 +199,20 @@ const ViewSubscriptionPackagesPage = () => {
     );
   };
 
-  if (loading) {
+  const handleViewServices = (services: Service[], packageTitle: string) => {
+    setSelectedPackageServices(services);
+    setSelectedPackageTitle(packageTitle);
+    setIsServicesModalOpen(true);
+  };
+
+  // Don't render anything until authentication is restored
+  if (!isAuthRestored) {
     return (
-      <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#5D2A8B]"></div>
+      <div className="manrope ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#5D2A8B] mb-4 mx-auto"></div>
+          <p className="text-lg font-medium text-gray-600">Restoring authentication...</p>
+        </div>
       </div>
     );
   }
@@ -310,9 +249,37 @@ const ViewSubscriptionPackagesPage = () => {
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Subscription Packages</h1>
-        <p className="text-gray-600">View and manage all subscription packages</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">My Subscription Packages</h1>
+        <p className="text-gray-600">View your active subscription packages</p>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">API Connection Error</h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{error}</p>
+                  <p className="mt-1">Please ensure you're logged in and the API endpoint is accessible.</p>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="ml-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+            >
+              Retry API Connection
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -330,12 +297,14 @@ const ViewSubscriptionPackagesPage = () => {
             </div>
           </div>
           
-          <Link href="/admin/subscription/profile">
-            <button className="px-6 py-3 bg-[#5D2A8B] text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5" />
-              Verify Profile
-            </button>
-          </Link>
+          <div className="flex gap-3">
+            <Link href="/admin/subscription/profile">
+              <button className="px-6 py-3 bg-[#5D2A8B] text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5" />
+                Verify Profile
+              </button>
+            </Link>
+          </div>
         </div>
         
         <Link href="/subscription">
@@ -379,52 +348,54 @@ const ViewSubscriptionPackagesPage = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredPackages.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#5D2A8B] mb-4"></div>
+                      <p className="text-lg font-medium text-gray-600">Loading your subscription packages...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredPackages.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center text-gray-500">
                       <Package className="w-12 h-12 mb-4 text-gray-300" />
-                      <p className="text-lg font-medium">No packages found</p>
-                      <p className="text-sm mt-1">Try adjusting your search</p>
+                      <p className="text-lg font-medium">No subscription packages found</p>
+                      <p className="text-sm mt-1">You don't have any active subscriptions</p>
                     </div>
                   </td>
                 </tr>
               ) : (
                 filteredPackages.map((pkg) => (
                   <tr key={pkg._id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-semibold text-gray-900">{pkg.title}</div>
-                        {pkg.promoCode && (
-                          <div className="flex items-center gap-1 mt-1">
-                            <Tag className="w-3 h-3 text-gray-400" />
-                            <span className="text-xs text-gray-500 font-mono">{pkg.promoCode}</span>
-                          </div>
-                        )}
-                      </div>
-                    </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 max-w-xs truncate" title={pkg.description}>
-                        {pkg.description}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {formatCurrency(pkg.totalServiceCost)}
-                      </div>
-                      {pkg.finalPriceAfterDiscount < pkg.totalServiceCost && (
-                        <div className="text-sm text-purple-600 font-semibold">
-                          {formatCurrency(pkg.finalPriceAfterDiscount)}
+                      <div className="text-sm font-semibold text-gray-900">{pkg.packageTitle}</div>
+                      {pkg.promoCodeUsed && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <Tag className="w-3 h-3 text-gray-400" />
+                          <span className="text-xs text-gray-500 font-mono">{pkg.promoCodeUsed}</span>
                         </div>
                       )}
                     </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900 max-w-xs truncate" title={pkg.userType}>
+                        {pkg.userType}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {pkg.discountPercentage > 0 ? (
+                        {formatCurrency(pkg.amountPaid)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {pkg.discountApplied > 0 ? (
                           <div className="flex items-center gap-1">
                             <Percent className="w-4 h-4 text-red-500" />
-                            <span>{pkg.discountPercentage}%</span>
-                            <span className="text-red-600">(-{formatCurrency(pkg.discountAmount)})</span>
+                            <span>{pkg.discountApplied}%</span>
+                            <span className="text-red-600">(-{formatCurrency(pkg.originalAmount - pkg.amountPaid)})</span>
                           </div>
                         ) : (
                           <span className="text-gray-400">None</span>
@@ -432,31 +403,24 @@ const ViewSubscriptionPackagesPage = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1">
-                        {pkg.services.slice(0, 2).map((service) => (
-                          <span key={service._id} className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">
-                            <span>{service.serviceName}</span>
-                            {getServiceDurationBadge(service.duration)}
-                          </span>
-                        ))}
-                        {pkg.services.length > 2 && (
-                          <span className="text-xs text-gray-500">
-                            +{pkg.services.length - 2} more
-                          </span>
-                        )}
-                        {pkg.services.length === 0 && (
-                          <span className="text-xs text-gray-400 italic">No services</span>
-                        )}
-                      </div>
+                      <button
+                        onClick={() => handleViewServices(pkg.services, pkg.packageTitle)}
+                        className="flex items-center gap-2 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors"
+                      >
+                        <List className="w-4 h-4" />
+                        <span className="text-sm font-medium">
+                          View Services ({pkg.services.length})
+                        </span>
+                      </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         <Users className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-900">{pkg.maxUsers}</span>
+                        <span className="text-sm text-gray-900">1</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(pkg.isActive)}
+                      {getStatusBadge(pkg.status === 'active')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex items-center gap-1">
@@ -471,6 +435,14 @@ const ViewSubscriptionPackagesPage = () => {
           </table>
         </div>
       </div>
+      
+      {/* Services Modal */}
+      <ServicesModal
+        isOpen={isServicesModalOpen}
+        onClose={() => setIsServicesModalOpen(false)}
+        services={selectedPackageServices}
+        packageTitle={selectedPackageTitle}
+      />
     </div>
   );
 };

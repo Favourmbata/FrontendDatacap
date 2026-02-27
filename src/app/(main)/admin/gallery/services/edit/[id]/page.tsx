@@ -239,7 +239,7 @@ export default function EditServicePage() {
         return;
       }
 
-      // Create a payload that matches what the API expects
+     
       const updatePayload: UpdateServicePayload = {
         name: formData.name,
         description: formData.description,
@@ -248,7 +248,7 @@ export default function EditServicePage() {
         locationIndex: formData.locationIndex,
       };
 
-      // Add optional fields only if they have values
+
       if (formData.sku) updatePayload.sku = formData.sku;
       if (formData.upc) updatePayload.upc = formData.upc;
       if (formData.producer) updatePayload.producer = formData.producer;
@@ -256,7 +256,7 @@ export default function EditServicePage() {
         updatePayload.totalAvailableServiceProviders = parseInt(formData.totalProviders);
       }
       
-      // Always include pricing fields (they should have values)
+     
       updatePayload.priceInDollars = parseFloat(formData.priceInDollars) || 0;
       updatePayload.discountPercentage = parseFloat(formData.discountPercentage) || 0;
       updatePayload.platformChargePercentage = parseFloat(formData.platformChargePercentage) || 0;
@@ -267,7 +267,7 @@ export default function EditServicePage() {
         updatePayload.notes = formData.notes;
       }
 
-      // Add subServices - map to the correct format without id and picture
+     
       if (formData.subServices && formData.subServices.length > 0) {
         updatePayload.subServices = formData.subServices.map(sub => ({
           name: sub.name,
@@ -278,7 +278,7 @@ export default function EditServicePage() {
         }));
       }
 
-      // Add availability if type is period
+    
       if (formData.availabilityType === 'period') {
         updatePayload.availability = {
           type: 'period',
@@ -298,7 +298,7 @@ export default function EditServicePage() {
         setSuccess(true);
         setTimeout(() => {
           router.push('/admin/gallery/services');
-        }, 2000);
+        }, 1000);
       } else {
         setError(result.message || 'Failed to update service');
       }
@@ -345,7 +345,7 @@ export default function EditServicePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto py-6 px-4">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
@@ -359,7 +359,7 @@ export default function EditServicePage() {
           <h1 className="text-2xl font-bold text-[#5d2a8b]">Edit Service</h1>
         </div>
 
-        {/* Success Message */}
+   
         {success && (
           <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg">
             Service updated successfully! Redirecting...

@@ -515,7 +515,7 @@ const BodyCarePage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
               {/* Category Filter (ID) */}
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                 <select
                   className="w-full px-4 py-3 border border-[#5d2a8b] rounded-lg focus:ring-2 focus:ring-[#5d2a8b] focus:border-[#5d2a8b]"
@@ -527,7 +527,7 @@ const BodyCarePage = () => {
                     <option key={category.id} value={category.id}>{category.name}</option>
                   ))}
                 </select>
-              </div>
+              </div> */}
 
               {/* Category Name Filter */}
               <div>
@@ -547,7 +547,7 @@ const BodyCarePage = () => {
               </div>
 
               {/* Industry Filter */}
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Industry</label>
                 <select
                   className="w-full px-4 py-3 border border-[#5d2a8b] rounded-lg focus:ring-2 focus:ring-[#5d2a8b] focus:border-[#5d2a8b]"
@@ -559,7 +559,7 @@ const BodyCarePage = () => {
                     <option key={industry.id} value={industry.id}>{industry.name}</option>
                   ))}
                 </select>
-              </div>
+              </div> */}
 
               {/* Location Filters */}
               <div className="grid grid-cols-2 gap-2">

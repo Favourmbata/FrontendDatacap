@@ -679,14 +679,31 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
     { 
       id: 'verification-badge', 
       name: 'Verification Badge', 
-      route: "/admin/subscription/verification-badge",
       icon: <Image src="/List Dropdown Streamline Carbon.png" alt="Verification Badge" width={24} height={24} className="object-contain" />,
+      subItems: [
+        {
+          id: 'verification-badge-main',
+          name: 'Verification Badge',
+          route: '/admin/subscription/verification-badge'
+        },
+        {
+          id: 'location-payment',
+          name: 'Location Payment',
+          route: '/admin/subscription/location-payment'
+        }
+      ]
     },
     { 
       id: 'subscription', 
       name: 'Subscription', 
       route: "/admin/subscription/packages",
       icon: <Image src="/List Dropdown Streamline Carbon.png" alt="Subscription" width={24} height={24} className="object-contain" />,
+    },
+    { 
+      id: 'remittance', 
+      name: 'Remittance to Organisation', 
+      route: "/admin/remittance",
+      icon: <Image src="/Rss Feed Streamline Ultimate Regular - Free (4).png" alt="Remittance" width={24} height={24} className="object-contain" />,
     },
     { 
       id: 'gallery', 
@@ -703,11 +720,11 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
           name: 'Services',
           route: '/admin/gallery/services'
         },
-        {
-          id: 'sub-services',
-          name: 'Sub-services',
-          route: '/admin/gallery/sub-services'
-        }
+        // {
+        //   id: 'sub-services',
+        //   name: 'Sub-services',
+        //   route: '/admin/gallery/sub-services'
+        // }
       ]
     },
     {
