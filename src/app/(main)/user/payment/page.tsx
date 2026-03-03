@@ -1,59 +1,138 @@
 "use client";
 
-import { Lock, ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Lock, ArrowLeft, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/api/hooks/useAuth';
+import OrderService from '@/services/OrderService';
 
 const PaymentPage = () => {
+  const { user, token } = useAuth();
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [paymentLink, setPaymentLink] = useState<string | null>(null);
+  const [selectedPaymentType, setSelectedPaymentType] = useState<'upfront' | 'remaining' | 'full'>('upfront');
 
-  // Mock order data - in real app this would come from context or props
-  const orderData = {
-    items: [
-      {
-        name: "Premium Body Care Cream",
-        quantity: 1,
-        price: 5000
+  // Get order data from localStorage
+  const [orderData, setOrderData] = useState<any>(null);
+
+  useEffect(() => {
+    const savedProduct = localStorage.getItem('selectedProduct');
+    if (savedProduct) {
+      try {
+        const productData = JSON.parse(savedProduct);
+        
+       
+        console.log('Retrieved product data from localStorage:', productData);
+        setOrderData({
+          productId: productData.productId,
+          productName: productData.name,
+          productPrice: productData.price,
+          upfrontPayment: productData.upfrontPayment || productData.price * 0.1, // Use product's upfront amount or 10% default
+          organizationId: productData.organizationId || 'ORG1766704354663',
+          organizationName: productData.organizationName || 'Service Provider',
+          customerEmail: user?.email || '',
+          customerName: user?.fullName || '',
+          customerPhone: user?.phoneNumber || '',
+          upfrontPercentage: productData.upfrontPercentage || 10,
+          itemType: productData.itemType, 
+          discountPercent: 5, 
+          platformChargePercent: 2.5, 
+          deliveryFee: 500 
+        });
+      } catch (err) {
+        setError('Failed to load order data');
+        console.error('Error parsing order data:', err);
       }
-    ],
-    subtotal: 5000,
-    deliveryFee: 500,
-    // Payment breakdown calculations
-    upfrontPaymentPercent: 10,
-    discountPercent: 5,
-    platformChargePercent: 2.5
-  };
-
-  // Calculate payment breakdown
-  const itemCost = orderData.subtotal;
-  const upfrontPayment = itemCost * (orderData.upfrontPaymentPercent / 100);
-  const remainBalance = itemCost;
-  const actualDiscounted = upfrontPayment * (orderData.discountPercent / 100);
-  const platformCharge = remainBalance * (orderData.platformChargePercent / 100);
-  const finalAmount = upfrontPayment + remainBalance - actualDiscounted + platformCharge + orderData.deliveryFee;
-
-  const handlePayment = () => {
-    // Simulate payment processing
-    console.log("Processing payment...");
-    // In real app, integrate with Flutterwave or other payment gateway
-    setTimeout(() => {
-      router.push('/user/order-success');
-    }, 2000);
-  };
-
-  const formatCardNumber = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = matches && matches[0] || '';
-    const parts = [];
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-    if (parts.length) {
-      return parts.join(' ');
     } else {
-      return v;
+      setError('No order data found. Please select a product first.');
+    }
+  }, [user]);
+
+  if (!orderData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5d2a8b] mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading payment information...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // No payment breakdown calculation needed since we removed the section
+
+  const handleInitiatePayment = async () => {
+    console.log('Pay button clicked');
+    console.log('Order data:', orderData);
+    console.log('Selected payment type:', selectedPaymentType);
+    console.log('User:', user);
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Validate that orderData exists
+      if (!orderData) {
+        setError('Order data not loaded. Please go back and select a product again.');
+        setLoading(false);
+        return;
+      }
+      
+      // Validate required fields before proceeding
+      if (!orderData.productId || !orderData.productName || !orderData.organizationId || !orderData.organizationName || 
+          !orderData.customerEmail || !orderData.customerName || !orderData.itemType) {
+        setError('Missing required customer information. Please ensure you are logged in and your profile is complete.');
+        console.log('Missing fields:', {
+          productId: orderData.productId,
+          productName: orderData.productName,
+          organizationId: orderData.organizationId,
+          organizationName: orderData.organizationName,
+          customerEmail: orderData.customerEmail,
+          customerName: orderData.customerName,
+          itemType: orderData.itemType
+        });
+        setLoading(false);
+        return;
+      }
+      
+      const paymentData = {
+        productId: orderData.productId,
+        productName: orderData.productName,
+        organizationId: orderData.organizationId,
+        organizationName: orderData.organizationName,
+        productPrice: orderData.productPrice,
+        upfrontPercentage: orderData.upfrontPercentage,
+        userId: user?.id,
+        customerEmail: orderData.customerEmail,
+        customerName: orderData.customerName,
+        customerPhone: orderData.customerPhone || '', // Phone is optional
+        paymentType: selectedPaymentType,
+        itemType: orderData.itemType, // Include item type (product or service)
+        // Include callback URL for payment verification after completion
+        redirectUrl: `${window.location.origin}/user/payment/callback`
+      };
+
+      console.log('Sending payment data:', paymentData);
+      const response = await OrderService.initiatePayment(paymentData, token || undefined);
+      console.log('Payment response:', response);
+      
+      if (response.success) {
+        // Redirect to Flutterwave payment page
+        window.location.href = response.data.link;
+      } else {
+        setError(response.message || 'Failed to initiate payment');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to process payment');
+      console.error('Payment initiation error:', err);
+    } finally {
+      setLoading(false);
     }
   };
+
+  // formatCardNumber function removed as it's no longer needed
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -71,136 +150,112 @@ const PaymentPage = () => {
                   Back
                 </button>
                 <h1 className="text-3xl font-bold">Payment</h1>
-                <div className="w-16"></div> {/* Spacer for alignment */}
+                <div className="w-16"></div> 
               </div>
             </div>
 
             <div className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Payment Breakdown - Left Side */}
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Payment Breakdown</h2>
-                  
-                  <div className="bg-white border-2 border-[#5d2a8b] rounded-lg p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-4">Detailed Breakdown</h3>
-                    
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                        <span>Up-front payment %</span>
-                        <span className="font-semibold">{orderData.upfrontPaymentPercent}%</span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                        <span>Actual up-front payment</span>
-                        <span className="font-semibold text-[#5d2a8b]">
-                          {new Intl.NumberFormat('en-NG', {
-                            style: 'currency',
-                            currency: 'NGN',
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0,
-                          }).format(upfrontPayment)}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                        <span>Remain balance</span>
-                        <span className="font-semibold">
-                          {new Intl.NumberFormat('en-NG', {
-                            style: 'currency',
-                            currency: 'NGN',
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0,
-                          }).format(remainBalance)}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                        <span>Discount % on up-front payment</span>
-                        <span className="font-semibold">{orderData.discountPercent}%</span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                        <span>Actual discounted</span>
-                        <span className="font-semibold">
-                          {new Intl.NumberFormat('en-NG', {
-                            style: 'currency',
-                            currency: 'NGN',
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0,
-                          }).format(actualDiscounted)}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                        <span>Platform's charge %</span>
-                        <span className="font-semibold">{orderData.platformChargePercent}%</span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                        <span>Platform's charge amount</span>
-                        <span className="font-semibold">
-                          {new Intl.NumberFormat('en-NG', {
-                            style: 'currency',
-                            currency: 'NGN',
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0,
-                          }).format(platformCharge)}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                        <span>Delivery Fee</span>
-                        <span className="font-semibold">
-                          {new Intl.NumberFormat('en-NG', {
-                            style: 'currency',
-                            currency: 'NGN',
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0,
-                          }).format(orderData.deliveryFee)}
-                        </span>
-                      </div>
-                      
-                      <div className="border-t border-gray-300 pt-3">
-                        <div className="flex justify-between text-lg font-bold">
-                          <span>Final Amount</span>
-                          <span className="text-[#5d2a8b]">
-                            {new Intl.NumberFormat('en-NG', {
-                              style: 'currency',
-                              currency: 'NGN',
-                              minimumFractionDigits: 0,
-                              maximumFractionDigits: 0,
-                            }).format(finalAmount)}
-                          </span>
-                        </div>
+              <div className="max-w-2xl mx-auto">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Select Payment Type</h2>
+                            
+                <div className="bg-white border-2 border-[#5d2a8b] rounded-lg p-6 mb-8">
+                 
+                  <div className="space-y-4 mb-8">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Choose your payment option:</h3>
+                                  
+                      <div className="space-y-3">
+                        <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-[#5d2a8b] transition-colors">
+                          <input
+                            type="radio"
+                            name="paymentType"
+                            value="upfront"
+                            checked={selectedPaymentType === 'upfront'}
+                            onChange={(e) => setSelectedPaymentType(e.target.value as 'upfront' | 'remaining' | 'full')}
+                            className="h-5 w-5 text-[#5d2a8b] focus:ring-[#5d2a8b] border-gray-300"
+                          />
+                          <div className="ml-3">
+                            <div className="font-medium text-gray-900">Upfront Payment</div>
+                            <div className="text-sm text-gray-600">Pay {orderData.upfrontPercentage}% upfront ({new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(orderData.upfrontPayment)})</div>
+                          </div>
+                        </label>
+                                    
+                        <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-[#5d2a8b] transition-colors">
+                          <input
+                            type="radio"
+                            name="paymentType"
+                            value="remaining"
+                            checked={selectedPaymentType === 'remaining'}
+                            onChange={(e) => setSelectedPaymentType(e.target.value as 'upfront' | 'remaining' | 'full')}
+                            className="h-5 w-5 text-[#5d2a8b] focus:ring-[#5d2a8b] border-gray-300"
+                          />
+                          <div className="ml-3">
+                            <div className="font-medium text-gray-900">Remaining Balance</div>
+                            <div className="text-sm text-gray-600">Pay the remaining balance ({new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(orderData.productPrice - orderData.upfrontPayment)})</div>
+                          </div>
+                        </label>
+                                    
+                        <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-[#5d2a8b] transition-colors">
+                          <input
+                            type="radio"
+                            name="paymentType"
+                            value="full"
+                            checked={selectedPaymentType === 'full'}
+                            onChange={(e) => setSelectedPaymentType(e.target.value as 'upfront' | 'remaining' | 'full')}
+                            className="h-5 w-5 text-[#5d2a8b] focus:ring-[#5d2a8b] border-gray-300"
+                          />
+                          <div className="ml-3">
+                            <div className="font-medium text-gray-900">Full Payment</div>
+                            <div className="text-sm text-gray-600">Pay the full amount ({new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(orderData.productPrice)})</div>
+                          </div>
+                        </label>
                       </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Payment Form - Right Side */}
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Complete Payment</h2>
-                  
-                  <div className="bg-white border-2 border-[#5d2a8b] rounded-lg p-6">
-                    {/* Security Notice */}
-                    <div className="mb-8 p-4 bg-gray-50 rounded-lg flex items-start">
-                      <Lock className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
-                      <div>
-                        <h4 className="font-medium text-gray-900">Secure Payment Processing</h4>
-                        <p className="text-sm text-gray-600 mt-1">
-                          You will be redirected to Flutterwave for secure payment processing.
-                        </p>
+            
+                 
+                  {error && (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
+                      <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
+                      <div className="text-sm text-red-700">
+                        <p className="font-medium">Error</p>
+                        <p>{error}</p>
                       </div>
                     </div>
+                  )}
 
-                    {/* Pay Button */}
-                    <button 
-                      className="w-full bg-[#5d2a8b] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#7a3aa3] transition-colors"
-                      onClick={handlePayment}
-                    >
-                      Pay Now
-                    </button>
+                  
+                  <div className="mb-8 p-4 bg-gray-50 rounded-lg flex items-start">
+                    <Lock className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
+                    <div>
+                      <h4 className="font-medium text-gray-900">Secure Payment Processing</h4>
+                      <p className="text-sm text-gray-600 mt-1">
+                        You will be redirected to Flutterwave for secure payment processing.
+                      </p>
+                    </div>
                   </div>
+            
+                  
+                  <button 
+                    className={`w-full px-6 py-3 rounded-lg font-semibold transition-colors ${
+                      loading 
+                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                        : 'bg-[#5d2a8b] text-white hover:bg-[#7a3aa3] cursor-pointer'
+                    }`}
+                    onClick={handleInitiatePayment}
+                    disabled={loading || !orderData}
+                  >
+                    {loading ? (
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                        Processing...
+                      </div>
+                    ) : !orderData ? (
+                      'Loading Order Data...'
+                    ) : (
+                      `Pay ${selectedPaymentType === 'upfront' ? 'Upfront' : selectedPaymentType === 'remaining' ? 'Remaining' : 'Full'} Amount`
+                    )}
+                  </button>
                 </div>
               </div>
             </div>

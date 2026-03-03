@@ -45,5 +45,5 @@ export const useAuth = () => {
     }
   );
 
-  return { client, user, SignOut: signOut };
+  return { client, user, token, SignOut: signOut };
 };

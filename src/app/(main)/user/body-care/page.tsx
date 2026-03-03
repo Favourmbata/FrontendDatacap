@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal } from 'react';
-import { Search, Filter, MapPin, Star, Heart, CheckCircle, Clock, Phone, Mail, Calendar, Scissors, Dumbbell, Bath, Shirt, Barcode, Tag, Package, ShoppingCart, Eye, AlertCircle } from 'lucide-react';
+import { Search, Filter, MapPin, Star, Heart, CheckCircle, Clock, Phone, Mail, Calendar, Scissors, Dumbbell, Bath, Shirt, Barcode, Tag, Package, Wrench, ShoppingCart, Eye, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/api/hooks/useAuth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -18,6 +18,7 @@ const BodyCarePage = () => {
   const [selectedIndustry, setSelectedIndustry] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [selectedState, setSelectedState] = useState('');
+  const [itemType, setItemType] = useState<'product' | 'service'>('product');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
@@ -52,7 +53,7 @@ const BodyCarePage = () => {
   useEffect(() => {
     fetchProducts();
     fetchAllCategories();
-  }, [pagination.page]);
+  }, [pagination.page, itemType]);
 
   // Extract filter options when products change
   useEffect(() => {
@@ -66,6 +67,7 @@ const BodyCarePage = () => {
   }, [products]);
 
   const fetchProducts = async () => {
+    console.log('Fetching products with itemType:', itemType);
     setLoading(true);
     setError(null);
     
@@ -79,12 +81,14 @@ const BodyCarePage = () => {
         state: selectedState || undefined,
         minPrice: minPrice ? parseFloat(minPrice) : undefined,
         maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
-        itemType: 'product', // Default to products for body care
+        itemType: itemType, // Use the selected item type
         page: pagination.page,
         limit: pagination.limit,
         sortBy: sortBy || undefined,
         sortOrder: sortOrder || undefined
       });
+      
+      console.log('API Response:', response);
 
       if (response.success) {
         setProducts(response.data.items);
@@ -152,7 +156,15 @@ const BodyCarePage = () => {
       const response = await PublicProductService.getProductDetails(product.id);
       
       if (response.success) {
-        setSelectedProduct(response.data);
+        // Add the current itemType to the selected product data
+        const productWithItemType = {
+          ...response.data,
+          product: {
+            ...response.data.product,
+            itemType: product.itemType // Preserve the item type from the list view
+          }
+        };
+        setSelectedProduct(productWithItemType);
       } else {
         setError(response.message || 'Failed to fetch product details');
       }
@@ -168,16 +180,25 @@ const BodyCarePage = () => {
     setSelectedProduct(null);
   };
 
-  const addToCart = (product: PublicProductDetails) => {
-    const cartData = {
+  const makePayment = async (product: PublicProductDetails) => {
+    console.log('Making payment for product:', product);
+    // Store the product in localStorage for the payment process
+    const paymentData = {
       productId: product.product.id,
       name: product.product.name,
       price: product.product.pricing.discountedPrice,
       upfrontPayment: product.product.pricing.upfrontPaymentAmount,
+      organizationId: product.product.productInfo.platformUniqueCode, // Include organization ID
+      organizationName: product.serviceProvider.producer, // Include organization name
+      upfrontPercentage: product.product.pricing.upfrontPaymentPercentage || 10, // Include upfront percentage
+      itemType: product.product.itemType, // Include the item type (product or service)
       timestamp: Date.now()
     };
-    localStorage.setItem('selectedProduct', JSON.stringify(cartData));
-    router.push('/user/add-to-cart');
+    console.log('Storing payment data:', paymentData);
+    localStorage.setItem('selectedProduct', JSON.stringify(paymentData));
+    
+    // Navigate to the payment page to complete the transaction
+    router.push('/user/payment');
   };
 
   const bookAppointment = (product: PublicProductDetails) => {
@@ -212,7 +233,7 @@ const BodyCarePage = () => {
               onClick={handleBack}
               className="mb-6 text-purple-600 hover:text-purple-700 font-medium flex items-center"
             >
-              ← Back to Products
+              ← Back to {selectedProduct?.product?.itemType === 'service' ? 'Services' : 'Products'}
             </button>
 
             {loadingDetails ? (
@@ -255,7 +276,11 @@ const BodyCarePage = () => {
                       ) : (
                         <div className="h-96 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg overflow-hidden mb-4 flex items-center justify-center">
                           <div className="w-32 h-32 rounded-full bg-purple-200 flex items-center justify-center">
-                            <Package className="w-16 h-16 text-[#5d2a8b]" />
+                            {selectedProduct?.product?.itemType === 'service' ? (
+                              <Wrench className="w-16 h-16 text-[#5d2a8b]" />
+                            ) : (
+                              <Package className="w-16 h-16 text-[#5d2a8b]" />
+                            )}
                           </div>
                         </div>
                       )}
@@ -278,7 +303,7 @@ const BodyCarePage = () => {
 
                     {/* Product Details Card */}
                     <div className="bg-gray-50 p-6 rounded-lg">
-                      <h2 className="text-xl font-bold text-gray-900 mb-4">Product Details</h2>
+                      <h2 className="text-xl font-bold text-gray-900 mb-4">{selectedProduct?.product?.itemType === 'service' ? 'Service' : 'Product'} Details</h2>
                       
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
@@ -347,7 +372,7 @@ const BodyCarePage = () => {
 
                   {/* Service Provider Information Card */}
                   <div className="bg-gray-50 p-6 rounded-lg mt-6">
-                    <h2 className="text-xl font-bold text-gray-900 mb-4">Service Provider Information</h2>
+                    <h2 className="text-xl font-bold text-gray-900 mb-4">{selectedProduct?.product?.itemType === 'service' ? 'Service' : 'Product'} Provider Information</h2>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
@@ -387,7 +412,7 @@ const BodyCarePage = () => {
 
                   {/* Different Locations Card */}
                   <div className="bg-gray-50 p-6 rounded-lg mt-6">
-                    <h2 className="text-xl font-bold text-gray-900 mb-4">Service Locations</h2>
+                    <h2 className="text-xl font-bold text-gray-900 mb-4">{selectedProduct?.product?.itemType === 'service' ? 'Service' : 'Product'} Locations</h2>
                     
                     <div className="space-y-4">
                       {selectedProduct.serviceLocations.map((location: { title: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; subtitle: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; fee: any; address: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; lga: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; state: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; country: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; verified: any; }, index: Key | null | undefined) => (
@@ -432,11 +457,11 @@ const BodyCarePage = () => {
                   {/* Action Buttons */}
                   <div className="flex justify-center mt-8 space-x-4">
                     <button 
-                      onClick={() => addToCart(selectedProduct)}
+                      onClick={() => makePayment(selectedProduct)}
                       className="bg-[#5d2a8b] text-white px-8 py-3 rounded-lg font-semibold hover:bg-[#7a3aa3] transition-colors flex items-center"
                     >
                       <ShoppingCart className="w-5 h-5 mr-2" />
-                      Add to Cart
+                      {selectedProduct?.product?.itemType === 'service' ? 'Book & Pay Service' : 'Make Payment'}
                     </button>
                     <button 
                       onClick={() => bookAppointment(selectedProduct)}
@@ -464,6 +489,39 @@ const BodyCarePage = () => {
               <span className="text-[#5d2a8b]">Verified</span> Body Care Products & Services
             </h1>
             <p className="text-gray-600 text-lg">Discover quality services and products from verified providers</p>
+            
+            {/* Toggle for Products/Services */}
+            <div className="mt-6 flex justify-center">
+              <div className="inline-flex rounded-lg border border-[#5d2a8b] p-1">
+                <button
+                  onClick={() => {
+                    setItemType('product');
+                    setPagination({ ...pagination, page: 1 });
+                  }}
+                  className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                    itemType === 'product'
+                      ? 'bg-[#5d2a8b] text-white'
+                      : 'text-[#5d2a8b] hover:bg-[#5d2a8b]/10'
+                  }`}
+                >
+                  Products
+                </button>
+                <button
+                  onClick={() => {
+                    console.log('Service button clicked, setting itemType to service');
+                    setItemType('service');
+                    setPagination({ ...pagination, page: 1 });
+                  }}
+                  className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                    itemType === 'service'
+                      ? 'bg-[#5d2a8b] text-white'
+                      : 'text-[#5d2a8b] hover:bg-[#5d2a8b]/10'
+                  }`}
+                >
+                  Services
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Quick Platform Code Search */}
@@ -676,7 +734,7 @@ const BodyCarePage = () => {
           <div className="mb-6 flex justify-between items-center">
             <p className="text-gray-600">
               Showing <span className="font-semibold text-[#5d2a8b]">{products.length}</span> of{' '}
-              <span className="font-semibold">{pagination.total}</span> products
+              <span className="font-semibold">{pagination.total}</span> {itemType === 'product' ? 'products' : 'services'}
             </p>
             <div className="flex items-center text-sm text-gray-500">
               <Tag className="w-4 h-4 mr-1" />
@@ -832,7 +890,7 @@ const BodyCarePage = () => {
           {products.length === 0 && !loading && !error && (
             <div className="text-center py-12">
               <Package className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No {itemType === 'product' ? 'products' : 'services'} found</h3>
               <p className="text-gray-500 mb-4">Try adjusting your search or filter criteria</p>
               <button 
                 onClick={clearFilters}

@@ -1,5 +1,7 @@
 
 
+
+
 // "use client";
 
 // import React, { Dispatch, SetStateAction, ReactNode, useState, useEffect, useRef } from 'react';
@@ -141,8 +143,19 @@
 //     { 
 //       id: 'verification-badge', 
 //       name: 'Verification Badge', 
-//       route: "/admin/subscription/verification-badge",
 //       icon: <Image src="/List Dropdown Streamline Carbon.png" alt="Verification Badge" width={24} height={24} className="object-contain" />,
+//       subItems: [
+//         {
+//           id: 'verification-badge-main',
+//           name: 'Verification Badge',
+//           route: '/admin/subscription/verification-badge'
+//         },
+//         {
+//           id: 'location-payment',
+//           name: 'Location Payment',
+//           route: '/admin/subscription/location-payment'
+//         }
+//       ]
 //     },
 //     { 
 //       id: 'subscription', 
@@ -151,10 +164,32 @@
 //       icon: <Image src="/List Dropdown Streamline Carbon.png" alt="Subscription" width={24} height={24} className="object-contain" />,
 //     },
 //     { 
+//       id: 'remittance', 
+//       name: 'Settlements', 
+//       route: "/admin/remittance",
+//       icon: <Image src="/Rss Feed Streamline Ultimate Regular - Free (4).png" alt="Remittance" width={24} height={24} className="object-contain" />,
+//     },
+//     { 
 //       id: 'gallery', 
 //       name: 'Gallery Item Management', 
-//       route: "/admin/gallery",
 //       icon: <Image src="/List Dropdown Streamline Carbon.png" alt="Gallery" width={24} height={24} className="object-contain" />,
+//       subItems: [
+//         {
+//           id: 'gallery-items',
+//           name: 'Gallery Items',
+//           route: '/admin/gallery'
+//         },
+//         {
+//           id: 'services',
+//           name: 'Services',
+//           route: '/admin/gallery/services'
+//         },
+//         // {
+//         //   id: 'sub-services',
+//         //   name: 'Sub-services',
+//         //   route: '/admin/gallery/sub-services'
+//         // }
+//       ]
 //     },
 //     {
 //       id: 'role-management',
@@ -184,7 +219,6 @@
 //         }
 //       ]
 //     },
-  
 //   ];
 
 //   // Auto-expand menu based on current route
@@ -537,7 +571,6 @@
 // };
 
 
-
 "use client";
 
 import React, { Dispatch, SetStateAction, ReactNode, useState, useEffect, useRef } from 'react';
@@ -546,7 +579,9 @@ import {
   User,
   LogOut,
   Shield,
-  ChevronDown
+  ChevronDown,
+  Landmark,
+  ShoppingBag
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -669,13 +704,12 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
       route: '/admin/questionaire', 
       icon: <Image src="/List Dropdown Streamline Carbon.png" alt="Questionnaire" width={24} height={24} className="object-contain" />,
     },
-     { 
+    { 
       id: 'group-management', 
       name: 'Group Management', 
       route: '/admin/group-management', 
       icon: <Image src="/List Dropdown Streamline Carbon.png" alt="Questionnaire" width={24} height={24} className="object-contain" />,
     },
-
     { 
       id: 'verification-badge', 
       name: 'Verification Badge', 
@@ -700,11 +734,25 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
       icon: <Image src="/List Dropdown Streamline Carbon.png" alt="Subscription" width={24} height={24} className="object-contain" />,
     },
     { 
-      id: 'remittance', 
-      name: 'Remittance to Organisation', 
-      route: "/admin/remittance",
-      icon: <Image src="/Rss Feed Streamline Ultimate Regular - Free (4).png" alt="Remittance" width={24} height={24} className="object-contain" />,
+      id: 'settlements', 
+      name: 'Settlements', 
+      icon: <Image src="/Rss Feed Streamline Ultimate Regular - Free (4).png" alt="Settlements" width={24} height={24} className="object-contain" />,
+      subItems: [
+        {
+          id: 'settlement-orders',
+          name: 'Order Settlements',
+          route: '/admin/remittance/order'
+        },
+        {
+          id: 'settlement-bank',
+          name: 'Bank Details',
+          route: '/admin/remittance'
+        }
+      ]
     },
+   
+  
+   
     { 
       id: 'gallery', 
       name: 'Gallery Item Management', 
@@ -720,11 +768,6 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
           name: 'Services',
           route: '/admin/gallery/services'
         },
-        // {
-        //   id: 'sub-services',
-        //   name: 'Sub-services',
-        //   route: '/admin/gallery/sub-services'
-        // }
       ]
     },
     {
@@ -1017,7 +1060,7 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
                     
                     {/* Submenu items - only show if this menu is expanded */}
                     {expandedMenu === item.id && item.subItems && (
-                      <div className="ml-8 mt-2 flex flex-col gap-2 submenu-up" style={{ width: '230px', marginLeft: '40px' }}>
+                      <div className="ml-8 mt-2 flex flex-col gap-2" style={{ width: '230px', marginLeft: '40px' }}>
                         {item.subItems.map((subItem: SubMenuItem) => (
                           <Link href={subItem.route} key={subItem.id}>
                             <div 

@@ -36,18 +36,15 @@ const AddToCartPage: React.FC<AddToCartProps> = ({ productId }) => {
   }, [productId]);
 
   const addToCart = (product: Product) => {
-    setCartItems(prev => {
-      const existingItem = prev.find(item => item.product.id === product.id);
-      if (existingItem) {
-        return prev.map(item => 
-          item.product.id === product.id 
-            ? { ...item, quantity: item.quantity + 1 } 
-            : item
-        );
-      } else {
-        return [...prev, { product, quantity: 1 }];
-      }
-    });
+    const cartData = {
+      productId: product.id,
+      name: product.productName,
+      price: product.actualAmount,
+      upfrontPayment: product.actualAmount * 0.1, // 10% upfront payment
+      timestamp: Date.now()
+    };
+    localStorage.setItem('selectedProduct', JSON.stringify(cartData));
+    router.push('/user/payment');
   };
 
   const removeFromCart = (productId: number) => {
@@ -76,13 +73,48 @@ const AddToCartPage: React.FC<AddToCartProps> = ({ productId }) => {
 
 
   // Mock product data for demonstration
-  const mockProduct = {
+  const mockProduct: Product = {
     id: 1,
     productName: "Premium Body Care Cream",
     producer: "Organic Beauty Co.",
     category: "Skin Care",
     actualAmount: 5000,
-    description: "A luxurious moisturizing cream enriched with natural ingredients to nourish and hydrate your skin. Perfect for daily use to maintain healthy, glowing skin."
+    description: "A luxurious moisturizing cream enriched with natural ingredients to nourish and hydrate your skin. Perfect for daily use to maintain healthy, glowing skin.",
+    barcode: "123456789012",
+    sku: "PBC-001",
+    upc: "123456789012",
+    totalQuantity: 100,
+    price: 5500,
+    discountPercent: 10,
+    discountAmount: 500,
+    platformChargePercent: 2.5,
+    rating: 4.5,
+    verified: true,
+    address: "123 Beauty Street, Lagos",
+    images: ["/image1.jpg"],
+    ingredients: "Natural oils, vitamins, and plant extracts",
+    modeOfPayment: "Upfront and remaining balance",
+    availability: {
+      openingTime: "9:00 AM",
+      workingDays: "Monday - Saturday"
+    },
+    contact: {
+      phone: "+234 123 456 7890",
+      email: "info@organicbeauty.com"
+    },
+    locations: [
+      {
+        id: 1,
+        locationType: "headquarters",
+        brandName: "Organic Beauty Co.",
+        country: "Nigeria",
+        state: "Lagos",
+        lga: "Lagos Mainland",
+        city: "Lagos",
+        cityRegion: "Ikeja",
+        cityRegionFee: 500
+      }
+    ]
   };
 
   return (
@@ -190,7 +222,7 @@ const AddToCartPage: React.FC<AddToCartProps> = ({ productId }) => {
                 <div className="flex space-x-4">
                   <button 
                     className="bg-[#5d2a8b] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#7a3aa3] transition-colors text-sm"
-                    onClick={() => router.push('/user/payment')}
+                    onClick={() => addToCart(mockProduct)}
                   >
                     Proceed to Payment
                   </button>

@@ -1,430 +1,384 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import RemittanceService from '@/services/RemittanceService';
-import { Upload, Play, Copy, CheckCircle } from 'lucide-react';
+import BankDetailsService from '@/services/BankDetailsService';
 
 const RemittancePage = () => {
-  const [remittanceData, setRemittanceData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedRecord, setSelectedRecord] = useState<any>(null);
-  const [copySuccess, setCopySuccess] = useState(false);
-  const [activeTab, setActiveTab] = useState('remittance');
+  
+  // Settlement data state
+  const [settlements, setSettlements] = useState<any[]>([]);
+ 
+  // Bank details state
+  const [bankDetails, setBankDetails] = useState<any>(null);
+  const [isEditingBank, setIsEditingBank] = useState(false);
+  const [bankForm, setBankForm] = useState({
+    bankName: '',
+    accountNumber: '',
+    accountName: '',
+  });
+  const [bankLoading, setBankLoading] = useState(false);
+  const [bankError, setBankError] = useState('');
 
   useEffect(() => {
-    // Mock data for demonstration
-    const mockRemittanceData = [
-      {
-        id: 'REM-001',
-        productId: 'PROD-001',
-        productName: 'Premium Consultation Package',
-        organisation: 'ABC Consulting Ltd',
-        orgId: 'ORG-001',
-        productPrice: 1500.00,
-        totalAmountPaid: 1500.00,
-        deliveryMode: 'shipping',
-        uploadedImages: ['image1.jpg', 'image2.jpg'],
-        comments: 'All items received in good condition',
-        userVideo: 'video1.mp4',
-        satisfactionDeclaration: 'Customer satisfied with service quality',
-        orgBankDetails: 'GTBank: 0123456789',
-        amountRemitted: 1450.00,
-        dateOfSettlement: '2024-01-15',
-        superAdminBankDetails: 'Access Bank: 9876543210',
-        paymentEvidence: 'evidence1.pdf',
-        confirmationStatus: 'confirmed',
-        orgComments: 'Payment received successfully'
-      },
-      {
-        id: 'REM-002',
-        productId: 'PROD-002',
-        productName: 'Premium Design Package',
-        organisation: 'XYZ Graphics Inc',
-        orgId: 'ORG-002',
-        productPrice: 2500.00,
-        totalAmountPaid: 2500.00,
-        deliveryMode: 'pickup',
-        uploadedImages: ['image3.jpg'],
-        comments: 'Product collected from pickup center',
-        userVideo: 'video2.mp4',
-        satisfactionDeclaration: 'Design exceeds expectations',
-        orgBankDetails: 'UBA: 1122334455',
-        amountRemitted: 2450.00,
-        dateOfSettlement: '2024-01-16',
-        superAdminBankDetails: 'Access Bank: 9876543210',
-        paymentEvidence: 'evidence2.pdf',
-        confirmationStatus: 'pending',
-        orgComments: ''
-      },
-      {
-        id: 'REM-003',
-        productId: 'PROD-003',
-        productName: 'Software License',
-        organisation: 'Tech Solutions Ltd',
-        orgId: 'ORG-003',
-        productPrice: 5000.00,
-        totalAmountPaid: 5000.00,
-        deliveryMode: 'address',
-        uploadedImages: ['image4.jpg', 'image5.jpg', 'image6.jpg'],
-        comments: 'Digital license delivered via email',
-        userVideo: 'video3.mp4',
-        satisfactionDeclaration: 'Software works perfectly',
-        orgBankDetails: 'Zenith Bank: 5566778899',
-        amountRemitted: 4900.00,
-        dateOfSettlement: '2024-01-17',
-        superAdminBankDetails: 'Access Bank: 9876543210',
-        paymentEvidence: 'evidence3.pdf',
-        confirmationStatus: 'pending',
-        orgComments: ''
-      }
-    ];
-    
-    setRemittanceData(mockRemittanceData);
-    setLoading(false);
+    loadSettlements();
+    loadBankDetails();
   }, []);
 
-  const handleStatusChange = (id: string, newStatus: 'pending' | 'confirmed') => {
-    setRemittanceData(prev => 
-      prev.map(record => 
-        record.id === id ? { ...record, confirmationStatus: newStatus } : record
-      )
-    );
+  const loadSettlements = async () => {
+    try {
+      const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:3000';
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      
+      const response = await fetch(`${BASE_URL}/api/orders/admin/settlements`, {
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setSettlements(result.data.settlements || []);
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to fetch settlements:', response.status, errorText);
+      }
+    } catch (error) {
+      console.error('Error loading settlements:', error);
+    }
   };
 
-  const handleCommentChange = (id: string, comment: string) => {
-    setRemittanceData(prev => 
-      prev.map(record => 
-        record.id === id ? { ...record, orgComments: comment } : record
-      )
-    );
+  const loadBankDetails = async () => {
+    try {
+      setBankLoading(true);
+      // Admin uses admin endpoint
+      const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:3000';
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      
+      const response = await fetch(`${BASE_URL}/api/admin/bank-details`, {
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.data?.bankDetails) {
+          setBankDetails(result.data.bankDetails);
+          setBankForm({
+            bankName: result.data.bankDetails.bankName,
+            accountNumber: result.data.bankDetails.accountNumber,
+            accountName: result.data.bankDetails.accountName,
+          });
+        }
+      } else if (response.status === 404) {
+        // No bank details found, keep bankDetails as null
+        setBankDetails(null);
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to fetch admin bank details:', response.status, errorText);
+      }
+    } catch (error) {
+      console.error('Error loading bank details:', error);
+    } finally {
+      setBankLoading(false);
+    }
   };
 
-  const copySatisfactionMessage = () => {
-    const message = "I hereby declare my satisfaction with the product/service received and approve the remittance of funds to the organization.";
-    navigator.clipboard.writeText(message);
-    setCopySuccess(true);
-    setTimeout(() => setCopySuccess(false), 2000);
+
+
+  const handleBankDetailsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setBankLoading(true);
+      setBankError('');
+      
+      // Admin uses admin endpoint
+      const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:3000';
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      
+      const response = await fetch(`${BASE_URL}/api/admin/bank-details`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: JSON.stringify(bankForm),
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok && result.data?.bankDetails) {
+        setBankDetails(result.data.bankDetails);
+        setIsEditingBank(false);
+      } else {
+        const errorText = await response.text();
+        console.error('Bank details save failed:', response.status, errorText);
+        throw new Error(result.data?.bankDetails ? 'Failed to register bank details' : 'Organization must exist in database before adding bank details');
+      }
+    } catch (error: any) {
+      setBankError(error.message || 'Failed to save bank details');
+    } finally {
+      setBankLoading(false);
+    }
+  };
+
+  const handleBankEdit = () => {
+    setIsEditingBank(true);
+    setBankError('');
+  };
+
+  const handleConfirmRemittance = async (orderId: string) => {
+    try {
+      const comment = prompt('Add a comment (optional):');
+      const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:3000';
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      
+      const response = await fetch(`${BASE_URL}/api/orders/admin/${orderId}/confirm-remittance`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: JSON.stringify({ comment }),
+      });
+      
+      if (response.ok) {
+        alert('Remittance confirmed successfully!');
+        loadSettlements(); // Refresh the table
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to confirm remittance:', response.status, errorText);
+        alert('Failed to confirm remittance: ' + errorText);
+      }
+    } catch (error) {
+      console.error('Error confirming remittance:', error);
+      alert('Error confirming remittance');
+    }
   };
 
   if (loading) {
-    return <div className="container mx-auto py-10">Loading...</div>;
+    return <div className="container ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
+      <div className="flex justify-center items-center h-64">
+        <div className="text-lg">Loading settlements...</div>
+      </div>
+    </div>;
   }
 
   return (
     <div className="container ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen bg-gray-50">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Remittance to Organisation</h1>
-        <p className="text-gray-600">Manage product and service delivery confirmations</p>
-      </div>
-
-      <div className="mb-4 border-b">
-        <button
-          className={`mr-4 pb-2 px-1 border-b-2 ${activeTab === 'remittance' ? 'border-blue-500 text-blue-600' : 'border-transparent'}`}
-          onClick={() => setActiveTab('remittance')}
-        >
-          Delivery Confirmations
-        </button>
-        <button
-          className={`mr-4 pb-2 px-1 border-b-2 ${activeTab === 'settlement' ? 'border-blue-500 text-blue-600' : 'border-transparent'}`}
-          onClick={() => setActiveTab('settlement')}
-        >
-          Organisation Settlements
-        </button>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Settlement Records</h1>
+            <p className="text-gray-600">Manage organization settlement confirmations</p>
+          </div>
+          <button
+            onClick={() => window.location.href = '/admin/remittance/create'}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Create Settlement
+          </button>
+        </div>
       </div>
       
-      {activeTab === 'remittance' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Product & Service Delivery Confirmations</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"> Product' name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"> Product's ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"> Organisation</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"> Organization's ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"> Product's price</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"> Total amount paid</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"> Mode of delivery</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"> Upload picture</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"> User's video</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Org's bank details</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"> Amount remitted</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"> Date of settlement</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"> Superadmin's bank details</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"> Upload evidence</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"> Confirmation</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"> Comments</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {remittanceData.map((record) => (
-                    <tr key={record.id}>
-                      <td className="px-6 py-4 whitespace-nowrap font-medium">{record.productName}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{record.productId}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{record.organisation}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{record.orgId}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">${record.productPrice.toFixed(2)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">${record.totalAmountPaid.toFixed(2)}</td>
+      <div className="space-y-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Settlement Records</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Remitted</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Settlement Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Evidence</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comment</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {settlements.map((order) => {
+                  const remittance = order.remittance;
+                  return (
+                    <tr key={order._id || order.id}>
+                      <td className="px-6 py-4 whitespace-nowrap font-medium">{order.productName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">${remittance?.amountRemitted?.toFixed(2) || '0.00'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{remittance?.settlementDate || 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {record.deliveryMode === 'shipping' && 'Shipping to Address'}
-                        {record.deliveryMode === 'pickup' && 'Pick-up Center'}
-                        {record.deliveryMode === 'address' && 'Org Location'}
+                        {remittance?.paymentEvidenceUrl ? (
+                          <a href={remittance.paymentEvidenceUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900">
+                            Download
+                          </a>
+                        ) : (
+                          'N/A'
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <button 
-                          className="text-indigo-600 hover:text-indigo-900"
-                          onClick={() => setSelectedRecord(record)}
-                        >
-                          View Images
-                        </button>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          remittance?.remittanceStatus === 'confirmed' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {remittance?.remittanceStatus?.toUpperCase() || 'PENDING'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <button 
-                          className="text-indigo-600 hover:text-indigo-900"
-                          onClick={() => setSelectedRecord(record)}
-                        >
-                          View Video
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{record.orgBankDetails}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">${record.amountRemitted.toFixed(2)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{record.dateOfSettlement}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{record.superAdminBankDetails}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <button 
-                          className="text-indigo-600 hover:text-indigo-900"
-                          onClick={() => setSelectedRecord(record)}
-                        >
-                          View Evidence
-                        </button>
+                        {remittance?.organizationComment || 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <button 
-                          className={`px-3 py-1 rounded ${
-                            record.confirmationStatus === 'confirmed' 
-                              ? 'bg-green-500 hover:bg-green-600' 
-                              : 'bg-yellow-500 hover:bg-yellow-600'
-                          } text-white`}
-                          onClick={() => handleStatusChange(record.id, record.confirmationStatus === 'confirmed' ? 'pending' : 'confirmed')}
-                        >
-                          {record.confirmationStatus === 'confirmed' ? 'CONFIRMED' : 'PENDING'}
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <button 
-                          className="text-indigo-600 hover:text-indigo-900"
-                          onClick={() => setSelectedRecord(record)}
-                        >
-                          View Comments
-                        </button>
+                        {remittance?.remittanceStatus !== 'confirmed' ? (
+                          <button 
+                            className="text-indigo-600 hover:text-indigo-900"
+                            onClick={() => handleConfirmRemittance(order._id || order.id)}
+                          >
+                            Confirm
+                          </button>
+                        ) : (
+                          <span className="text-gray-500">Confirmed</span>
+                        )}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-
-          {selectedRecord && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Delivery Confirmation Details</h2>
+        </div>
+        
+        {/* Bank Details Section */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold">Organization Bank Details</h2>
+            {!isEditingBank && bankDetails && (
+              <button
+                onClick={() => {
+                  setIsEditingBank(true);
+                  setBankError('');
+                }}
+                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit
+              </button>
+            )}
+          </div>
+          
+          {bankError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700">
+              {bankError}
+            </div>
+          )}
+          
+          {isEditingBank || !bankDetails ? (
+            <form onSubmit={handleBankDetailsSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
-                  <p>{selectedRecord.productName}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Product ID</label>
-                  <p>{selectedRecord.productId}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Organisation</label>
-                  <p>{selectedRecord.organisation}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Organisation ID</label>
-                  <p>{selectedRecord.orgId}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Product Price</label>
-                  <p>${selectedRecord.productPrice.toFixed(2)}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount Paid</label>
-                  <p>${selectedRecord.totalAmountPaid.toFixed(2)}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Mode</label>
-                  <p>
-                    {selectedRecord.deliveryMode === 'shipping' && 'Shipping to Customer Address'}
-                    {selectedRecord.deliveryMode === 'pickup' && 'Pick-up Center'}
-                    {selectedRecord.deliveryMode === 'address' && 'Organisation Location'}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">User Satisfaction Declaration</label>
-                  <p>{selectedRecord.satisfactionDeclaration}</p>
-                </div>
-                
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Upload Evidence</label>
-                  <div className="mt-2 flex items-center gap-4">
-                    <div className="flex flex-col gap-2">
-                      {selectedRecord.uploadedImages.map((img: string, idx: number) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <img 
-                            src={`/placeholder-${idx+1}.jpg`} 
-                            alt={`Upload ${idx+1}`} 
-                            className="w-16 h-16 object-cover rounded"
-                          />
-                          <span>{img}</span>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="flex flex-col gap-2">
-                      <label className="block text-sm font-medium text-gray-700">Upload Picture of Product</label>
-                      <div className="flex items-center gap-2 border-2 border-dashed p-4 rounded">
-                        <Upload className="w-5 h-5" />
-                        <span>Upload product image</span>
-                      </div>
-                      
-                      <label className="block text-sm font-medium text-gray-700">Upload Representative Image</label>
-                      <div className="flex items-center gap-2 border-2 border-dashed p-4 rounded">
-                        <Upload className="w-5 h-5" />
-                        <span>Upload representative image</span>
-                      </div>
-                      
-                      <label className="block text-sm font-medium text-gray-700">Upload User Image</label>
-                      <div className="flex items-center gap-2 border-2 border-dashed p-4 rounded">
-                        <Upload className="w-5 h-5" />
-                        <span>Upload user image</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Comments</label>
-                  <textarea 
-                    value={selectedRecord.comments} 
-                    onChange={(e) => handleCommentChange(selectedRecord.id, e.target.value)}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name *</label>
+                  <input
+                    type="text"
+                    value={bankForm.bankName}
+                    onChange={(e) => setBankForm({...bankForm, bankName: e.target.value})}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                    placeholder="Add your comments here..."
-                    rows={3}
+                    placeholder="Enter bank name"
+                    required
                   />
                 </div>
-                
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">User Video Confirmation</label>
-                  <div className="mt-2 flex items-center gap-4">
-                    <div className="flex items-center gap-2 border-2 border-dashed p-4 rounded">
-                      <Play className="w-5 h-5" />
-                      <span>Upload video confirmation</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input 
-                        type="checkbox" 
-                        id="satisfaction" 
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="satisfaction" className="block text-sm">Declaration of satisfaction on product</label>
-                    </div>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Account Number *</label>
+                  <input
+                    type="text"
+                    value={bankForm.accountNumber}
+                    onChange={(e) => setBankForm({...bankForm, accountNumber: e.target.value})}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    placeholder="Enter account number"
+                    required
+                  />
                 </div>
-                
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Satisfaction Message</label>
-                  <div className="mt-2">
-                    <p className="mb-2">
-                      "I hereby declare my satisfaction with the product/service received and approve the remittance of funds to the organization."
-                    </p>
-                    <button 
-                      onClick={copySatisfactionMessage}
-                      className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      {copySuccess ? (
-                        <>
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-4 h-4 mr-2" />
-                          Copy Message
-                        </>
-                      )}
-                    </button>
-                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Account Name *</label>
+                  <input
+                    type="text"
+                    value={bankForm.accountName}
+                    onChange={(e) => setBankForm({...bankForm, accountName: e.target.value})}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    placeholder="Enter account name"
+                    required
+                  />
                 </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={bankLoading}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                >
+                  {bankLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Save Bank Details
+                    </>
+                  )}
+                </button>
+                {isEditingBank && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingBank(false);
+                      setBankError('');
+                      if (bankDetails) {
+                        setBankForm({
+                          bankName: bankDetails.bankName,
+                          accountNumber: bankDetails.accountNumber,
+                          accountName: bankDetails.accountName,
+                        });
+                      }
+                    }}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
+                <p className="text-gray-900">{bankDetails.bankName}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Account Number</label>
+                <p className="text-gray-900">{bankDetails.accountNumber}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Account Name</label>
+                <p className="text-gray-900">{bankDetails.accountName}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Last Updated</label>
+                <p className="text-gray-900">{new Date(bankDetails.updatedAt).toLocaleDateString()}</p>
               </div>
             </div>
           )}
         </div>
-      )}
-      
-      {activeTab === 'settlement' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Organisation Settlements</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Organisation</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Org ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bank Details</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Remitted</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date of Settlement</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SuperAdmin Bank</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Evidence</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Org Confirmation</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comments</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {remittanceData
-                    .filter(record => record.amountRemitted > 0)
-                    .map((record) => (
-                      <tr key={record.id}>
-                        <td className="px-6 py-4 whitespace-nowrap font-medium">{record.organisation}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{record.orgId}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{record.orgBankDetails}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">${record.amountRemitted.toFixed(2)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{record.dateOfSettlement}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{record.superAdminBankDetails}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <button className="text-indigo-600 hover:text-indigo-900">View Evidence</button>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            record.confirmationStatus === 'confirmed' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {record.confirmationStatus === 'confirmed' ? 'Confirmed' : 'Pending'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <input 
-                            type="text" 
-                            value={record.orgComments} 
-                            onChange={(e) => handleCommentChange(record.id, e.target.value)}
-                            placeholder="Add comment..."
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                          />
-                        </td>
-                      </tr>
-                    ))
-                  }
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 };
