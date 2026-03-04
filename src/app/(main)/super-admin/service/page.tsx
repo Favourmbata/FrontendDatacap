@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { MoreVertical, Eye, Edit, Trash2 } from 'lucide-react';
+import { MoreVertical, Eye, Edit, Trash2, X } from 'lucide-react';
 import ServiceService from '@/services/ServiceService';
 import { useAuthContext } from '@/AuthContext';
+
+import { ModuleConfig, ServiceLimits } from '@/services/ServiceService';
 
 interface Service {
   id: string;
@@ -13,6 +15,8 @@ interface Service {
   quarterlyPrice: number;
   yearlyPrice: number;
   status: 'active' | 'inactive';
+  modules?: ModuleConfig[];
+  limits?: ServiceLimits;
   createdAt: string;
   updatedAt: string;
 }
@@ -26,6 +30,9 @@ const ServicePage = () => {
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
+  const [showModulesModal, setShowModulesModal] = useState(false);
+  const [currentModules, setCurrentModules] = useState<ModuleConfig[]>([]);
+  const [currentServiceName, setCurrentServiceName] = useState('');
 
   const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
@@ -305,6 +312,9 @@ const ServicePage = () => {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Service Name
                   </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Modules
+                  </th>
                   <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Monthly (₦)
                   </th>
@@ -331,6 +341,18 @@ const ServicePage = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">{service.serviceName}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button 
+                          onClick={() => {
+                            setCurrentModules(service.modules || []);
+                            setCurrentServiceName(service.serviceName);
+                            setShowModulesModal(true);
+                          }}
+                          className="text-[#5D2A8B] hover:text-[#4a216d] hover:underline text-sm"
+                        >
+                          View Modules ({service.modules?.length || 0})
+                        </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
                         {formatPrice(service.monthlyPrice)}
@@ -410,6 +432,62 @@ const ServicePage = () => {
         </div>
       </div>
 
+      {/* Modules Modal */}
+      {showModulesModal && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowModulesModal(false)}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-900">Modules for {currentServiceName}</h3>
+                <button
+                  onClick={() => setShowModulesModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {currentModules.length > 0 ? (
+                  currentModules.map((module, index) => (
+                    <div 
+                      key={index}
+                      className="flex items-start p-3 bg-gray-50 rounded-lg border border-gray-200"
+                    >
+                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#5D2A8B] flex items-center justify-center mt-0.5">
+                        <span className="text-white text-xs font-bold">{index + 1}</span>
+                      </div>
+                      <div className="ml-3 text-gray-700">
+                        <div className="font-medium">{module.moduleName}</div>
+                        <div className="text-xs text-gray-500">{module.moduleKey}</div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No modules configured</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowModulesModal(false)}
+                  className="px-4 py-2 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d] transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -1,4 +1,16 @@
 // Define interfaces for type safety
+export interface ModuleConfig {
+  moduleKey: string;
+  moduleName: string;
+  isEnabled: boolean;
+}
+
+export interface ServiceLimits {
+  maxBodyMeasurements?: number;
+  maxOrgUsers?: number;
+  [key: string]: number | undefined;
+}
+
 interface Service {
   id: string;
   serviceName: string;
@@ -7,6 +19,8 @@ interface Service {
   quarterlyPrice: number;
   yearlyPrice: number;
   status: 'active' | 'inactive';
+  modules?: ModuleConfig[];
+  limits?: ServiceLimits;
   createdAt: string;
   updatedAt: string;
 }
@@ -17,6 +31,8 @@ interface CreateServiceData {
   monthlyPrice: number;
   quarterlyPrice: number;
   yearlyPrice: number;
+  modules?: ModuleConfig[];
+  limits?: ServiceLimits;
 }
 
 interface UpdateServiceData {
@@ -25,6 +41,8 @@ interface UpdateServiceData {
   monthlyPrice?: number;
   quarterlyPrice?: number;
   yearlyPrice?: number;
+  modules?: ModuleConfig[];
+  limits?: ServiceLimits;
 }
 
 class ServiceService {

@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import ServiceService from '@/services/ServiceService';
+import ServiceService, { type ModuleConfig, type ServiceLimits } from '@/services/ServiceService';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Tag, DollarSign, FileText, Plus, X, Calendar, Percent, Gift, ShoppingBag, Building, Users } from 'lucide-react';
+import { ArrowLeft, Save, Tag, DollarSign, FileText, Plus, X, Calendar, Percent, Gift, ShoppingBag, Building, Users, CheckSquare, Square } from 'lucide-react';
 import SubscriptionService, { CreateSubscriptionPackageData } from '@/services/subscriptionService';
 
 const CreateSubscriptionPage = () => {
@@ -15,6 +15,8 @@ const CreateSubscriptionPage = () => {
     monthlyPrice: number;
     quarterlyPrice: number;
     yearlyPrice: number;
+    modules?: ModuleConfig[];
+    limits?: ServiceLimits;
   }
   
   interface ExtendedSubscriptionData {
@@ -30,6 +32,8 @@ const CreateSubscriptionPage = () => {
       quarterlyPrice: number;
       yearlyPrice: number;
       selectedCycle: 'monthly' | 'quarterly' | 'yearly';
+      modules?: ModuleConfig[];
+      limits?: ServiceLimits;
     }>;
     promoCode: string;
     discountPercentage: number;
@@ -42,6 +46,8 @@ const CreateSubscriptionPage = () => {
     };
     maxUsers: number;
     calculatedPrice: number;
+    enabledModules: ModuleConfig[];
+    aggregatedLimits: ServiceLimits;
   }
   
   const [availableServices, setAvailableServices] = useState<ServiceOption[]>([]);
@@ -75,6 +81,8 @@ const CreateSubscriptionPage = () => {
     },
     calculatedPrice: 0,
     maxUsers: 1,
+    enabledModules: [],
+    aggregatedLimits: {},
   });
     
   // Load available services and existing packages
@@ -113,6 +121,40 @@ const CreateSubscriptionPage = () => {
     fetchData();
   }, []);
     
+  // Aggregate modules and limits from selected services
+  useEffect(() => {
+    // Aggregate all enabled modules from selected services
+    const allModules: ModuleConfig[] = [];
+    const aggregatedLimits: ServiceLimits = {};
+    
+    formData.services.forEach(service => {
+      // Collect modules
+      if (service.modules && service.modules.length > 0) {
+        service.modules.forEach(module => {
+          if (module.isEnabled && !allModules.some(m => m.moduleKey === module.moduleKey)) {
+            allModules.push(module);
+          }
+        });
+      }
+      
+      // Aggregate limits (take maximum value for each limit type)
+      if (service.limits) {
+        Object.entries(service.limits).forEach(([key, value]) => {
+          if (value !== undefined) {
+            const currentLimit = aggregatedLimits[key as keyof ServiceLimits] || 0;
+            aggregatedLimits[key as keyof ServiceLimits] = Math.max(currentLimit, value) as never;
+          }
+        });
+      }
+    });
+    
+    setFormData(prev => ({
+      ...prev,
+      enabledModules: allModules,
+      aggregatedLimits: aggregatedLimits
+    }));
+  }, [formData.services]);
+
   // Calculate the total price based on selected services and discount
   useEffect(() => {
     const totalPrice = formData.services.reduce((sum, service) => {
@@ -469,7 +511,9 @@ const CreateSubscriptionPage = () => {
           duration: service.selectedCycle,
           price: service.selectedCycle === 'monthly' ? service.monthlyPrice : 
                  service.selectedCycle === 'quarterly' ? service.quarterlyPrice : 
-                 service.yearlyPrice
+                 service.yearlyPrice,
+          modules: service.modules || [],
+          limits: service.limits || {}
         })),
         totalServiceCost: totalServiceCost,
         promoCode: formData.promoCode,
@@ -483,6 +527,8 @@ const CreateSubscriptionPage = () => {
         note: formData.note,
         isActive: true,
         createdBy: "", // This will be set by the backend
+        enabledModules: formData.enabledModules,
+        limits: formData.aggregatedLimits
       };
       
       // Create package using service
@@ -666,6 +712,8 @@ const CreateSubscriptionPage = () => {
                             ...prev,
                             services: [...prev.services, {
                               ...selectedService,
+                              modules: selectedService.modules || [],
+                              limits: selectedService.limits || {},
                               selectedCycle: 'monthly'
                             }]
                           }));

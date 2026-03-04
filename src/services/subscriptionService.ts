@@ -2,6 +2,22 @@
 import { HttpService } from './HttpService';
 import { routes } from './apiRoutes';
 
+// Define interfaces for module system
+export interface ModuleConfig {
+  moduleKey: string;
+  moduleName: string;
+  isEnabled: boolean;
+}
+
+// Backend returns enabledModules as either strings or objects
+export type EnabledModule = string | ModuleConfig;
+
+export interface ServiceLimits {
+  maxBodyMeasurements?: number;
+  maxOrgUsers?: number;
+  [key: string]: number | undefined;
+}
+
 // Define the subscription package interface to match the API response
 export interface SubscriptionPackage {
   id: string;
@@ -13,6 +29,8 @@ export interface SubscriptionPackage {
     serviceName: string;
     duration: 'monthly' | 'quarterly' | 'yearly';
     price: number;
+    modules?: ModuleConfig[];
+    limits?: ServiceLimits;
     _id?: string;
   }>;
   totalServiceCost?: number;
@@ -34,6 +52,8 @@ export interface SubscriptionPackage {
   isActive?: boolean; // Some APIs use isActive instead of status
   subscriberCount?: number;
   maxUsers?: number;
+  enabledModules?: EnabledModule[]; // Can be strings or objects
+  limits?: ServiceLimits;
   createdAt: string;
   updatedAt: string;
   // Additional fields from API
@@ -63,6 +83,8 @@ export interface CreateSubscriptionPackageData {
     serviceName: string;
     duration: 'monthly' | 'quarterly' | 'yearly';
     price: number;
+    modules?: ModuleConfig[];
+    limits?: ServiceLimits;
   }>;
   totalServiceCost: number;
   promoCode?: string;
@@ -76,6 +98,8 @@ export interface CreateSubscriptionPackageData {
   note?: string;
   isActive: boolean;
   createdBy: string;
+  enabledModules?: ModuleConfig[];
+  limits?: ServiceLimits;
   // Optional field not included in the basic interface
   // applyTo?: {
   //   individual: boolean;

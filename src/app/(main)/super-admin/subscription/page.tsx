@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Plus, Eye, Edit, Trash2, MoreVertical, Filter, X } from 'lucide-react';
-import SubscriptionService, { SubscriptionPackage } from "@/services/subscriptionService";
+import { Search, Plus, Eye, Edit, Trash2, MoreVertical, Filter, X, CheckSquare, Users, Settings } from 'lucide-react';
+import SubscriptionService, { type SubscriptionPackage, type ModuleConfig, type ServiceLimits, type EnabledModule } from "@/services/subscriptionService";
 
 const SubscriptionPage = () => {
   const router = useRouter();
@@ -24,6 +24,12 @@ const SubscriptionPage = () => {
   const [currentNote, setCurrentNote] = useState('');
   const [showServicesModal, setShowServicesModal] = useState(false);
   const [currentServices, setCurrentServices] = useState<any[]>([]);
+  const [showModulesModal, setShowModulesModal] = useState(false);
+  const [currentModules, setCurrentModules] = useState<EnabledModule[]>([]);
+  const [modulesPackageTitle, setModulesPackageTitle] = useState('');
+  const [showLimitsModal, setShowLimitsModal] = useState(false);
+  const [currentLimits, setCurrentLimits] = useState<ServiceLimits>({});
+  const [limitsPackageTitle, setLimitsPackageTitle] = useState('');
 
   const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
@@ -293,7 +299,6 @@ const SubscriptionPage = () => {
                   <div className="h-4 bg-gray-200 rounded w-1/6"></div>
                   <div className="h-4 bg-gray-200 rounded w-1/6"></div>
                   <div className="h-4 bg-gray-200 rounded w-1/6"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
                   <div className="h-8 bg-gray-200 rounded w-20"></div>
                 </div>
               ))}
@@ -392,8 +397,13 @@ const SubscriptionPage = () => {
                 <tr className="bg-gray-50">
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Title</th>
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Description</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Monthly Price</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Quarterly Price</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Yearly Price</th>
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Services</th>
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Features</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Modules</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Limits</th>
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Total Service Cost</th>
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Final Price After Discount</th>
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Discount Amount</th>
@@ -401,7 +411,7 @@ const SubscriptionPage = () => {
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Promo Code</th>
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Promo Start Date</th>
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Promo End Date</th>
-                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Note</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Max Users</th>
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Status</th>
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Created Date</th>
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider manrope-text">Actions</th>
@@ -419,6 +429,30 @@ const SubscriptionPage = () => {
                         <td className="py-4 px-4">
                           <div className="text-gray-600 max-w-xs truncate manrope-text" title={subscription.description}>
                             {subscription.description}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="text-gray-700 font-medium manrope-text">
+                            {(() => {
+                              const monthlyService = subscription.services?.find(s => s.duration === 'monthly');
+                              return monthlyService ? formatCurrency(monthlyService.price) : 'N/A';
+                            })()}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="text-gray-700 font-medium manrope-text">
+                            {(() => {
+                              const quarterlyService = subscription.services?.find(s => s.duration === 'quarterly');
+                              return quarterlyService ? formatCurrency(quarterlyService.price) : 'N/A';
+                            })()}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="text-gray-700 font-medium manrope-text">
+                            {(() => {
+                              const yearlyService = subscription.services?.find(s => s.duration === 'yearly');
+                              return yearlyService ? formatCurrency(yearlyService.price) : 'N/A';
+                            })()}
                           </div>
                         </td>
                         <td className="py-4 px-4">
@@ -443,6 +477,30 @@ const SubscriptionPage = () => {
                             className="text-[#5D2A8B] hover:text-[#4a216d] hover:underline text-sm manrope-text"
                           >
                             View Features ({subscription.features?.length || 0})
+                          </button>
+                        </td>
+                        <td className="py-4 px-4">
+                          <button 
+                            onClick={() => {
+                              setCurrentModules(subscription.enabledModules || []);
+                              setModulesPackageTitle(subscription.title);
+                              setShowModulesModal(true);
+                            }}
+                            className="text-[#5D2A8B] hover:text-[#4a216d] hover:underline text-sm manrope-text"
+                          >
+                            View Modules ({Array.isArray(subscription.enabledModules) ? subscription.enabledModules.length : 0})
+                          </button>
+                        </td>
+                        <td className="py-4 px-4">
+                          <button 
+                            onClick={() => {
+                              setCurrentLimits(subscription.limits || {});
+                              setLimitsPackageTitle(subscription.title);
+                              setShowLimitsModal(true);
+                            }}
+                            className="text-[#5D2A8B] hover:text-[#4a216d] hover:underline text-sm manrope-text"
+                          >
+                            View Limits
                           </button>
                         </td>
                         <td className="py-4 px-4">
@@ -481,15 +539,10 @@ const SubscriptionPage = () => {
                           </div>
                         </td>
                         <td className="py-4 px-4">
-                          <button 
-                            onClick={() => {
-                              setCurrentNote(subscription.note || '');
-                              setShowNoteModal(true);
-                            }}
-                            className="text-[#5D2A8B] hover:text-[#4a216d] hover:underline text-sm manrope-text"
-                          >
-                            {subscription.note ? 'View Note' : 'N/A'}
-                          </button>
+                          <div className="flex items-center gap-2 text-gray-700 font-medium manrope-text">
+                            <Users className="w-4 h-4" />
+                            {subscription.maxUsers !== undefined ? subscription.maxUsers : 'N/A'}
+                          </div>
                         </td>
                         <td className="py-4 px-4">
                           {getStatusBadge(subscription)}
@@ -545,7 +598,7 @@ const SubscriptionPage = () => {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={15} className="py-12 px-4 text-center text-gray-500">
+                    <td colSpan={17} className="py-12 px-4 text-center text-gray-500">
                       {searchTerm || statusFilter !== 'all' ? (
                         <div className="flex flex-col items-center">
                           <Search className="w-16 h-16 text-gray-300 mb-4" />
@@ -696,6 +749,128 @@ const SubscriptionPage = () => {
         </div>
       )}
       
+      {/* Modules Modal */}
+      {showModulesModal && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowModulesModal(false)}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-900 manrope-text">Modules for {modulesPackageTitle}</h3>
+                <button
+                  onClick={() => setShowModulesModal(false)}
+                  className="text-gray-400 hover:text-gray-600 manrope-text"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {currentModules.length > 0 ? (
+                  currentModules.map((module, index) => {
+                    // Handle both string and object formats
+                    const moduleKey = typeof module === 'string' ? module : module.moduleKey;
+                    const moduleName = typeof module === 'string' ? module.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : module.moduleName;
+                    
+                    return (
+                      <div 
+                        key={index}
+                        className="flex items-start p-3 bg-gray-50 rounded-lg border border-gray-200"
+                      >
+                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#5D2A8B] flex items-center justify-center mt-0.5">
+                          <CheckSquare className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="ml-3 text-gray-700 manrope-text">
+                          <div className="font-medium">{moduleName}</div>
+                          <div className="text-xs text-gray-500">{moduleKey}</div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-8 text-gray-500 manrope-text">
+                    <p>No modules configured</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowModulesModal(false)}
+                  className="px-4 py-2 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d] transition-colors manrope-text"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Limits Modal */}
+      {showLimitsModal && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowLimitsModal(false)}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-900 manrope-text">Limits for {limitsPackageTitle}</h3>
+                <button
+                  onClick={() => setShowLimitsModal(false)}
+                  className="text-gray-400 hover:text-gray-600 manrope-text"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {Object.keys(currentLimits).length > 0 ? (
+                  Object.entries(currentLimits).map(([key, value]) => (
+                    <div 
+                      key={key}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200"
+                    >
+                      <div className="text-gray-700 manrope-text">
+                        <div className="font-medium capitalize">
+                          {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                        </div>
+                        <div className="text-xs text-gray-500">{key}</div>
+                      </div>
+                      <div className="text-lg font-semibold text-[#5D2A8B] manrope-text">
+                        {value === 0 ? 'Unlimited' : value}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500 manrope-text">
+                    <p>No limits configured</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowLimitsModal(false)}
+                  className="px-4 py-2 bg-[#5D2A8B] text-white rounded-lg hover:bg-[#4a216d] transition-colors manrope-text"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Note Modal */}
       {showNoteModal && (
         <div 
