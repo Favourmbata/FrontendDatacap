@@ -14,8 +14,10 @@ const PaymentVerificationClient = () => {
   useEffect(() => {
     const verifyPayment = async () => {
       try {
-        const transactionId = searchParams.get('transaction_id');
+        const transactionId = searchParams.get('tx_ref') || searchParams.get('transaction_id');
         const paymentStatus = searchParams.get('status');
+
+        console.log('🔍 Extracted tx_ref from URL:', transactionId);
 
         if (!transactionId) {
           setStatus('error');
@@ -28,6 +30,8 @@ const PaymentVerificationClient = () => {
           setMessage('Payment was not successful');
           return;
         }
+
+        console.log('🔍 Verifying payment with tx_ref:', transactionId);
 
         // Verify payment with backend
         const response = await PaymentService.verifyPayment({
@@ -49,7 +53,18 @@ const PaymentVerificationClient = () => {
       } catch (error) {
         console.error('Error verifying payment:', error);
         setStatus('error');
-        setMessage('An error occurred while verifying payment');
+        
+        // Check if it's an authentication error
+        if (error instanceof Error && error.message.includes('Authentication')) {
+          setMessage('Please log in to verify your payment. Redirecting to login...');
+          setTimeout(() => {
+            // Store the current URL to redirect back after login
+            localStorage.setItem('redirectAfterLogin', window.location.href);
+            router.push('/auth/login');
+          }, 2000);
+        } else {
+          setMessage('An error occurred while verifying payment');
+        }
       }
     };
 

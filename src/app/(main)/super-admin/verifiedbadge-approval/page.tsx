@@ -96,7 +96,7 @@ export const VerifiedBadgeApprovalModal: React.FC<VerifiedBadgeApprovalModalProp
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
+       
         <div className="sticky top-0 bg-gradient-to-r from-[#5D2A8B] to-[#7a3aaf] text-white px-6 py-4 flex items-center justify-between border-b border-gray-200">
           <div>
             <h2 className="text-2xl font-bold">Verified Badge Approval</h2>
@@ -163,7 +163,7 @@ export const VerifiedBadgeApprovalModal: React.FC<VerifiedBadgeApprovalModalProp
             </div>
           )}
 
-          {/* Data Provided Tab */}
+        
           {activeTab === "data" && (
             <div className="space-y-6">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">

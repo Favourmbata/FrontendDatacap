@@ -23,6 +23,7 @@ export class HttpService {
     // Add authorization header if token exists
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('token');
+      console.log('🔑 Token from localStorage:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }

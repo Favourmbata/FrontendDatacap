@@ -14,7 +14,9 @@ const VerificationClientComponent = () => {
 
   useEffect(() => {
     const status = searchParams.get('status');
-    const transactionId = searchParams.get('transaction_id');
+    const transactionId = searchParams.get('tx_ref') || searchParams.get('transaction_id');
+    
+    console.log('🔍 Location payment - Extracted tx_ref from URL:', transactionId);
     
     if (status === 'success' && transactionId) {
       verifyLocationPayment(transactionId);
@@ -30,6 +32,8 @@ const VerificationClientComponent = () => {
   const verifyLocationPayment = async (transactionId: string) => {
     setVerificationStatus('verifying');
     setMessage('Verifying your payment...');
+    
+    console.log('🔍 Verifying location payment with tx_ref:', transactionId);
     
     try {
       const response = await LocationPaymentService.verifyPayment({ transactionId });
@@ -49,7 +53,18 @@ const VerificationClientComponent = () => {
       }
     } catch (error: any) {
       setVerificationStatus('failed');
-      setMessage(error.message || 'An error occurred during payment verification.');
+      
+      // Check if it's an authentication error
+      if (error.message?.includes('Authentication')) {
+        setMessage('Please log in to verify your payment. Redirecting to login...');
+        setTimeout(() => {
+          // Store the current URL to redirect back after login
+          localStorage.setItem('redirectAfterLogin', window.location.href);
+          router.push('/auth/login');
+        }, 2000);
+      } else {
+        setMessage(error.message || 'An error occurred during payment verification.');
+      }
     }
   };
 
