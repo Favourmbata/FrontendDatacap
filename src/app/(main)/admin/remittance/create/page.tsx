@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { Landmark, ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import BankDetailsService from '@/services/BankDetailsService';
+import { toast } from '@/app/components/hooks/use-toast';
 
 const CreateBankDetailsPage = () => {
   const router = useRouter();
@@ -21,27 +23,25 @@ const CreateBankDetailsPage = () => {
       setLoading(true);
       setError('');
       
-      const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_API;
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const result = await BankDetailsService.registerBankDetails(bankForm);
       
-      const response = await fetch(`${BASE_URL}/api/admin/bank-details`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
-        body: JSON.stringify(bankForm),
+      toast({
+        title: 'Success',
+        description: 'Bank details saved successfully',
+        variant: 'default'
       });
       
-      const result = await response.json();
-      
-      if (response.ok && result.success) {
-        router.push('/admin/remittance/bank-details');
-      } else {
-        setError(result.message || 'Failed to save bank details');
-      }
+      // Wait a moment for the toast to show before redirecting
+      setTimeout(() => {
+        router.push('/admin/remittance');
+      }, 500);
     } catch (error: any) {
       setError(error.message || 'Failed to save bank details');
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to save bank details',
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }
@@ -56,7 +56,7 @@ const CreateBankDetailsPage = () => {
 
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-2">
-          <Link href="/admin/remittance/bank-details" className="text-gray-600 hover:text-gray-900">
+          <Link href="/admin/remittance" className="text-gray-600 hover:text-gray-900">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div className="flex items-center gap-3">
@@ -147,7 +147,7 @@ const CreateBankDetailsPage = () => {
                 )}
               </button>
               <Link
-                href="/admin/remittance/bank-details"
+                href="/admin/remittance"
                 className="flex items-center gap-2 px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel

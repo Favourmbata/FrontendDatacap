@@ -9,11 +9,40 @@ interface BankDetailsResponse {
   success: boolean;
   data: {
     bankDetails: BankDetails;
+    message?: string;
   };
 }
 
 class BankDetailsService {
-  private static BASE_URL = process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:3000';
+  private static BASE_URL = '/api/admin/bank-details';
+
+  private static getToken(): string | null {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('token') || sessionStorage.getItem('token');
+    }
+    return null;
+  }
+
+  private static async handleResponse(response: Response) {
+    if (!response.ok) {
+      let errorMessage = 'Request failed';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch (e) {
+        errorMessage = `HTTP error! status: ${response.status}`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    
+    if (result.success === false) {
+      throw new Error(result.message || 'Operation failed');
+    }
+
+    return result.data || result;
+  }
 
   /**
    * Register/Update bank account details for admin
@@ -24,9 +53,11 @@ class BankDetailsService {
     accountName: string;
   }): Promise<BankDetails> {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const token = this.getToken();
       
-      const response = await fetch(`${this.BASE_URL}/api/admin/bank-details`, {
+      const url = `${process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://datacapture-backend.onrender.com'}${this.BASE_URL}`;
+      
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -35,13 +66,24 @@ class BankDetailsService {
         body: JSON.stringify(data),
       });
 
-      const result: BankDetailsResponse = await response.json();
+      const result = await this.handleResponse(response);
 
-      if (!response.ok) {
-        throw new Error(result.data?.bankDetails ? 'Failed to register bank details' : 'Organization must exist in database before adding bank details');
+      // Handle different response formats
+      let bankDetailsData: any;
+      
+      if (result && typeof result === 'object') {
+        if (result.bankDetails) {
+          bankDetailsData = result.bankDetails;
+        } else if (result.data && result.data.bankDetails) {
+          bankDetailsData = result.data.bankDetails;
+        } else if (result.data) {
+          bankDetailsData = result.data;
+        } else {
+          bankDetailsData = result;
+        }
       }
 
-      return result.data.bankDetails;
+      return bankDetailsData;
     } catch (error) {
       console.error('Error registering bank details:', error);
       throw error;
@@ -53,23 +95,41 @@ class BankDetailsService {
    */
   static async getBankDetails(): Promise<BankDetails | null> {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const token = this.getToken();
       
-      const response = await fetch(`${this.BASE_URL}/api/admin/bank-details`, {
+      const url = `${process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://datacapture-backend.onrender.com'}${this.BASE_URL}`;
+      
+      const response = await fetch(url, {
         headers: {
+          'Content-Type': 'application/json',
           ...(token && { 'Authorization': `Bearer ${token}` }),
-        }
+        },
+        cache: 'no-store',
       });
 
-      if (!response.ok) {
-        if (response.status === 404) {
-          return null; // No bank details found
-        }
-        throw new Error('Failed to fetch bank details');
+      // Handle 404 as no bank details found
+      if (response.status === 404) {
+        return null;
       }
 
-      const result: BankDetailsResponse = await response.json();
-      return result.data.bankDetails;
+      const result = await this.handleResponse(response);
+
+      // Handle different response formats
+      let bankDetailsData: any;
+      
+      if (result && typeof result === 'object') {
+        if (result.bankDetails) {
+          bankDetailsData = result.bankDetails;
+        } else if (result.data && result.data.bankDetails) {
+          bankDetailsData = result.data.bankDetails;
+        } else if (result.data) {
+          bankDetailsData = result.data;
+        } else {
+          bankDetailsData = result;
+        }
+      }
+
+      return bankDetailsData;
     } catch (error) {
       console.error('Error fetching bank details:', error);
       throw error;

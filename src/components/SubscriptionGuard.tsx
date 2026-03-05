@@ -32,6 +32,16 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
         return;
       }
 
+      // Skip subscription check for remittance routes (bank details management)
+      if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname;
+        if (currentPath.startsWith('/admin/remittance')) {
+          setHasActiveSubscription(true);
+          setIsLoading(false);
+          return;
+        }
+      }
+
       // For organization/admin users, check subscription status using the correct API
       if (userRole === 'organisation' || userRole === 'organization' || userRole === 'admin') {
         try {
@@ -83,6 +93,15 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
   // If user has active subscription, show protected content
   if (hasActiveSubscription) {
     return <>{children}</>;
+  }
+
+  // Skip subscription check for remittance routes (bank details management)
+  // This must be checked here too, not just in useEffect, to prevent redirect during render
+  if (typeof window !== 'undefined') {
+    const currentPath = window.location.pathname;
+    if (currentPath.startsWith('/admin/remittance')) {
+      return <>{children}</>;
+    }
   }
 
   // If user doesn't have active subscription, redirect to subscription page
