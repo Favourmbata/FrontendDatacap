@@ -394,10 +394,10 @@ const SubscriptionPage: React.FC = () => {
   
 
   
-  // Refs for closing dropdowns on outside click
+
   const dropdownRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Helper function to validate and get user data
+
   const getValidatedUserData = (context: string = 'payment') => {
     const currentUser = authContext.user;
     
@@ -407,7 +407,7 @@ const SubscriptionPage: React.FC = () => {
     if (!currentUser || !currentUser.email || !currentUser.fullName || 
         currentUser.email.trim() === '' || currentUser.fullName.trim() === '') {
       console.log(`${context} - User data incomplete, checking localStorage...`);
-      // Try to get user data from localStorage as fallback
+
       if (typeof window !== 'undefined') {
         const storedUserStr = localStorage.getItem('user');
         console.log(`${context} - Stored user string:`, storedUserStr);

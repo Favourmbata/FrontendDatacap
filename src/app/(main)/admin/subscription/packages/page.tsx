@@ -307,12 +307,12 @@ const ViewSubscriptionPackagesPage = () => {
           </div>
         </div>
         
-        <Link href="/subscription">
+        {/* <Link href="/subscription">
           <button className="px-6 py-3 bg-[#5D2A8B] text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center gap-2">
             <Plus className="w-5 h-5" />
             Subscribe to Package
           </button>
-        </Link>
+        </Link> */}
       </div>
 
       {/* Packages Table */}

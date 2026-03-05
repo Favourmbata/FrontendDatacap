@@ -83,9 +83,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
             
             const userService = new UserService();
-            const profileData = await userService.getUserProfile();
+            const profileData = await userService.getUserProfile<{ success: boolean; data: { user: User } }>();
+            
+            // Extract the actual user object from the API response
+            // API returns: { success: true, data: { user: {...} } }
+            const actualUser = profileData.data?.user || profileData.data || profileData;
+            
             // Type assertion to ensure correct type
-            setUser(profileData as User);
+            setUser(actualUser as User);
           } catch (err) {
             console.warn('Failed to fetch user profile from API, using stored data:', err);
             // If API call fails, try to load from localStorage

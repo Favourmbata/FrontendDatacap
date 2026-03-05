@@ -3,68 +3,27 @@
 import type React from "react";
 import { useState, useEffect } from "react";
 import {
-  Building,
   ShieldCheck,
-  Upload,
   CheckCircle,
-  User,
-  FileText,
-  Send,
   AlertCircle,
   Plus,
-  MapPin,
-  Users,
-  Image,
+  CreditCard,
 } from "lucide-react";
-import OrganizationProfileService, { OrganizationProfile, LocationData } from "@/services/OrganizationProfileService";
-
-
-import SearchableLocationForm from "@/app/components/SearchableLocationForm";
-import GallerySection from "@/modules/admin/gallery-section";
-
-
-interface OrganizationDetails {
-  type: "registered" | "unregistered";
-  businessRegistrationNumber?: string;
-  ownerIdentificationType?: "international-passport" | "nin" | "none";
-  ownerDocumentNumber?: string;
-  visibility: "public" | "private";
-  verifiedBadge: boolean;
-  professionalTrade?: {
-    associationName?: string;
-    membershipId?: string;
-    certificateFile?: File;
-  };
-}
-
-interface MessageModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-}
+import OrganizationProfileService from "@/services/OrganizationProfileService";
+import { useAuthContext } from "@/AuthContext";
+import { useRouter } from "next/navigation";
 
 const VerificationBadgeSubscriptionPage: React.FC = () => {
-  const [workflowStep, setWorkflowStep] = useState<'locations' | 'location-form'>('locations');
-  const [hasProfile, setHasProfile] = useState(false);
-  
-  const [organizationDetails, setOrganizationDetails] = useState<OrganizationDetails>({
-    type: "unregistered", // Default to unregistered
-    visibility: "private", // Default to private (isPublicProfile: false)
-    verifiedBadge: false,  // Default to unverified (verificationStatus: unverified)
-    professionalTrade: {},
-  });
-
+  const { token, user } = useAuthContext();
+  const router = useRouter();
+  const [isAuthRestored, setIsAuthRestored] = useState(false);
   const [locations, setLocations] = useState<any[]>([]);
-  const [currentLocation, setCurrentLocation] = useState<any>(null);
   const [profileInfo, setProfileInfo] = useState<{ businessType: 'registered' | 'unregistered'; isPublicProfile: boolean; verificationStatus: 'verified' | 'unverified' } | null>(null);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  
+  const [paymentProcessing, setPaymentProcessing] = useState<number | null>(null);
+    
   // State for delete confirmation modal
   const [deleteModal, setDeleteModal] = useState({
     isOpen: false,
@@ -72,607 +31,83 @@ const VerificationBadgeSubscriptionPage: React.FC = () => {
     locationName: ''
   });
   
-  // Country-State-City data
-  const [countries, setCountries] = useState<any[]>([]);
-  const [states, setStates] = useState<any[]>([]);
-  const [cities, setCities] = useState<any[]>([]);
-  const [lgas, setLgas] = useState<any[]>([]);
-  const [cityRegions, setCityRegions] = useState<any[]>([]);
-  const [showOtherCityInput, setShowOtherCityInput] = useState(false);
-  const [showOtherLGAInput, setShowOtherLGAInput] = useState(false);
-  const [showOtherCityRegionInput, setShowOtherCityRegionInput] = useState(false);
-  const [otherCityValue, setOtherCityValue] = useState('');
-  const [otherCityRegionValue, setOtherCityRegionValue] = useState('');
-  
-  // State for cascading dropdown loading indicators
-  const [loadingStates, setLoadingStates] = useState(false);
-  const [loadingLgas, setLoadingLgas] = useState(false);
-  const [loadingCities, setLoadingCities] = useState(false);
-  const [loadingCityRegions, setLoadingCityRegions] = useState(false);
-  
-  // State for filtered options
-  const [statesForCountry, setStatesForCountry] = useState<any[]>([]);
-  const [lgasForState, setLgasForState] = useState<any[]>([]);
-  const [citiesForLga, setCitiesForLga] = useState<any[]>([]);
-  const [cityRegionsForCity, setCityRegionsForCity] = useState<any[]>([]);
-  
-  // Initialize country data
+  // Track when auth is restored from localStorage
   useEffect(() => {
-    const loadCountries = async () => {
-      try {
-        // Using HttpService to call the backend API directly
-        const HttpService = (await import('@/services/HttpService')).HttpService;
-        const httpService = new HttpService();
-        
-        const data = await httpService.getData<any>('/api/locations/countries');
-        // Transform the response to extract just the country names
-        setCountries(data.data?.countries?.map((country: any) => typeof country === 'string' ? country : country.name) || []);
-      } catch (error) {
-        console.error('Error loading countries:', error);
-        setCountries([]);
+    // Wait for the auth context to be properly initialized
+    const timer = setTimeout(() => {
+      // Check if we have a token or user data (meaning auth has been restored)
+      if ((token !== null && token !== undefined) || (user !== null && user !== undefined)) {
+        setIsAuthRestored(true);
       }
-    };
-    
-    loadCountries();
-  }, []);
+    }, 100); // Small delay to ensure context is fully loaded
 
+    return () => clearTimeout(timer);
+  }, [token, user]);
+  
   const organizationProfileService = new OrganizationProfileService();
 
-  // Load organization profile and locations on mount
+  // Check for pending payment verification on page load
   useEffect(() => {
-    const loadData = async () => {
+    const checkPendingPayment = async () => {
       try {
-        // Load profile
-        const profileResponse = await organizationProfileService.getProfile();
-        if (profileResponse.success && profileResponse.data) {
-          const profile = profileResponse.data.profile;
-          setOrganizationDetails(prev => ({
-            ...prev,
-            type: profile.businessType,
-            visibility: profile.isPublicProfile ? "public" : "private",
-            verifiedBadge: profile.verificationStatus === "verified"
-          }));
-          setProfileInfo({
-            businessType: profile.businessType,
-            isPublicProfile: profile.isPublicProfile || false,
-            verificationStatus: profile.verificationStatus
-          });
-          setHasProfile(true);
-        
-          setWorkflowStep('locations');
-         
-          if ('locations' in profileResponse.data.profile && Array.isArray(profileResponse.data.profile.locations)) {
-            // Ensure each location has a properly initialized gallery property
-            const locationsWithGallery = profileResponse.data.profile.locations.map(location => ({
-              ...location,
-              gallery: location.gallery || { images: [], videos: [] }
-            }));
-            setLocations(locationsWithGallery);
-          }
-        } else {
+        const pendingPaymentStr = sessionStorage.getItem('pendingPayment');
+        if (pendingPaymentStr) {
+          const pendingPayment = JSON.parse(pendingPaymentStr);
           
-          setHasProfile(false);
-          setWorkflowStep('locations');
-        }
-
-     
-        const locationsResponse = await organizationProfileService.getAllLocations();
-        if (locationsResponse.success && locationsResponse.data) {
-          // Ensure each location has a properly initialized gallery property
-          const locationsWithGallery = locationsResponse.data.locations.map(location => ({
-            ...location,
-            gallery: location.gallery || { images: [], videos: [] }
-          }));
-          setLocations(locationsWithGallery);
-        }
-      } catch (error) {
-        console.error('Error loading data:', error);
-       
-        setHasProfile(false);
-        setWorkflowStep('locations');
-      }
-    };
-    
-    loadData();
-  }, []);
-
-  const handleOrganizationDetailsChange = (field: keyof OrganizationDetails, value: any) => {
-    setOrganizationDetails((prev) => {
-      const updated = { ...prev, [field]: value };
-
-      if (field === "type" && value === "unregistered") {
-        updated.verifiedBadge = false;
-        updated.businessRegistrationNumber = "";
-        updated.ownerIdentificationType = undefined;
-        updated.ownerDocumentNumber = "";
-      }
-
-      if (field === "visibility" && value === "private") {
-        updated.verifiedBadge = false;
-      }
-
-      if (field === "ownerIdentificationType") {
-        updated.ownerDocumentNumber = "";
-      }
-
-      return updated;
-    });
-  };
-
-  const handleProfileSubmit = async () => {
-   
-    if (!organizationDetails.type) {
-      setErrorMessage('Business type is a required field');
-      return;
-    }
-
-    setIsProcessing(true);
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    try {
-      
-      const profileData: OrganizationProfile = {
-        businessType: organizationDetails.type as 'registered' | 'unregistered',
-        isPublicProfile: organizationDetails.visibility === "public",
-        verificationStatus: organizationDetails.verifiedBadge ? "verified" : "unverified",
-      };
-
-      
-      const response = await organizationProfileService.createOrUpdateProfile(profileData);
-      
-      if (response.success) {
-        setSuccessMessage('Organization profile updated successfully!');
-        setHasProfile(true); // Update the hasProfile state
-        setWorkflowStep('locations'); // Return to locations view after successful profile creation
-        // Clear success message after 3 seconds
-        setTimeout(() => setSuccessMessage(''), 3000);
-      } else {
-        setErrorMessage(response.message || 'Failed to update organization profile');
-      }
-    } catch (error: any) {
-      console.error('Error updating organization profile:', error);
-      setErrorMessage(error.message || 'An unexpected error occurred');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const uploadFilesAndGetUrls = async (files: (string | File)[]): Promise<string[]> => {
-    const urls: string[] = [];
-    
-    for (const file of files) {
-      if (typeof file === 'string') {
-        // Already a URL, add directly
-        urls.push(file);
-      } else {
-        // It's a File object, need to upload to Cloudinary
-        try {
-          // Convert File to data URL first
-          const reader = new FileReader();
-          const dataUrl = await new Promise<string>((resolve, reject) => {
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
+          // Clear the session storage immediately to prevent duplicate processing
+          sessionStorage.removeItem('pendingPayment');
           
-         
-         
-          const isImage = file.type.startsWith('image/');
-          const uploadEndpoint = isImage 
-            ? 'https://api.cloudinary.com/v1_1/disz21zwr/image/upload'
-            : 'https://api.cloudinary.com/v1_1/disz21zwr/video/upload';
+          console.log('Verifying pending payment:', pendingPayment);
           
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('upload_preset', 'vestradat_preset'); // Using the preset from the service
+          // Verify the payment
+          setPaymentProcessing(pendingPayment.locationIndex);
           
-          const cloudinaryResponse = await fetch(uploadEndpoint, {
+          const verifyResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}/api/payment/verify-verified-badge`, {
             method: 'POST',
-            body: formData,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              reference: pendingPayment.transactionRef,
+              locationIndex: pendingPayment.locationIndex,
+              amount: pendingPayment.amount,
+            }),
           });
-          
-          const result = await cloudinaryResponse.json();
-          
-          if (result.secure_url) {
-            urls.push(result.secure_url);
-          } else {
-            console.error('Cloudinary upload failed:', result);
-            // Fallback to data URL if upload fails
-            urls.push(dataUrl);
-          }
-        } catch (error) {
-          console.error('Error uploading file:', error);
-          // If upload fails, we'll skip this file
-          continue;
-        }
-      }
-    }
-    
-    return urls;
-  };
 
-  const handleLocationSubmit = async () => {
-    if (!currentLocation) {
-      setErrorMessage('Please fill in location details');
-      return;
-    }
-  
-    setIsProcessing(true);
-    setFieldErrors({}); // Clear previous field errors before submission
-  
-    try {
-      // Prepare the location data with uploaded URLs
-      let processedLocation = { ...currentLocation };
-                
-      // Process images
-      if (currentLocation.gallery && currentLocation.gallery.images && currentLocation.gallery.images.length > 0) {
-        const imageUrls = await uploadFilesAndGetUrls(currentLocation.gallery.images);
-        processedLocation = {
-          ...processedLocation,
-          gallery: {
-            ...(processedLocation.gallery || {}),
-            images: imageUrls
-          }
-        };
-      }
-                
-      // Process videos
-      if (currentLocation.gallery && currentLocation.gallery.videos && currentLocation.gallery.videos.length > 0) {
-        const videoUrls = await uploadFilesAndGetUrls(currentLocation.gallery.videos);
-        processedLocation = {
-          ...processedLocation,
-          gallery: {
-            ...(processedLocation.gallery || {}),
-            videos: videoUrls
-          }
-        };
-      }
-        
-      let response;
-      if (editingIndex !== null) {
-        // Update existing location
-        response = await organizationProfileService.updateLocation(editingIndex, processedLocation);
-      } else {
-        // Add new location
-        response = await organizationProfileService.addLocation(processedLocation);
-      }
-        
-      if (response.success) {
-        // Update the locations from the response
-        if (response.data && response.data.profile && response.data.profile.locations) {
-          // Ensure each location has a properly initialized gallery property
-          const locationsWithGallery = response.data.profile.locations.map(location => ({
-            ...location,
-            gallery: location.gallery || { images: [], videos: [] }
-          }));
-          setLocations(locationsWithGallery);
-        } else {
-          // Fallback to refetching the profile
-          const profileResponse = await organizationProfileService.getProfile();
-          if (profileResponse.success && profileResponse.data && profileResponse.data.profile && profileResponse.data.profile.locations) {
-            // Ensure each location has a properly initialized gallery property
-            const locationsWithGallery = profileResponse.data.profile.locations.map(location => ({
-              ...location,
-              gallery: location.gallery || { images: [], videos: [] }
-            }));
-            setLocations(locationsWithGallery);
-          }
-        }
-          
-        if (editingIndex !== null) {
-          setSuccessMessage('Location updated successfully!');
-          // After successful update, return to locations view
-          setCurrentLocation(null);
-          setEditingIndex(null);
-          setWorkflowStep('locations');
-        } else {
-          setSuccessMessage('Location added successfully!');
+          const result = await verifyResponse.json();
+          console.log('Payment verification result:', result);
+
+          if (result.success) {
+            setSuccessMessage(`Payment successful! Location ${pendingPayment.locationDescription} is now paid.`);
             
-          // Return to locations view
-          setCurrentLocation(null);
-          setEditingIndex(null);
-          setWorkflowStep('locations');
-        }
-          
-        setErrorMessage('');
-        // Clear success message after 3 seconds
-        setTimeout(() => setSuccessMessage(''), 3000);
-      } else {
-        // When success is false, prioritize displaying the detailed error message
-        if (response.error) {
-          // Parse validation errors from the response error field
-          if (typeof response.error === 'string' && response.error.includes('validation failed')) {
-            const fieldErrors: Record<string, string> = {};
-              
-            // Extract field-specific errors from the validation error message
-            if (response.error.includes('street: Path `street` is required')) {
-              fieldErrors.street = 'Street is required';
+            // Reload locations to show updated payment status
+            const locationsResponse = await organizationProfileService.getAllLocations();
+            if (locationsResponse.success && locationsResponse.data) {
+              const locationsWithGallery = locationsResponse.data.locations.map((loc: any) => ({
+                ...loc,
+                gallery: loc.gallery || { images: [], videos: [] }
+              }));
+              setLocations(locationsWithGallery);
             }
-            if (response.error.includes('houseNumber: Path `houseNumber` is required')) {
-              fieldErrors.houseNumber = 'House number is required';
-            }
-            if (response.error.includes('brandName: Path `brandName` is required')) {
-              fieldErrors.brandName = 'Brand name is required';
-            }
-            if (response.error.includes('country: Path `country` is required')) {
-              fieldErrors.country = 'Country is required';
-            }
-            if (response.error.includes('state: Path `state` is required')) {
-              fieldErrors.state = 'State is required';
-            }
-            if (response.error.includes('city: Path `city` is required')) {
-              fieldErrors.city = 'City is required';
-            }
-              
-            setFieldErrors(fieldErrors);
-              
-            // Always display the detailed error message when validation fails
-            setErrorMessage(response.error);
           } else {
-            // For non-validation errors, clear field errors and show the error message
-            setFieldErrors({});
-            setErrorMessage(response.error);
+            console.error('Payment verification failed:', result);
+            setErrorMessage(result.message || 'Payment verification failed. Please contact support.');
           }
-        } else {
-          // If no error field, fall back to message
-          setFieldErrors({});
-          setErrorMessage(response.message || 'Failed to save location');
         }
-          
-        setSuccessMessage('');
+      } catch (error: any) {
+        console.error('Payment verification error:', error);
+        setErrorMessage(error.message || 'Failed to verify payment. Please contact support.');
+      } finally {
+        setPaymentProcessing(null);
+        setTimeout(() => setSuccessMessage(''), 5000);
       }
-    } catch (error: any) {
-      console.error('Error saving location:', error);
-        
-      // Check if there's response data with error information
-      if (error.response) {
-        const errorData = error.response.data;
-          
-        // Handle validation errors
-        if (errorData?.error) {
-          // Check if it's a validation error
-          if (typeof errorData.error === 'string' && errorData.error.includes('validation failed')) {
-            const fieldErrors: Record<string, string> = {};
-              
-            // Extract field-specific errors from the validation error message
-            if (errorData.error.includes('street: Path `street` is required')) {
-              fieldErrors.street = 'Street is required';
-            }
-            if (errorData.error.includes('houseNumber: Path `houseNumber` is required')) {
-              fieldErrors.houseNumber = 'House number is required';
-            }
-            if (errorData.error.includes('brandName: Path `brandName` is required')) {
-              fieldErrors.brandName = 'Brand name is required';
-            }
-            if (errorData.error.includes('country: Path `country` is required')) {
-              fieldErrors.country = 'Country is required';
-            }
-            if (errorData.error.includes('state: Path `state` is required')) {
-              fieldErrors.state = 'State is required';
-            }
-            if (errorData.error.includes('city: Path `city` is required')) {
-              fieldErrors.city = 'City is required';
-            }
-              
-            setFieldErrors(fieldErrors);
-              
-            // Set a general error message prioritizing the detailed error message
-            if (Object.keys(fieldErrors).length === 0) {
-              setErrorMessage(errorData.error || errorData.message || 'Failed to save location');
-            } else {
-              // Show the detailed error message which contains more specific information
-              setErrorMessage(errorData.error || 'Please fix the highlighted fields');
-            }
-          } else {
-            // For non-validation errors, clear field errors and show general error
-            setFieldErrors({});
-            setErrorMessage(errorData.message || errorData.error || 'An unexpected error occurred');
-          }
-        } else if (errorData?.message) {
-          // Check if it's a validation error in the message
-          const message = errorData.message;
-          if (typeof message === 'string' && message.includes('validation failed')) {
-            const fieldErrors: Record<string, string> = {};
-              
-            // Extract field-specific errors from the validation error message
-            if (message.includes('street: Path `street` is required')) {
-              fieldErrors.street = 'Street is required';
-            }
-            if (message.includes('houseNumber: Path `houseNumber` is required')) {
-              fieldErrors.houseNumber = 'House number is required';
-            }
-            if (message.includes('brandName: Path `brandName` is required')) {
-              fieldErrors.brandName = 'Brand name is required';
-            }
-            if (message.includes('country: Path `country` is required')) {
-              fieldErrors.country = 'Country is required';
-            }
-            if (message.includes('state: Path `state` is required')) {
-              fieldErrors.state = 'State is required';
-            }
-            if (message.includes('city: Path `city` is required')) {
-              fieldErrors.city = 'City is required';
-            }
-              
-            setFieldErrors(fieldErrors);
-              
-            // Set a general error message prioritizing the detailed error message
-            if (Object.keys(fieldErrors).length === 0) {
-              setErrorMessage(errorData.error || message || 'Failed to save location');
-            } else {
-              // Show the detailed error message which contains more specific information
-              setErrorMessage(errorData.error || message || 'Please fix the highlighted fields');
-            }
-          } else {
-            // For non-validation errors, clear field errors and show general error
-            setFieldErrors({});
-            setErrorMessage(message || 'An unexpected error occurred');
-          }
-            
-          // Check if this is a verification requirement message
-          if (errorData.requiresVerification) {
-            // Optionally redirect to subscription page or show upgrade option
-          }
-        } else {
-          // If there's response but no recognizable error format, use status text or generic message
-          setFieldErrors({});
-          setErrorMessage(`Server Error (${error.response.status}): ${error.response.statusText || 'An error occurred'}`);
-        }
-      } else {
-        // For network errors or other non-response errors
-        setFieldErrors({});
-        setErrorMessage(error.message || 'Network error or An unexpected error occurred');
-      }
-      setSuccessMessage('');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleAddLocation = () => {
-    setWorkflowStep('location-form');
-    // Initialize a new location
-    const newLocation = {
-      locationType: 'headquarters',
-      brandName: '',
-      country: '',
-      state: '',
-      lga: '',
-      city: '',
-      cityRegion: '',
-      houseNumber: '',
-      street: '',
-      landmark: '',
-      buildingColor: '',
-      buildingType: '',
-      cityRegionFee: undefined,
-      gallery: { images: [], videos: [] },
     };
-    setCurrentLocation(newLocation);
-    setEditingIndex(null);
-  };
-  
-  const handleLocationChange = (field: keyof LocationData, value: any) => {
-    if (currentLocation) {
-      setCurrentLocation((prevLocation: any) => ({
-        ...prevLocation,
-        [field]: value
-      }));
-    }
-  };
 
-  
-  
-  const handleStateChange = async (countryName: string) => {
-    setLoadingStates(true);
-    try {
-      // Using HttpService to call the backend API directly
-      const HttpService = (await import('@/services/HttpService')).HttpService;
-      const httpService = new HttpService();
-      
-      const data = await httpService.getData<any>(`/api/locations/states?country=${encodeURIComponent(countryName)}`);
-      // Transform the response to extract just the state names
-      setStatesForCountry(data.data?.states?.map((state: any) => typeof state === 'string' ? state : state.name) || []);
-    } catch (error) {
-      console.error('Error loading states:', error);
-      setStatesForCountry([]);
-    } finally {
-      setLoadingStates(false);
-    }
-  };
-  
-  const handleLgaChange = async (stateName: string) => {
-    setLoadingLgas(true);
-    try {
-      const countryName = currentLocation?.country || '';
-      // Using HttpService to call the backend API directly
-      const HttpService = (await import('@/services/HttpService')).HttpService;
-      const httpService = new HttpService();
-      
-      const data = await httpService.getData<any>(`/api/locations/lgas?country=${encodeURIComponent(countryName)}&state=${encodeURIComponent(stateName)}`);
-      // Transform the response to extract just the lga names
-      setLgasForState(data.data?.lgas?.map((lga: any) => typeof lga === 'string' ? lga : lga.name) || []);
-    } catch (error) {
-      console.error('Error loading LGAs:', error);
-      setLgasForState([]); // Reset to empty, let the user use 'Other' functionality
-    } finally {
-      setLoadingLgas(false);
-    }
-  };
-  
-  const handleCityChange = async (lga: string) => {
-    setLoadingCities(true);
-    try {
-      const countryName = currentLocation?.country || '';
-      const stateName = currentLocation?.state || '';
-      // Using HttpService to call the backend API directly
-      const HttpService = (await import('@/services/HttpService')).HttpService;
-      const httpService = new HttpService();
-      
-      const data = await httpService.getData<any>(`/api/locations/cities?country=${encodeURIComponent(countryName)}&state=${encodeURIComponent(stateName)}&lga=${encodeURIComponent(lga)}`);
-      // Transform the response to extract just the city names
-      setCitiesForLga(data.data?.cities?.map((city: any) => typeof city === 'string' ? city : city.name) || []);
-    } catch (error) {
-      console.error('Error loading cities:', error);
-      setCitiesForLga([]); // Reset to empty, let the user use 'Other' functionality
-    } finally {
-      setLoadingCities(false);
-    }
-  };
-  
-  const handleCityRegionChange = async (city: string) => {
-    setLoadingCityRegions(true);
-    try {
-      const countryName = currentLocation?.country || '';
-      const stateName = currentLocation?.state || '';
-      const lgaName = currentLocation?.lga || '';
-      // Using HttpService to call the backend API directly
-      const HttpService = (await import('@/services/HttpService')).HttpService;
-      const httpService = new HttpService();
-      
-      const data = await httpService.getData<any>(`/api/locations/city-regions?country=${encodeURIComponent(countryName)}&state=${encodeURIComponent(stateName)}&lga=${encodeURIComponent(lgaName)}&city=${encodeURIComponent(city)}`);
-      // Transform the response to extract just the city region names and fees
-      setCityRegionsForCity(data.data?.cityRegions?.map((region: any) => ({
-        name: region.name || region,
-        fee: region.fee,
-        _id: region._id || region.name || region
-      })) || []);
-    } catch (error) {
-      console.error('Error loading city regions:', error);
-      setCityRegionsForCity([]); // Reset to empty, let the user use 'Other' functionality
-    } finally {
-      setLoadingCityRegions(false);
-    }
-  };
-
-  const handleEditLocation = (index: number) => {
-    setWorkflowStep('location-form');
-    // For editing, load the specific location
-    const locationToEdit = locations[index];
-    // Create a location with the existing data, ensuring all fields are present
-    const completeLocation = {
-      locationType: locationToEdit.locationType || 'headquarters',
-      brandName: locationToEdit.brandName || '',
-      country: locationToEdit.country || '',
-      state: locationToEdit.state || '',
-      lga: locationToEdit.lga || '',
-      city: locationToEdit.city || '',
-      cityRegion: locationToEdit.cityRegion || '',
-      houseNumber: locationToEdit.houseNumber || '',
-      street: locationToEdit.street || '',
-      landmark: locationToEdit.landmark || '',
-      buildingColor: locationToEdit.buildingColor || '',
-      buildingType: locationToEdit.buildingType || '',
-      cityRegionFee: locationToEdit.cityRegionFee,
-      gallery: locationToEdit.gallery || { images: [], videos: [] },
-    };
-    setCurrentLocation(completeLocation);
-    setEditingIndex(index);
-  };
+    checkPendingPayment();
+  }, [token]);
 
   const handleDeleteLocation = (index: number) => {
-    // Show delete confirmation modal
     const locationToDelete = locations[index];
     setDeleteModal({
       isOpen: true,
@@ -680,8 +115,7 @@ const VerificationBadgeSubscriptionPage: React.FC = () => {
       locationName: locationToDelete.brandName || `Location ${index + 1}`
     });
   };
-  
-  // Confirm delete location
+
   const confirmDeleteLocation = async () => {
     if (deleteModal.locationIndex !== null) {
       setIsProcessing(true);
@@ -722,35 +156,127 @@ const VerificationBadgeSubscriptionPage: React.FC = () => {
     }
   };
 
-  // Load organization profile and locations on mount
+  const handleMakePayment = async (locationIndex: number) => {
+    const location = locations[locationIndex];
+    const locData = location._doc ? location._doc : location;
+    
+    // Check authentication first
+    if (!token) {
+      setErrorMessage('Please login to make a payment');
+      return;
+    }
+
+    // Wait for auth to be restored before checking user data
+    if (!isAuthRestored) {
+      setErrorMessage('Loading user information... Please wait a moment and try again.');
+      return;
+    }
+
+    // Now user should be available after auth is restored
+    if (!user) {
+      setErrorMessage('User information not found. Please login again.');
+      console.error('User object is null even after auth restoration');
+      return;
+    }
+
+    // Validate user has required fields - email should ALWAYS exist for logged-in users
+    if (!user.email) {
+      console.error('User email missing. Full user object:', user);
+      setErrorMessage('User email not found. Please login again.');
+      return;
+    }
+
+    setPaymentProcessing(locationIndex);
+    setErrorMessage('');
+
+    try {
+      // Step 1: Initialize payment for this specific location with actual user data
+      const initializeUrl = '/api/payment/verified-badge/initialize';
+      
+      const { HttpService } = await import('@/services/HttpService');
+      
+      console.log('Initializing payment with user data:', {
+        email: user.email,
+        name: user.fullName || locData.brandName,
+        phone: user.phoneNumber || '+2348012345678',
+      });
+      
+      const initializeResponse = await HttpService.post<any>(initializeUrl, {
+        email: user.email,
+        name: user.fullName || locData.brandName || 'Business Owner',
+        phone: user.phoneNumber || '+2348012345678', // Use user's phone or default
+        returnUrl: `${window.location.origin}/payment/verify-location`, // Redirect to location verification page
+      });
+      
+      if (!initializeResponse.success || !initializeResponse.data) {
+        throw new Error(initializeResponse.message || 'Unable to initialize payment');
+      }
+
+      const { paymentLink, transactionRef, amount, fee } = initializeResponse.data;
+      const locationDescription = `${locData.brandName} - ${locData.city}, ${locData.state}`;
+
+      console.log('Payment initialized successfully:', {
+        transactionRef,
+        amount,
+        location: locationDescription,
+      });
+
+      // Step 2: Redirect to payment page in the same window
+      if (paymentLink) {
+        // Store transaction data in sessionStorage for verification after payment
+        sessionStorage.setItem('pendingPayment', JSON.stringify({
+          transactionRef: transactionRef,
+          locationIndex: locationIndex,
+          amount: amount,
+          locationDescription: locationDescription,
+        }));
+        
+        // Redirect to payment page in the same window
+        window.location.href = paymentLink;
+      } else {
+        throw new Error('No payment URL received from server');
+      }
+
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      setErrorMessage(error.message || 'Failed to process payment');
+      setPaymentProcessing(null);
+    }
+  };
+
+  
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Load profile
+       
         const profileResponse = await organizationProfileService.getProfile();
         if (profileResponse.success && profileResponse.data) {
           const profile = profileResponse.data.profile;
-          setOrganizationDetails(prev => ({
-            ...prev,
-            type: profile.businessType,
-            visibility: profile.isPublicProfile ? "public" : "private",
-            verifiedBadge: profile.verificationStatus === "verified"
-          }));
-        }
-
-        // Load locations from profile response
-        if (profileResponse.success && profileResponse.data && profileResponse.data.profile) {
-          const profile = profileResponse.data.profile;
-          if (profile.locations && Array.isArray(profile.locations)) {
+          setProfileInfo({
+            businessType: profile.businessType,
+            isPublicProfile: profile.isPublicProfile || false,
+            verificationStatus: profile.verificationStatus
+          });
+        
+          if ('locations' in profileResponse.data.profile && Array.isArray(profileResponse.data.profile.locations)) {
             // Ensure each location has a properly initialized gallery property
-            const locationsWithGallery = profile.locations.map(location => ({
+            const locationsWithGallery = profileResponse.data.profile.locations.map(location => ({
               ...location,
               gallery: location.gallery || { images: [], videos: [] }
             }));
             setLocations(locationsWithGallery);
-          } else {
-            setLocations([]);
           }
+        }
+
+        // Load locations from API
+        const locationsResponse = await organizationProfileService.getAllLocations();
+        if (locationsResponse.success && locationsResponse.data) {
+          // Ensure each location has a properly initialized gallery property
+          const locationsWithGallery = locationsResponse.data.locations.map(location => ({
+            ...location,
+            gallery: location.gallery || { images: [], videos: [] }
+          }));
+          setLocations(locationsWithGallery);
         }
       } catch (error) {
         console.error('Error loading data:', error);
@@ -767,22 +293,13 @@ const VerificationBadgeSubscriptionPage: React.FC = () => {
         * { font-family: 'Manrope', sans-serif; }
       `}</style>
 
-      
-
       <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
         
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Organization Management</h2>
-          <p className="text-gray-600">
-            {workflowStep === 'locations' && 'View and manage your organization locations.'}
-            {workflowStep === 'location-form' && 'Add or edit organization location details.'}
-          </p>
+          <p className="text-gray-600">View and manage your organization locations.</p>
         </div>
         
-        
-
-
-
         {/* Display success and error messages */}
         {successMessage && (
           <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
@@ -802,121 +319,41 @@ const VerificationBadgeSubscriptionPage: React.FC = () => {
           </div>
         )}
         
-
         <div className="mb-8">
         
-          {/* {workflowStep === 'locations' && (
-            <div className="mb-6 p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
-              <div className="mb-4">
-                <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                  <Image className="w-6 h-6 text-[#5d2a8b]" />
-                  Organization Gallery
-                </h3>
-                <p className="text-gray-600 mt-1">
-                  Showcase your organization's products, services, and facilities with images and videos.
-                </p>
-              </div>
-              <GallerySection 
-                initialGallery={locations[0]?.gallery || { images: [], videos: [] }}
-                onGalleryChange={(gallery) => {
-                  // Handle gallery change for the first location or create a new one
-                  if (locations.length > 0) {
-                    const updatedLocations = [...locations];
-                    updatedLocations[0] = {
-                      ...updatedLocations[0],
-                      gallery
-                    };
-                    setLocations(updatedLocations);
-                  }
-                }}
-                maxItems={10}
-              />
-            </div>
-          )} */}
-
           {/* Actions outside the container */}
           <div className="flex justify-between mb-4">
-            <a href="/admin/subscription/profile" className="px-4 py-2 bg-[#5d2a8b] text-white rounded-lg hover:bg-[#7a3aa3] transition-colors">
-              Manage Profile
-            </a>
-            <button 
-              onClick={handleAddLocation}
+            <div className="flex gap-2">
+              <a href="/admin/subscription/profile" className="px-4 py-2 bg-[#5d2a8b] text-white rounded-lg hover:bg-[#7a3aa3] transition-colors">
+                Manage Profile
+              </a>
+              
+            </div>
+            <a 
+              href="/admin/subscription/verification-badge/add-location"
               className="px-4 py-2 bg-[#5d2a8b] text-white rounded-lg hover:bg-[#7a3aa3] transition-colors flex items-center"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add New Location
-            </button>
+            </a>
           </div>
                   
-          {/* Single Location Form */}
-          {workflowStep === 'location-form' && (
-            <div className="mb-8">
-              <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-6">
-                <SearchableLocationForm
-                  currentLocation={currentLocation}
-                  editingIndex={editingIndex}
-                  isEditingExistingLocation={editingIndex !== null}
-                  handleLocationChange={handleLocationChange}
-                  handleAddLocation={handleLocationSubmit}
-                  handleAddMoreLocation={() => {}}
-                  handleCancel={() => {
-                    setWorkflowStep('locations');
-                    setCurrentLocation(null);
-                    setEditingIndex(null);
-                    setFieldErrors({});
-                  }}
-                  isProcessing={isProcessing}
-                  fieldErrors={fieldErrors}
-                  statesForCountry={statesForCountry}
-                  lgasForState={lgasForState}
-                  citiesForLga={citiesForLga}
-                  cityRegionsForCity={cityRegionsForCity}
-                  loadingStates={loadingStates}
-                  loadingLgas={loadingLgas}
-                  loadingCities={loadingCities}
-                  loadingCityRegions={loadingCityRegions}
-                  handleStateChange={handleStateChange}
-                  handleLgaChange={handleLgaChange}
-                  handleCityChange={handleCityChange}
-                  handleCityRegionChange={handleCityRegionChange}
-                />
-              </div>
-            </div>
-          )}
-                  
-          {/* Back to Locations Button when in location form */}
-          {workflowStep === 'location-form' && (
-            <div className="mb-6">
-              <button
-                onClick={() => {
-                  setCurrentLocation(null);
-                  setEditingIndex(null);
-                  setWorkflowStep('locations');
-                }}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-              >
-                Back to Locations
-              </button>
-            </div>
-          )}
-                  
-          {/* Locations Table - Only show when not in location form */}
-          {workflowStep === 'locations' && (
-            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-              {/* Organization Info Header */}
-              {profileInfo && (
-                <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <h3 className="font-semibold text-gray-900 mb-2">Organization Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                    <div><span className="font-medium">Business Type:</span> {profileInfo.businessType}</div>
-                    <div><span className="font-medium">Public Profile:</span> {profileInfo.isPublicProfile ? 'Yes' : 'No'}</div>
-                    <div><span className="font-medium">Verification Status:</span> {profileInfo.verificationStatus}</div>
-                  </div>
+          {/* Locations Table */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            {/* Organization Info Header */}
+            {profileInfo && (
+              <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h3 className="font-semibold text-gray-900 mb-2">Organization Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                  <div><span className="font-medium">Business Type:</span> {profileInfo.businessType}</div>
+                  <div><span className="font-medium">Public Profile:</span> {profileInfo.isPublicProfile ? 'Yes' : 'No'}</div>
+                  <div><span className="font-medium">Verification Status:</span> {profileInfo.verificationStatus}</div>
                 </div>
-              )}
+              </div>
+            )}
 
-              <div className="overflow-x-auto max-h-96 overflow-y-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+            <div className="overflow-x-auto max-h-96 overflow-y-auto">
+              <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
@@ -995,12 +432,29 @@ const VerificationBadgeSubscriptionPage: React.FC = () => {
             {locData.gallery?.videos?.length || 0} videos
           </td>
           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex space-x-4">
-            <button
-              onClick={() => handleEditLocation(index)}
-              className="text-blue-600 hover:text-blue-800"
-            >
-              Edit
-            </button>
+            {!locData.isPaidFor && (
+              <button
+                onClick={() => handleMakePayment(index)}
+                disabled={paymentProcessing === index}
+                className={`flex items-center px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  paymentProcessing === index
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-[#572e7f] hover:bg-[#572e7f]'
+                } text-white`}
+              >
+                {paymentProcessing === index ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-3 h-3 mr-1" />
+                    Make Payment
+                  </>
+                )}
+              </button>
+            )}
             <button
               onClick={() => handleDeleteLocation(index)}
               className="text-red-600 hover:text-red-900"
@@ -1022,7 +476,6 @@ const VerificationBadgeSubscriptionPage: React.FC = () => {
               </table>
             </div>
           </div>
-          )}
         </div>
       </div>
       
