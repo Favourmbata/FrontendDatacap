@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { DataVerificationService } from '@/services/DataVerificationService';
 import { toast } from '@/app/components/hooks/use-toast';
+import ReviewVerificationModal from './ReviewVerificationModal';
 
 interface Verification {
   _id: string;
@@ -78,6 +79,17 @@ const DataVerificationPage = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [statusFilter, setStatusFilter] = useState('');
   const [exportLoading, setExportLoading] = useState(false);
+  const [selectedVerificationId, setSelectedVerificationId] = useState<string | null>(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+
+  const handleViewDetails = (verificationId: string) => {
+    setSelectedVerificationId(verificationId);
+    setIsReviewModalOpen(true);
+  };
+
+  const handleReviewComplete = () => {
+    fetchData(); // Refresh the data after review
+  };
 
   useEffect(() => {
     fetchData();
@@ -171,7 +183,7 @@ const DataVerificationPage = () => {
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center">
@@ -179,6 +191,18 @@ const DataVerificationPage = () => {
                 <div>
                   <p className="text-sm text-gray-600">Total</p>
                   <p className="text-2xl font-bold">{stats.total}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center">
+                <Clock className="h-8 w-8 text-orange-600 mr-3" />
+                <div>
+                  <p className="text-sm text-gray-600">Draft</p>
+                  <p className="text-2xl font-bold">{stats.draft}</p>
                 </div>
               </div>
             </CardContent>
@@ -309,7 +333,11 @@ const DataVerificationPage = () => {
                         </div>
                       </div>
                       <div className="flex space-x-2">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleViewDetails(verification._id)}
+                        >
                           <Eye className="h-4 w-4 mr-1" />
                           View Details
                         </Button>
@@ -560,6 +588,17 @@ const DataVerificationPage = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      
+      {/* Review Verification Modal */}
+      <ReviewVerificationModal
+        isOpen={isReviewModalOpen}
+        onClose={() => {
+          setIsReviewModalOpen(false);
+          setSelectedVerificationId(null);
+        }}
+        verificationId={selectedVerificationId || ''}
+        onReviewComplete={handleReviewComplete}
+      />
     </div>
   );
 };

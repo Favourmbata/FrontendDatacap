@@ -1,55 +1,63 @@
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { NextResponse, NextRequest } from 'next/server';
 
 // GET /api/super-admin/data-verification/verifications
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
-
-    if (!token) {
-      return NextResponse.json(
-        { success: false, message: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
-
-    // Mock implementation - in real app, call your backend service
-    const mockVerifications = [
-      {
-        _id: 'verification-1',
-        verificationId: 'DV-1705320600000-ABC123',
-        verifierUserId: 'user-123',
-        verifierName: 'John Doe',
-        country: 'Nigeria',
-        state: 'Lagos',
-        organizationName: 'Tech Company Ltd',
-        targetUserFirstName: 'Jane',
-        targetUserLastName: 'Smith',
-        status: status || 'submitted',
-        submittedAt: '2024-01-15T10:30:00.000Z',
-        createdAt: '2024-01-15T09:00:00.000Z'
-      }
-    ];
-
-    const mockResponse = {
-      success: true,
-      data: {
-        verifications: mockVerifications,
-        total: mockVerifications.length
+    
+    // Call the actual backend API
+    const backendUrl = `https://datacapture-backend.onrender.com/api/super-admin/data-verification/verifications${status ? `?status=${status}` : ''}`;
+    
+    const response = await fetch(backendUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        // Forward authorization header if present
+        ...req.headers.has('authorization') 
+          ? { authorization: req.headers.get('authorization')! } 
+          : {},
       },
-      message: 'All verifications retrieved successfully'
-    };
-
-    return NextResponse.json(mockResponse);
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Backend API error:', response.status, errorText);
+      return new Response(errorText, {
+        status: response.status,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
+    }
+    
+    const data = await response.json();
+    
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    });
   } catch (error) {
     console.error('Error fetching verifications:', error);
-    return NextResponse.json(
-      { success: false, message: 'Internal server error' },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({
+        success: false,
+        message: 'Failed to fetch verifications',
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
     );
   }
 }

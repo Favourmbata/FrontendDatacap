@@ -1,21 +1,42 @@
+
 "use client";
 
-import { useState, useEffect, JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal } from 'react';
-import { Search, Filter, MapPin, Star, Heart, CheckCircle, Clock, Phone, Mail, Calendar, Scissors, Dumbbell, Bath, Shirt, Barcode, Tag, Package, Wrench, ShoppingCart, Eye, AlertCircle } from 'lucide-react';
-import { useAuth } from '@/api/hooks/useAuth';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { Search, MapPin, CheckCircle, Tag, AlertCircle, Package, Layers } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-import type { Industry, PublicProduct, PublicProductDetails } from '@/types/publicProduct';
+import type { PublicProduct, PublicProductDetails } from '@/types/publicProduct';
 import { PublicProductService } from '@/services/publicProductService.ts';
+import ProductDetailsView from '@/modules/user/body-care/ProductDetailsView';
+import SubServiceView from '@/modules/user/body-care/SubServiceView';
+import ProductCard from '@/modules/user/body-care/ProductCard';
+
+
+// Define types for sub-services
+interface SubService {
+  name: string;
+  description: string;
+  subPlatformUniqueCode: string;
+  uploadPicture: string;
+  price: number;
+}
+
+interface ExtendedPublicProductDetails extends PublicProductDetails {
+  product: PublicProductDetails['product'] & {
+    totalAvailableServiceProviders?: number;
+    hasSubServices?: boolean;
+    subServiceCount?: number;
+    subServices?: SubService[];
+    availability?: {
+      type: string;
+    };
+  };
+}
 
 const BodyCarePage = () => {
-  const { user } = useAuth();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedCategoryName, setSelectedCategoryName] = useState('');
-  const [selectedIndustry, setSelectedIndustry] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [selectedState, setSelectedState] = useState('');
   const [itemType, setItemType] = useState<'product' | 'service'>('product');
@@ -24,7 +45,8 @@ const BodyCarePage = () => {
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [products, setProducts] = useState<PublicProduct[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<PublicProductDetails | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ExtendedPublicProductDetails | null>(null);
+  const [selectedSubService, setSelectedSubService] = useState<SubService | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,8 +58,6 @@ const BodyCarePage = () => {
   });
 
   // Filter options
-  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
-  const [industries, setIndustries] = useState<Industry[]>([]);
   const [cities, setCities] = useState<string[]>([]);
   const [states, setStates] = useState<string[]>([]);
   const [allCategories, setAllCategories] = useState<Array<{ 
@@ -47,7 +67,6 @@ const BodyCarePage = () => {
     industry: { id: string; name: string; }; 
     productCount: number; 
   }>>([]);
-  const [loadingCategories, setLoadingCategories] = useState(false);
 
   // Fetch products on mount and when filters change
   useEffect(() => {
@@ -58,8 +77,6 @@ const BodyCarePage = () => {
   // Extract filter options when products change
   useEffect(() => {
     if (products.length > 0) {
-      setCategories(PublicProductService.extractCategories(products));
-      setIndustries(PublicProductService.extractIndustries(products));
       const locations = PublicProductService.extractLocations(products);
       setCities(locations.cities);
       setStates(locations.states);
@@ -67,29 +84,24 @@ const BodyCarePage = () => {
   }, [products]);
 
   const fetchProducts = async () => {
-    console.log('Fetching products with itemType:', itemType);
     setLoading(true);
     setError(null);
     
     try {
       const response = await PublicProductService.searchProducts({
         search: searchTerm || undefined,
-        categoryId: selectedCategory || undefined,
         categoryName: selectedCategoryName || undefined,
-        industryId: selectedIndustry || undefined,
         city: selectedCity || undefined,
         state: selectedState || undefined,
         minPrice: minPrice ? parseFloat(minPrice) : undefined,
         maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
-        itemType: itemType, // Use the selected item type
+        itemType: itemType,
         page: pagination.page,
         limit: pagination.limit,
         sortBy: sortBy || undefined,
         sortOrder: sortOrder || undefined
       });
       
-      console.log('API Response:', response);
-
       if (response.success) {
         setProducts(response.data.items);
         setPagination({
@@ -117,7 +129,6 @@ const BodyCarePage = () => {
   };
 
   const fetchAllCategories = async () => {
-    setLoadingCategories(true);
     try {
       const response = await PublicProductService.getAllCategories();
       if (response.success) {
@@ -125,8 +136,6 @@ const BodyCarePage = () => {
       }
     } catch (err) {
       console.error('Error fetching categories:', err);
-    } finally {
-      setLoadingCategories(false);
     }
   };
 
@@ -137,7 +146,8 @@ const BodyCarePage = () => {
       const response = await PublicProductService.getProductByCode(platformCode);
       
       if (response.success) {
-        setSelectedProduct(response.data);
+        setSelectedProduct(response.data as ExtendedPublicProductDetails);
+        setSelectedSubService(null);
       } else {
         setError(response.message || 'Product not found with this platform code');
       }
@@ -156,15 +166,8 @@ const BodyCarePage = () => {
       const response = await PublicProductService.getProductDetails(product.id);
       
       if (response.success) {
-        // Add the current itemType to the selected product data
-        const productWithItemType = {
-          ...response.data,
-          product: {
-            ...response.data.product,
-            itemType: product.itemType // Preserve the item type from the list view
-          }
-        };
-        setSelectedProduct(productWithItemType);
+        setSelectedProduct(response.data as ExtendedPublicProductDetails);
+        setSelectedSubService(null);
       } else {
         setError(response.message || 'Failed to fetch product details');
       }
@@ -178,39 +181,60 @@ const BodyCarePage = () => {
 
   const handleBack = () => {
     setSelectedProduct(null);
+    setSelectedSubService(null);
   };
 
-  const makePayment = async (product: PublicProductDetails) => {
-    console.log('Making payment for product:', product);
-    // Store the product in localStorage for the payment process
-    const paymentData = {
+  const handleBackFromSubService = () => {
+    setSelectedSubService(null);
+  };
+
+  const handleSubServiceSelect = (subService: SubService) => {
+    setSelectedSubService(subService);
+  };
+
+  const makePayment = async (product: ExtendedPublicProductDetails, subService?: SubService) => {
+    const paymentData = subService ? {
+      productId: product.product.id,
+      subServiceId: subService.subPlatformUniqueCode,
+      name: subService.name,
+      description: subService.description,
+      price: subService.price,
+      upfrontPayment: product.product.pricing.upfrontPaymentAmount,
+      organizationId: product.product.productInfo.platformUniqueCode,
+      organizationName: product.serviceProvider.producer,
+      upfrontPercentage: product.product.pricing.upfrontPaymentPercentage || 10,
+      itemType: 'service',
+      isSubService: true,
+      timestamp: Date.now()
+    } : {
       productId: product.product.id,
       name: product.product.name,
       price: product.product.pricing.discountedPrice,
       upfrontPayment: product.product.pricing.upfrontPaymentAmount,
-      organizationId: product.product.productInfo.platformUniqueCode, // Include organization ID
-      organizationName: product.serviceProvider.producer, // Include organization name
-      upfrontPercentage: product.product.pricing.upfrontPaymentPercentage || 10, // Include upfront percentage
-      itemType: product.product.itemType, // Include the item type (product or service)
+      organizationId: product.product.productInfo.platformUniqueCode,
+      organizationName: product.serviceProvider.producer,
+      upfrontPercentage: product.product.pricing.upfrontPaymentPercentage || 10,
+      itemType: product.product.itemType,
       timestamp: Date.now()
     };
-    console.log('Storing payment data:', paymentData);
-    localStorage.setItem('selectedProduct', JSON.stringify(paymentData));
     
-    // Navigate to the payment page to complete the transaction
+    localStorage.setItem('selectedProduct', JSON.stringify(paymentData));
     router.push('/user/payment');
   };
 
-  const bookAppointment = (product: PublicProductDetails) => {
-    localStorage.setItem('appointmentProduct', JSON.stringify(product));
+  const bookAppointment = (product: ExtendedPublicProductDetails, subService?: SubService) => {
+    const appointmentData = subService ? {
+      ...product,
+      selectedSubService: subService
+    } : product;
+    
+    localStorage.setItem('appointmentProduct', JSON.stringify(appointmentData));
     router.push('/user/book-appointment');
   };
 
   const clearFilters = () => {
     setSearchTerm('');
-    setSelectedCategory('');
     setSelectedCategoryName('');
-    setSelectedIndustry('');
     setSelectedCity('');
     setSelectedState('');
     setMinPrice('');
@@ -223,262 +247,35 @@ const BodyCarePage = () => {
 
   const formatCurrency = PublicProductService.formatNaira;
 
-  if (selectedProduct) {
+  // Render appropriate view based on state
+  if (selectedSubService && selectedProduct) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8">
-          <div className="max-w-7xl mx-auto">
-            {/* Back Button */}
-            <button 
-              onClick={handleBack}
-              className="mb-6 text-purple-600 hover:text-purple-700 font-medium flex items-center"
-            >
-              ← Back to {selectedProduct?.product?.itemType === 'service' ? 'Services' : 'Products'}
-            </button>
-
-            {loadingDetails ? (
-              <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5d2a8b]"></div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden border-2 border-[#5d2a8b]">
-                {/* Header */}
-                <div className="bg-gradient-to-r from-[#5d2a8b] to-[#7a3aa3] p-6 text-white">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h1 className="text-3xl font-bold mb-2">{selectedProduct.product.name}</h1>
-                      <p className="text-[#d0c4da] flex items-center">
-                        <MapPin className="w-4 h-4 mr-2" />
-                        {selectedProduct.product.location.address}
-                      </p>
-                    </div>
-                    {selectedProduct.product.location.verified && (
-                      <div className="bg-white text-green-600 px-4 py-2 rounded-full text-sm font-semibold flex items-center">
-                        <CheckCircle className="w-5 h-5 mr-2" />
-                        Verified
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="p-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Product Images */}
-                    <div>
-                      {selectedProduct.product.images.main ? (
-                        <div className="h-96 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg overflow-hidden mb-4 flex items-center justify-center">
-                          <img 
-                            src={selectedProduct.product.images.main} 
-                            alt={selectedProduct.product.name}
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                      ) : (
-                        <div className="h-96 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg overflow-hidden mb-4 flex items-center justify-center">
-                          <div className="w-32 h-32 rounded-full bg-purple-200 flex items-center justify-center">
-                            {selectedProduct?.product?.itemType === 'service' ? (
-                              <Wrench className="w-16 h-16 text-[#5d2a8b]" />
-                            ) : (
-                              <Package className="w-16 h-16 text-[#5d2a8b]" />
-                            )}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Product Gallery Thumbnails */}
-                      {selectedProduct.product.images.all.length > 0 && (
-                        <div className="grid grid-cols-3 gap-2">
-                          {selectedProduct.product.images.all.slice(0, 3).map((img: string, index: number) => (
-                            <div key={index} className="h-20 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg overflow-hidden">
-                              <img 
-                                src={img} 
-                                alt={`${selectedProduct.product.name} ${index + 1}`}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Product Details Card */}
-                    <div className="bg-gray-50 p-6 rounded-lg">
-                      <h2 className="text-xl font-bold text-gray-900 mb-4">{selectedProduct?.product?.itemType === 'service' ? 'Service' : 'Product'} Details</h2>
-                      
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-sm text-gray-600">Original Price</p>
-                            <p className="text-lg font-bold text-gray-500 line-through">
-                              {formatCurrency(selectedProduct.product.pricing.originalPrice)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600">Discounted Price</p>
-                            <p className="text-2xl font-bold text-[#5d2a8b]">
-                              {formatCurrency(selectedProduct.product.pricing.discountedPrice)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600">You Save</p>
-                            <p className="text-lg font-bold text-green-600">
-                              {formatCurrency(Math.abs(selectedProduct.product.pricing.youSave))}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600">Discount</p>
-                            <p className="text-lg font-bold text-orange-600">
-                              {selectedProduct.product.pricing.discount}%
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-sm text-gray-600 font-medium">Category</p>
-                            <p className="font-semibold">{selectedProduct.product.productInfo.category}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600 font-medium">Industry</p>
-                            <p className="font-semibold">{selectedProduct.product.productInfo.industry}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600 font-medium">Available Quantity</p>
-                            <p className="font-semibold">{selectedProduct.product.productInfo.availableQuantity} units</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600 font-medium">Platform Code</p>
-                            <p className="font-mono text-xs">{selectedProduct.product.productInfo.platformUniqueCode}</p>
-                          </div>
-                        </div>
-
-                        <div>
-                          <p className="text-sm text-gray-600 font-medium mb-2">Description</p>
-                          <p className="text-gray-700">{selectedProduct.product.description}</p>
-                        </div>
-
-                        <div>
-                          <p className="text-sm text-gray-600 font-medium mb-2">Ingredients/Formulas</p>
-                          <p className="text-gray-700">{selectedProduct.product.ingredients}</p>
-                        </div>
-
-                        <div>
-                          <p className="text-sm text-gray-600 font-medium mb-2">Payment Methods</p>
-                          <p className="text-gray-700">{selectedProduct.product.paymentMethods}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Service Provider Information Card */}
-                  <div className="bg-gray-50 p-6 rounded-lg mt-6">
-                    <h2 className="text-xl font-bold text-gray-900 mb-4">{selectedProduct?.product?.itemType === 'service' ? 'Service' : 'Product'} Provider Information</h2>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <p className="text-sm text-gray-600 font-medium mb-2">Producer</p>
-                        <p className="font-semibold text-lg">{selectedProduct.serviceProvider.producer}</p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-sm text-gray-600 font-medium mb-2">Contact</p>
-                        <div className="space-y-2">
-                          <p className="text-gray-700 flex items-center">
-                            <Phone className="w-4 h-4 mr-2 text-[#5d2a8b]" />
-                            {selectedProduct.serviceProvider.contact.phone}
-                          </p>
-                          <p className="text-gray-700 flex items-center">
-                            <Mail className="w-4 h-4 mr-2 text-[#5d2a8b]" />
-                            {selectedProduct.serviceProvider.contact.email}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-sm text-gray-600 font-medium mb-2">Availability</p>
-                        <div className="space-y-2">
-                          <p className="text-gray-700 flex items-center">
-                            <Clock className="w-4 h-4 mr-2 text-[#5d2a8b]" />
-                            {selectedProduct.serviceProvider.availability.hours}
-                          </p>
-                          <p className="text-gray-700 flex items-center">
-                            <Calendar className="w-4 h-4 mr-2 text-[#5d2a8b]" />
-                            {selectedProduct.serviceProvider.availability.days}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Different Locations Card */}
-                  <div className="bg-gray-50 p-6 rounded-lg mt-6">
-                    <h2 className="text-xl font-bold text-gray-900 mb-4">{selectedProduct?.product?.itemType === 'service' ? 'Service' : 'Product'} Locations</h2>
-                    
-                    <div className="space-y-4">
-                      {selectedProduct.serviceLocations.map((location: { title: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; subtitle: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; fee: any; address: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; lga: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; state: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; country: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; verified: any; }, index: Key | null | undefined) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h3 className="font-semibold text-gray-900">{location.title}</h3>
-                              <p className="text-sm text-gray-600">{location.subtitle}</p>
-                            </div>
-                            <span className="bg-[#5d2a8b]/10 text-[#5d2a8b] text-xs px-2 py-1 rounded-full">
-                              Fee: {formatCurrency(location.fee)}
-                            </span>
-                          </div>
-                          
-                          <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                            <div className="flex items-center">
-                              <MapPin className="w-4 h-4 mr-2 text-[#5d2a8b]" />
-                              <span>{location.address}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">LGA:</span> {location.lga}
-                            </div>
-                            <div>
-                              <span className="text-gray-600">State:</span> {location.state}
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Country:</span> {location.country}
-                            </div>
-                          </div>
-                          
-                          {location.verified && (
-                            <div className="mt-2 flex items-center text-xs text-green-600">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Verified Location
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex justify-center mt-8 space-x-4">
-                    <button 
-                      onClick={() => makePayment(selectedProduct)}
-                      className="bg-[#5d2a8b] text-white px-8 py-3 rounded-lg font-semibold hover:bg-[#7a3aa3] transition-colors flex items-center"
-                    >
-                      <ShoppingCart className="w-5 h-5 mr-2" />
-                      {selectedProduct?.product?.itemType === 'service' ? 'Book & Pay Service' : 'Make Payment'}
-                    </button>
-                    <button 
-                      onClick={() => bookAppointment(selectedProduct)}
-                      className="border-2 border-[#5d2a8b] text-[#5d2a8b] px-8 py-3 rounded-lg font-semibold hover:bg-[#5d2a8b] hover:text-white transition-colors"
-                    >
-                      Book Appointment
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <SubServiceView
+        selectedSubService={selectedSubService}
+        selectedProduct={selectedProduct}
+        onBack={handleBackFromSubService}
+        onMakePayment={makePayment}
+        onBookAppointment={bookAppointment}
+        formatCurrency={formatCurrency}
+      />
     );
   }
 
+  if (selectedProduct) {
+    return (
+      <ProductDetailsView
+        selectedProduct={selectedProduct}
+        loading={loadingDetails}
+        onBack={handleBack}
+        onSubServiceSelect={handleSubServiceSelect}
+        onMakePayment={makePayment}
+        onBookAppointment={bookAppointment}
+        formatCurrency={formatCurrency}
+      />
+    );
+  }
+
+  // Main listing view
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8">
@@ -508,7 +305,6 @@ const BodyCarePage = () => {
                 </button>
                 <button
                   onClick={() => {
-                    console.log('Service button clicked, setting itemType to service');
                     setItemType('service');
                     setPagination({ ...pagination, page: 1 });
                   }}
@@ -525,16 +321,15 @@ const BodyCarePage = () => {
           </div>
 
           {/* Quick Platform Code Search */}
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border-2 border-purple-300">
+          <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border-2 border-[#5d2a8b]">
             <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-             
               Quick Search by Platform Code
             </h3>
             <div className="flex gap-3">
               <input
                 type="text"
-                placeholder="Enter platform unique code (e.g., ORG1766704354663-005-008)"
-                className="flex-1 px-4 py-3 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                placeholder="Enter platform unique code (e.g., ORG1766704354663-008-016)"
+                className="flex-1 px-4 py-3 border-2 border-[#5d2a8b] rounded-lg focus:ring-2 focus:ring-[#5d2a8b] focus:border-[#5d2a8b]"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && e.currentTarget.value.trim()) {
                     handleSearchByCode(e.currentTarget.value.trim());
@@ -549,13 +344,12 @@ const BodyCarePage = () => {
                     handleSearchByCode(input.value.trim());
                   }
                 }}
-                className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold flex items-center"
+                className="px-6 py-3 bg-[#5d2a8b] text-white rounded-lg hover:bg-[#7a3aa3] transition-colors font-semibold flex items-center"
               >
                 <Search className="w-5 h-5 mr-2" />
                 Search Code
               </button>
             </div>
-           
           </div>
 
           {/* Search and Filters */}
@@ -572,21 +366,6 @@ const BodyCarePage = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-              {/* Category Filter (ID) */}
-              {/* <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                <select
-                  className="w-full px-4 py-3 border border-[#5d2a8b] rounded-lg focus:ring-2 focus:ring-[#5d2a8b] focus:border-[#5d2a8b]"
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                >
-                  <option value="">All Categories</option>
-                  {categories.map(category => (
-                    <option key={category.id} value={category.id}>{category.name}</option>
-                  ))}
-                </select>
-              </div> */}
-
               {/* Category Name Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Category Name</label>
@@ -603,21 +382,6 @@ const BodyCarePage = () => {
                   ))}
                 </select>
               </div>
-
-              {/* Industry Filter */}
-              {/* <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Industry</label>
-                <select
-                  className="w-full px-4 py-3 border border-[#5d2a8b] rounded-lg focus:ring-2 focus:ring-[#5d2a8b] focus:border-[#5d2a8b]"
-                  value={selectedIndustry}
-                  onChange={(e) => setSelectedIndustry(e.target.value)}
-                >
-                  <option value="">All Industries</option>
-                  {industries.map(industry => (
-                    <option key={industry.id} value={industry.id}>{industry.name}</option>
-                  ))}
-                </select>
-              </div> */}
 
               {/* Location Filters */}
               <div className="grid grid-cols-2 gap-2">
@@ -707,7 +471,7 @@ const BodyCarePage = () => {
                 className="flex-1 bg-[#5d2a8b] text-white py-3 rounded-lg hover:bg-[#7a3aa3] transition-colors font-semibold flex items-center justify-center"
               >
                 <Search className="w-5 h-5 mr-2" />
-                Search Products
+                Search
               </button>
               <button 
                 type="button"
@@ -751,81 +515,12 @@ const BodyCarePage = () => {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {products.map(product => (
-                  <div key={product.id} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300 border-2 border-[#5d2a8b] hover:border-[#7a3aa3]">
-                    {/* Product Image */}
-                    <div className="h-48 bg-gradient-to-br from-purple-50 to-purple-100 flex items-center justify-center relative">
-                      {product.imageUrl ? (
-                        <img 
-                          src={product.imageUrl} 
-                          alt={product.name}
-                          className="w-full h-full object-contain"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-full bg-purple-200 flex items-center justify-center">
-                          <Package className="w-8 h-8 text-[#5d2a8b]" />
-                        </div>
-                      )}
-                      {product.location?.verified && (
-                        <div className="absolute top-3 right-3 bg-green-500 text-white px-3 py-1 rounded-full text-xs flex items-center font-semibold z-10">
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          Verified
-                        </div>
-                      )}
-                      <div className="absolute top-3 left-3 bg-[#5d2a8b] text-white px-2 py-1 rounded-full text-xs font-semibold">
-                        {product.categoryName}
-                      </div>
-                      {product.discount > 0 && (
-                        <div className="absolute top-12 right-3 bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-semibold z-10">
-                          {product.discount}% OFF
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Product Info */}
-                    <div className="p-5">
-                      <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
-                      
-                      {/* Pricing */}
-                      <div className="mb-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-gray-400 line-through">
-                            {formatCurrency(product.originalPrice)}
-                          </span>
-                          <span className="text-lg font-bold text-[#5d2a8b]">
-                            {formatCurrency(product.discountedPrice)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold text-green-600">
-                            Save {formatCurrency(Math.abs(product.youSave))}
-                          </span>
-                          <span className="text-sm font-semibold text-gray-600">
-                            {product.availableQuantity} left
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {/* Producer */}
-                      <p className="text-sm text-[#5d2a8b] font-medium mb-2">{product.businessName}</p>
-                      
-                      {/* Location */}
-                      {product.location && (
-                        <p className="text-xs text-gray-500 mb-3 flex items-center">
-                          <MapPin className="w-3 h-3 mr-1" />
-                          {product.location.city}, {product.location.state}
-                        </p>
-                      )}
-                      
-                      {/* Action Button */}
-                      <button 
-                        onClick={() => handleViewDetails(product)}
-                        className="w-full bg-[#5d2a8b] text-white py-2.5 rounded-lg hover:bg-[#7a3aa3] transition-colors font-semibold flex items-center justify-center"
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        View Details
-                      </button>
-                    </div>
-                  </div>
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onViewDetails={handleViewDetails}
+                    formatCurrency={formatCurrency}
+                  />
                 ))}
               </div>
 
@@ -894,7 +589,7 @@ const BodyCarePage = () => {
               <p className="text-gray-500 mb-4">Try adjusting your search or filter criteria</p>
               <button 
                 onClick={clearFilters}
-                className="text-purple-600 hover:text-purple-700 font-medium"
+                className="text-[#5d2a8b] hover:text-[#7a3aa3] font-medium"
               >
                 Clear all filters
               </button>

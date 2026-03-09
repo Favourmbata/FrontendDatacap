@@ -192,7 +192,7 @@ export class DataVerificationService {
   static async getAllVerifications(status?: string): Promise<{ success: boolean; data: { verifications: any[]; total: number }; message: string }> {
     try {
       const params = status ? `?status=${status}` : '';
-      const response = await HttpService.get<any>(`/api/data-verification/admin/all${params}`);
+      const response = await HttpService.get<any>(`/api/super-admin/data-verification/verifications${params}`);
       return response;
     } catch (error) {
       console.error('Error fetching all verifications:', error);
@@ -203,7 +203,7 @@ export class DataVerificationService {
   // Get verification users (for super admin)
   static async getVerificationUsers(): Promise<{ success: boolean; data: UsersResponse; message: string }> {
     try {
-      const response = await HttpService.get<any>('/api/data-verification/admin/users');
+      const response = await HttpService.get<any>('/api/super-admin/data-verification/verification-users');
       return response;
     } catch (error) {
       console.error('Error fetching verification users:', error);
@@ -214,7 +214,7 @@ export class DataVerificationService {
   // Get verification stats (for super admin)
   static async getVerificationStats(): Promise<{ success: boolean; data: { stats: any }; message: string }> {
     try {
-      const response = await HttpService.get<any>('/api/data-verification/admin/stats');
+      const response = await HttpService.get<any>('/api/super-admin/data-verification/verification-stats');
       return response;
     } catch (error) {
       console.error('Error fetching verification stats:', error);
@@ -225,7 +225,7 @@ export class DataVerificationService {
   // Get verification by ID (static version for super admin)
   static async getVerificationById(id: string): Promise<{ success: boolean; data: { verification: any }; message: string }> {
     try {
-      const response = await HttpService.get<any>(`/api/data-verification/${id}`);
+      const response = await HttpService.get<any>(`/api/super-admin/data-verification/verifications/${id}`);
       return response;
     } catch (error) {
       console.error('Error fetching verification:', error);
@@ -236,10 +236,21 @@ export class DataVerificationService {
   // Review verification (for super admin)
   static async reviewVerification(id: string, data: { status: string; comments: string }): Promise<{ success: boolean; data: { verification: any }; message: string }> {
     try {
-      const response = await HttpService.post<any>(`/api/data-verification/${id}/review`, data);
+      const response = await HttpService.post<any>(`/api/super-admin/data-verification/verifications/${id}/review`, data);
       return response;
     } catch (error) {
       console.error('Error reviewing verification:', error);
+      throw error;
+    }
+  }
+
+  // Assign/Remove data verification role to/from a user (for super admin)
+  static async assignDataVerificationRole(userId: string, assign: boolean): Promise<{ success: boolean; data: { userId: string; permissions: string[]; hasDataVerificationRole: boolean }; message: string }> {
+    try {
+      const response = await HttpService.post<any>(`/api/super-admin/data-verification/assign-role/${userId}`, { assign });
+      return response;
+    } catch (error) {
+      console.error('Error assigning data verification role:', error);
       throw error;
     }
   }
