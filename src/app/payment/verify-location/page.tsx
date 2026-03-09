@@ -43,9 +43,9 @@ const VerificationClientComponent = () => {
         setVerificationData(response.data);
         setMessage('Location verification payment successful! Your profile will be updated to pending verification status.');
         
-        // Redirect to subscription packages after 3 seconds
+        // Redirect to admin dashboard (not subscription page)
         setTimeout(() => {
-          router.push('/subscription');
+          router.push('/admin/subscription');
         }, 3000);
       } else {
         setVerificationStatus('failed');

@@ -42,9 +42,14 @@ const PaymentVerificationClient = () => {
           setStatus('success');
           setMessage('Payment verified successfully! Subscription activated.');
           
-          // Redirect to admin page after delay
+          // Redirect based on user type - prevent redirecting back to subscription
           setTimeout(() => {
-            router.push('/admin');
+            const userType = searchParams.get('userType') || 'organization';
+            if (userType === 'individual') {
+              router.push('/user');
+            } else {
+              router.push('/admin');
+            }
           }, 3000);
         } else {
           setStatus('error');
@@ -105,10 +110,10 @@ const PaymentVerificationClient = () => {
               <h2 className="mt-4 text-xl font-bold text-gray-900">Verification Failed</h2>
               <p className="mt-2 text-gray-600">{message}</p>
               <button
-                onClick={() => router.push('/subscription')}
+                onClick={() => router.push('/admin')}
                 className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
               >
-                Try Again
+                Go to Dashboard
               </button>
             </>
           )}

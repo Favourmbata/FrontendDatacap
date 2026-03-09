@@ -132,10 +132,13 @@ export default function LoginPage() {
         } catch (subscriptionError: any) {
           // Fallback: redirect based on role when subscription check fails
           const userRole = data.user.role?.toLowerCase();
+          console.error('Subscription check failed, using role-based routing:', subscriptionError);
           if (userRole === 'super_admin') {
             router.replace("/super-admin");
           } else if (userRole === 'admin' || userRole === 'organisation' || userRole === 'organization') {
-            router.replace("/subscription"); // Default to subscription for org users
+            // Default to dashboard, NOT subscription
+            // SubscriptionGuard will handle showing subscription page if needed
+            router.replace("/admin");
           } else {
             router.replace("/user");
           }
