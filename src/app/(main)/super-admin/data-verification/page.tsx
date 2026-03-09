@@ -12,3 +12,4 @@ const SuperAdminDataVerificationPage = () => {
 };
 
 export default SuperAdminDataVerificationPage;
+

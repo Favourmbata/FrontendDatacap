@@ -287,4 +287,81 @@ export class DataVerificationService {
       throw error;
     }
   }
+
+  // Create role with organization assignments (for super admin)
+  static async createRoleWithAssignments(data: {
+    roleName: string;
+    description: string;
+    selectedUserIds: string[];
+    assignedOrganizations: Array<{
+      userId: string;
+      organizationId: string;
+    }>;
+  }): Promise<{ success: boolean; data: any; message: string }> {
+    try {
+      const response = await HttpService.post<any>('/api/super-admin/data-verification/create-role', data);
+      return response;
+    } catch (error) {
+      console.error('Error creating role with assignments:', error);
+      throw error;
+    }
+  }
+
+  // Assign additional organization (for super admin)
+  static async assignOrganization(data: {
+    userId: string;
+    organizationId: string;
+  }): Promise<{ success: boolean; data: any; message: string }> {
+    try {
+      const response = await HttpService.post<any>('/api/super-admin/data-verification/assign-organization', data);
+      return response;
+    } catch (error) {
+      console.error('Error assigning organization:', error);
+      throw error;
+    }
+  }
+
+  // Get all assignments (for super admin)
+  static async getAllAssignments(): Promise<{ success: boolean; data: { assignments: any[]; total: number }; message: string }> {
+    try {
+      const response = await HttpService.get<any>('/api/super-admin/data-verification/assignments');
+      return response;
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+      throw error;
+    }
+  }
+
+  // Get user assignments (for super admin)
+  static async getUserAssignments(userId: string): Promise<{ success: boolean; data: { assignments: any[]; total: number }; message: string }> {
+    try {
+      const response = await HttpService.get<any>(`/api/super-admin/data-verification/assignments/user/${userId}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching user assignments:', error);
+      throw error;
+    }
+  }
+
+  // Delete assignment (for super admin)
+  static async deleteAssignment(assignmentId: string): Promise<{ success: boolean; data: any; message: string }> {
+    try {
+      const response = await HttpService.delete<any>(`/api/super-admin/data-verification/assignments/${assignmentId}`);
+      return response;
+    } catch (error) {
+      console.error('Error deleting assignment:', error);
+      throw error;
+    }
+  }
+
+  // Get organizations (for super admin - returns organization admins)
+  static async getOrganizationsForAssignment(): Promise<{ success: boolean; data: { organizations: any[]; total: number }; message: string }> {
+    try {
+      const response = await HttpService.get<any>('/api/super-admin/data-verification/organizations');
+      return response;
+    } catch (error) {
+      console.error('Error fetching organizations for assignment:', error);
+      throw error;
+    }
+  }
 }

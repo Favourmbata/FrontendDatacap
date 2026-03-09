@@ -172,7 +172,7 @@ const ReviewVerificationModal = ({
   if (loading) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-white" style={{ marginLeft: '100px' }}>
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
@@ -183,11 +183,11 @@ const ReviewVerificationModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-white" style={{ marginLeft: '100px' }}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Review Verification #{verification?.verificationId}
+            Review Verification {verification?.verificationId}
           </DialogTitle>
         </DialogHeader>
 
@@ -239,7 +239,7 @@ const ReviewVerificationModal = ({
             </Card>
 
             {/* Building Pictures */}
-            <Card>
+            {/* <Card>
               <CardContent className="p-6">
                 <h3 className="font-semibold text-lg mb-4">Building Documentation</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -265,9 +265,9 @@ const ReviewVerificationModal = ({
                   ))}
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
 
-            {/* Transportation Costs */}
+          
             <Card>
               <CardContent className="p-6">
                 <h3 className="font-semibold text-lg mb-4">Transportation Costs</h3>
@@ -352,7 +352,7 @@ const ReviewVerificationModal = ({
                     />
                   </div>
 
-                  <div className="flex justify-end gap-3 pt-4">
+                  {/* <div className="flex justify-end gap-3 pt-4">
                     <Button variant="outline" onClick={onClose}>
                       Cancel
                     </Button>
@@ -363,7 +363,7 @@ const ReviewVerificationModal = ({
                     >
                       {submitting ? 'Submitting...' : `Submit ${reviewStatus}`}
                     </Button>
-                  </div>
+                  </div> */}
                 </div>
               </CardContent>
             </Card>

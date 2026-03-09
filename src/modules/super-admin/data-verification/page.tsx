@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { 
   Users, 
   FileCheck, 
@@ -62,8 +62,10 @@ interface Stats {
 }
 
 const DataVerificationPage = () => {
-  const [activeTab, setActiveTab] = useState('verifications');
+  const pathname = usePathname();
+  const router = useRouter();
   const [verifications, setVerifications] = useState<Verification[]>([]);
+  const [filteredVerifications, setFilteredVerifications] = useState<Verification[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,7 +80,6 @@ const DataVerificationPage = () => {
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [statusFilter, setStatusFilter] = useState('');
-  const [exportLoading, setExportLoading] = useState(false);
   const [selectedVerificationId, setSelectedVerificationId] = useState<string | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
@@ -93,7 +94,27 @@ const DataVerificationPage = () => {
 
   useEffect(() => {
     fetchData();
-  }, [selectedStatus, page, searchTerm, sortBy, sortOrder, statusFilter]);
+  }, [selectedStatus, page, searchTerm, sortBy, sortOrder, statusFilter, pathname]);
+
+  useEffect(() => {
+    filterVerifications();
+  }, [searchTerm, verifications]);
+
+  const filterVerifications = () => {
+    let result = [...verifications];
+    
+    if (searchTerm) {
+      result = result.filter(verification => 
+        verification.verificationId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        verification.verifierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        verification.organizationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        verification.targetUserFirstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        verification.targetUserLastName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    setFilteredVerifications(result);
+  };
 
   const fetchData = async () => {
     try {
@@ -107,6 +128,7 @@ const DataVerificationPage = () => {
       ]);
 
       setVerifications(verificationsRes.data.verifications);
+      setFilteredVerifications(verificationsRes.data.verifications);
       setUsers(usersRes.data.users);
       setStats(statsRes.data.stats);
       setTotalUsers(usersRes.data.total || usersRes.data.users.length);
@@ -174,6 +196,17 @@ const DataVerificationPage = () => {
       <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
         .manrope { font-family: 'Manrope', sans-serif; }
+        
+        .table-container {
+          max-height: calc(100vh - 300px);
+          overflow-y: auto;
+        }
+        
+        @media (min-width: 768px) {
+          .table-container {
+            max-height: calc(100vh - 280px);
+          }
+        }
       `}</style>
       
       <div className="mb-8">
@@ -258,21 +291,18 @@ const DataVerificationPage = () => {
         </div>
       )}
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="verifications">Verifications</TabsTrigger>
-          <TabsTrigger value="users">Field Agents</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="verifications" className="mt-6">
-          <Card>
+     
+          <Card className="border-0 shadow-none">
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <FileCheck className="mr-2 h-5 w-5" />
-                All Verifications
-              </CardTitle>
-              <div className="flex space-x-2">
+              <div className="flex items-center justify-between mb-4">
+                <CardTitle className="flex items-center">
+                  <FileCheck className="mr-2 h-5 w-5" />
+                  All Verifications
+                </CardTitle>
+              </div>
+              
+              {/* Status Filter Buttons - Outside Table */}
+              <div className="flex gap-2 mb-4">
                 <Button
                   variant={selectedStatus === 'all' ? 'default' : 'outline'}
                   onClick={() => setSelectedStatus('all')}
@@ -302,243 +332,106 @@ const DataVerificationPage = () => {
                   Rejected
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {verifications.map((verification) => (
-                  <div key={verification._id} className="border rounded-lg p-4 hover:bg-gray-50">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="font-medium">#{verification.verificationId}</span>
-                          {getStatusBadge(verification.status)}
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                          <div className="flex items-center">
-                            <Users className="h-4 w-4 mr-1" />
-                            <span>{verification.verifierName}</span>
-                          </div>
-                          <div className="flex items-center">
-                            <MapPin className="h-4 w-4 mr-1" />
-                            <span>{verification.organizationName}</span>
-                          </div>
-                          <div className="flex items-center">
-                            <Calendar className="h-4 w-4 mr-1" />
-                            <span>{formatDate(verification.submittedAt)}</span>
-                          </div>
-                        </div>
-                        <div className="mt-2 text-xs text-gray-500">
-                          Target: {verification.targetUserFirstName} {verification.targetUserLastName} • 
-                          Location: {verification.state}, {verification.country}
-                        </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleViewDetails(verification._id)}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View Details
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                
-                {verifications.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    No verifications found
-                  </div>
-                )}
+              
+              {/* Search Bar */}
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search verifications..."
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="users" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Users className="mr-2 h-5 w-5" />
-                Field Agents
-              </CardTitle>
             </CardHeader>
             <CardContent>
-              {/* Updated user table to match user management style */}
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
-                {/* Search and Filter Section */}
-                <div className="p-4 border-b border-gray-200">
-                  <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-                    <div className="flex-1 max-w-md">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                        <input
-                          type="text"
-                          placeholder="Search field agents..."
-                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-3">
-                      <button
-                        className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={() => {}}
-                        disabled={exportLoading}
-                      >
-                        {exportLoading ? (
-                          <>
-                            <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                            Exporting...
-                          </>
-                        ) : (
-                          <>
-                            <Download className="w-5 h-5" />
-                            Export CSV
-                          </>
-                        )}
-                      </button>
-                      
-                      <button
-                        className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={() => {}}
-                        disabled={exportLoading}
-                      >
-                        {exportLoading ? (
-                          <>
-                            <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                            Exporting...
-                          </>
-                        ) : (
-                          <>
-                            <Download className="w-5 h-5" />
-                            Export Excel
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    
-                    <div className="flex gap-3">
-                      <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value as 'active' | 'suspended' | 'inactive' | '')}
-                        className="px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      >
-                        <option value="">All Roles</option>
-                        <option value="CUSTOMER">CUSTOMER</option>
-                        <option value="USER">USER</option>
-                      </select>
-                      
-                      <button
-                        className="px-4 py-3 bg-[#5D2A8B] text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center gap-2"
-                        onClick={() => {}}
-                      >
-                        <Plus className="w-5 h-5" />
-                        Add Field Agent
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Table */}
-                <div className="overflow-x-auto">
+              {/* Table */}
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div className="table-container" style={{ maxHeight: 'calc(100vh - 380px)', overflowY: 'auto' }}>
                   <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50 border-b border-gray-200">
+                    <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                          S/N
+                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Verification ID
                         </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                          Full Name
+                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
                         </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                          Email Address
+                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Verifier
                         </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                          Role
+                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Organization
                         </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                          Permissions
+                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Target User
                         </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                          Date Created
+                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Location
                         </th>
-                        <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Submitted
+                        </th>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white">
+                    <tbody className="bg-white divide-y divide-gray-200">
                       {loading ? (
-                        <tr className="border-b border-gray-200">
-                          <td colSpan={7} className="px-6 py-12 text-center">
+                        <tr>
+                          <td colSpan={8} className="px-6 py-12 text-center">
                             <div className="flex flex-col items-center justify-center text-gray-500">
-                              <p className="text-lg font-medium">Loading field agents...</p>
+                              <p className="text-lg font-medium">Loading verifications...</p>
                             </div>
                           </td>
                         </tr>
-                      ) : users.length === 0 ? (
-                        <tr className="border-b border-gray-200">
-                          <td colSpan={7} className="px-6 py-12 text-center">
+                      ) : filteredVerifications.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="px-6 py-12 text-center">
                             <div className="flex flex-col items-center justify-center text-gray-500">
-                              <p className="text-lg font-medium">No field agents found</p>
+                              <p className="text-lg font-medium">No verifications found</p>
                               <p className="text-sm mt-1">Try adjusting your search or filter</p>
                             </div>
                           </td>
                         </tr>
                       ) : (
-                        users.map((user, index) => (
-                          <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-150 border-b border-gray-200">
-                            <td className="px-6 py-4 border-r border-gray-200">
-                              <div className="text-sm text-gray-900">{index + 1}</div>
+                        filteredVerifications.map((verification) => (
+                          <tr key={verification._id} className="hover:bg-gray-50 transition-colors duration-150">
+                            <td className="px-6 py-4">
+                              <div className="text-sm font-semibold text-gray-900">{verification.verificationId}</div>
                             </td>
-                            <td className="px-6 py-4 border-r border-gray-200">
-                              <div className="text-sm font-medium text-gray-900">{user.fullName}</div>
+                            <td className="px-6 py-4">
+                              {getStatusBadge(verification.status)}
                             </td>
-                            <td className="px-6 py-4 border-r border-gray-200">
-                              <div className="text-sm text-gray-900">{user.email}</div>
+                            <td className="px-6 py-4">
+                              <div className="text-sm text-gray-900">{verification.verifierName}</div>
                             </td>
-                            <td className="px-6 py-4 border-r border-gray-200">
-                              <div className="text-sm text-gray-900">{user.role}</div>
+                            <td className="px-6 py-4">
+                              <div className="text-sm text-gray-900 max-w-xs truncate">{verification.organizationName}</div>
                             </td>
-                            <td className="px-6 py-4 border-r border-gray-200">
-                              <div className="flex flex-wrap gap-1">
-                                {user.permissions.map((perm) => (
-                                  <span key={perm} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    {perm}
-                                  </span>
-                                ))}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 border-r border-gray-200">
-                              <div className="text-sm text-gray-500">
-                                {formatDate(user.createdAt)}
+                            <td className="px-6 py-4">
+                              <div className="text-sm text-gray-900">
+                                {verification.targetUserFirstName} {verification.targetUserLastName}
                               </div>
                             </td>
                             <td className="px-6 py-4">
-                              <div className="flex items-center justify-center gap-2">
+                              <div className="text-sm text-gray-500">
+                                {verification.state}, {verification.country}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm text-gray-500">{formatDate(verification.submittedAt)}</div>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
                                 <button
                                   className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-                                  title="View user"
+                                  onClick={() => handleViewDetails(verification._id)}
+                                  title="View Details"
                                 >
                                   <Eye className="w-4 h-4" />
-                                </button>
-                                
-                                <button
-                                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-200"
-                                  title="Edit user"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                
-                                <button
-                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-                                  title="Delete user"
-                                >
-                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               </div>
                             </td>
@@ -548,46 +441,11 @@ const DataVerificationPage = () => {
                     </tbody>
                   </table>
                 </div>
-
-                {/* Pagination */}
-                {!loading && users.length > 0 && (
-                  <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                    <div className="text-sm text-gray-700">
-                      Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to{' '}
-                      <span className="font-medium">
-                        {Math.min(page * limit, totalUsers)}
-                      </span>{' '}
-                      of <span className="font-medium">{totalUsers}</span> field agents
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => setPage(prev => Math.max(prev - 1, 1))}
-                        disabled={page === 1}
-                        className={`p-2 rounded-lg ${page === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                      
-                      <span className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg">
-                        {page} of {totalPages}
-                      </span>
-                      
-                      <button
-                        onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
-                        disabled={page === totalPages}
-                        className={`p-2 rounded-lg ${page === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+      
+      
       
       {/* Review Verification Modal */}
       <ReviewVerificationModal

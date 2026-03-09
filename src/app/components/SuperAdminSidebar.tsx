@@ -264,8 +264,25 @@ export const SuperAdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) =
     { 
       id: 'data-verification', 
       name: 'Data Verification', 
-      route: '/super-admin/data-verification', 
+      route: undefined,
       icon: <FileCheck className="w-6 h-6 text-[#dcdcdc]" />,
+      subItems: [
+        {
+          id: 'all-verifications',
+          name: 'All Verifications',
+          route: '/super-admin/data-verification'
+        },
+        {
+          id: 'verification-assignment',
+          name: 'Verification Assignment',
+          route: '/super-admin/data-verification/assignment'
+        },
+        {
+          id: 'field-agents',
+          name: 'Field Agents',
+          route: '/super-admin/data-verification/field-agents'
+        }
+      ]
     },
     { 
       id: 'organization-categories', 
