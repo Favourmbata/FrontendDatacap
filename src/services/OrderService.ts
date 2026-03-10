@@ -80,15 +80,19 @@ class OrderService {
    */
   static async verifyPayment(data: VerifyPaymentData): Promise<VerifyResponse> {
     try {
+      console.log('🔍 Order payment - Verifying with tx_ref:', data.transactionId);
+      
       const response = await fetch(`${this.BASE_URL}/api/orders/public/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ tx_ref: data.transactionId }),  // ✅ Fixed: Send tx_ref instead of transactionId
       });
 
       const result = await response.json();
+      
+      console.log('✅ Order payment verification response:', result);
       
       if (!response.ok) {
         throw new Error(result.message || 'Failed to verify payment');
@@ -96,7 +100,7 @@ class OrderService {
 
       return result;
     } catch (error) {
-      console.error('Error verifying payment:', error);
+      console.error('❌ Error verifying order payment:', error);
       throw error;
     }
   }
