@@ -80,14 +80,14 @@ class OrderService {
    */
   static async verifyPayment(data: VerifyPaymentData): Promise<VerifyResponse> {
     try {
-      console.log('🔍 Order payment - Verifying with tx_ref:', data.transactionId);
+      console.log('🔍 Order payment - Verifying with transactionId:', data.transactionId);
       
       const response = await fetch(`${this.BASE_URL}/api/orders/public/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ tx_ref: data.transactionId }),  // ✅ Fixed: Send tx_ref instead of transactionId
+        body: JSON.stringify({ transactionId: data.transactionId }),
       });
 
       const result = await response.json();
