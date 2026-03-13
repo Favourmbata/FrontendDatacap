@@ -16,7 +16,7 @@ export class HttpService {
   }
 
   private getHeaders(): HeadersInit {
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
@@ -87,7 +87,7 @@ export class HttpService {
     console.log('\n🔵 HTTP POST:', `${this.baseUrl}${endpoint}`);
     console.log('🔵 Payload:', JSON.stringify(data, null, 2));
     
-    const headers = this.getHeaders();
+    const headers = this.getHeaders() as Record<string, string>;
     const hasAuth = headers['Authorization'] ? '✅ Has Auth Token' : '❌ No Auth Token';
     console.log('🔵', hasAuth);
     
