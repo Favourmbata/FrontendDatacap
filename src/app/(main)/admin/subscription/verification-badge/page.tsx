@@ -136,18 +136,22 @@ const VerificationBadgeSubscriptionPage: React.FC = () => {
       
       const { HttpService } = await import('@/services/HttpService');
       
+      console.log('🚀 ===== INITIALIZING VERIFIED BADGE PAYMENT =====');
       console.log('Initializing payment with user data:', {
         email: user.email,
         name: user.fullName || locData.brandName,
         phone: user.phoneNumber || '+2348012345678',
+        redirect_url: `${window.location.origin}/payment/verify-verified-badge`,
       });
       
       const initializeResponse = await HttpService.post<any>(initializeUrl, {
         email: user.email,
         name: user.fullName || locData.brandName || 'Business Owner',
-        phone: user.phoneNumber || '+2348012345678', // Use user's phone or default
-        returnUrl: `${window.location.origin}/payment/verify-location`, // Redirect to location verification page
+        phone: user.phoneNumber || '+2348012345678',
+        redirect_url: `${window.location.origin}/payment/verify-verified-badge`, // ✅ Redirect to verified badge verification page
       });
+      
+      console.log('✅ Payment initialization response:', initializeResponse);
       
       if (!initializeResponse.success || !initializeResponse.data) {
         throw new Error(initializeResponse.message || 'Unable to initialize payment');
