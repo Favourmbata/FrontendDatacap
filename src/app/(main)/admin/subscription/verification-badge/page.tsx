@@ -62,16 +62,14 @@ const VerificationBadgeSubscriptionPage: React.FC = () => {
           // Verify the payment
           setPaymentProcessing(pendingPayment.locationIndex);
           
-          const verifyResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}/api/payment/verify-verified-badge`, {
+          const verifyResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}/api/payment/verified-badge/verify`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`,
             },
             body: JSON.stringify({
-              reference: pendingPayment.transactionRef,
-              locationIndex: pendingPayment.locationIndex,
-              amount: pendingPayment.amount,
+              tx_ref: pendingPayment.transactionRef,
             }),
           });
 
