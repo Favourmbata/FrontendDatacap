@@ -38,6 +38,8 @@ const VerificationClientComponent = () => {
     try {
       const response = await LocationPaymentService.verifyPayment({ transactionId });
       
+      console.log('✅ Location payment verification response:', response);
+      
       if (response.success) {
         setVerificationStatus('success');
         setVerificationData(response.data);
@@ -45,13 +47,14 @@ const VerificationClientComponent = () => {
         
         // Redirect to admin dashboard (not subscription page)
         setTimeout(() => {
-          router.push('/admin/subscription');
+          router.push('/admin/subscription/verification-badge');
         }, 3000);
       } else {
         setVerificationStatus('failed');
         setMessage(response.data?.message || 'Payment verification failed. Please contact support.');
       }
     } catch (error: any) {
+      console.error('❌ Location payment verification error:', error);
       setVerificationStatus('failed');
       
       // Check if it's an authentication error
