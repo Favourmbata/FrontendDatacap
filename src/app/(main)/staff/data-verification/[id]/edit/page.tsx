@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { DataVerificationService } from '@/services/DataVerificationService';
+import DataVerificationService from '@/services/DataVerificationService';
 import { ArrowLeft, Save, Globe, MapPin, Building, User, ChevronDown, Search, Plus, Upload } from 'lucide-react';
 
 interface FormData {
@@ -115,7 +115,7 @@ export default function EditDataVerificationPage() {
   const fetchVerification = async () => {
     try {
       const response = await dataVerificationService.getVerificationById(verificationId);
-      if (response.success) {
+      if (response.success && response.data) {
         // Populate form with existing data
         const verification = response.data.verification;
         setFormData({

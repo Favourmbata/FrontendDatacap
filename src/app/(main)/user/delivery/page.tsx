@@ -14,6 +14,9 @@ const DeliveryPage = () => {
   const [productImage, setProductImage] = useState<File | null>(null);
   const [representativeImage, setRepresentativeImage] = useState<File | null>(null);
   const [userImage, setUserImage] = useState<File | null>(null);
+  const [productImagePreview, setProductImagePreview] = useState<string | null>(null);
+  const [representativeImagePreview, setRepresentativeImagePreview] = useState<string | null>(null);
+  const [userImagePreview, setUserImagePreview] = useState<string | null>(null);
   const [imageComment, setImageComment] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
@@ -83,6 +86,22 @@ const DeliveryPage = () => {
   const handleConfirmDelivery = async () => {
     if (!selectedOrder) return;
 
+    // Validation
+    if (!declarationText.trim()) {
+      alert('Please provide a satisfaction declaration');
+      return;
+    }
+
+    if (deliveryMode === 'shipping' && !deliveryAddress.trim()) {
+      alert('Please enter delivery address for shipping mode');
+      return;
+    }
+
+    if ((deliveryMode === 'pickup_center' || deliveryMode === 'organization_location') && !pickupCenterName.trim()) {
+      alert(`Please enter ${deliveryMode === 'pickup_center' ? 'pickup center name' : 'organization location'}`);
+      return;
+    }
+
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       
@@ -106,7 +125,7 @@ const DeliveryPage = () => {
       const response = await deliveryService.confirmDelivery(selectedOrder._id, token, confirmationData);
       
       if (response.success) {
-        alert('Delivery confirmed successfully!');
+        alert('Delivery confirmed successfully! Payment will be released to the organization.');
         setShowConfirmationModal(false);
         setSelectedOrder(null);
         setDeclarationText('');
@@ -116,6 +135,9 @@ const DeliveryPage = () => {
         setProductImage(null);
         setRepresentativeImage(null);
         setUserImage(null);
+        setProductImagePreview(null);
+        setRepresentativeImagePreview(null);
+        setUserImagePreview(null);
         setImageComment('');
         setVideoUrl('');
         loadUserOrders(); // Refresh the orders list
@@ -124,14 +146,32 @@ const DeliveryPage = () => {
       }
     } catch (error) {
       console.error('Error confirming delivery:', error);
-      alert('Error confirming delivery');
+      alert('Error confirming delivery. Please try again.');
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<File | null>>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, 
+    setter: React.Dispatch<React.SetStateAction<File | null>>,
+    previewSetter: React.Dispatch<React.SetStateAction<string | null>>
+  ) => {
     if (e.target.files && e.target.files[0]) {
-      setter(e.target.files[0]);
+      const file = e.target.files[0];
+      setter(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = () => {
+        previewSetter(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
+  };
+
+  const clearImage = (setter: React.Dispatch<React.SetStateAction<File | null>>, 
+    previewSetter: React.Dispatch<React.SetStateAction<string | null>>
+  ) => {
+    setter(null);
+    previewSetter(null);
   };
 
   if (loading) {
@@ -246,18 +286,31 @@ const DeliveryPage = () => {
 
                         {/* Satisfaction Declaration */}
                         <div>
-                          <label htmlFor="declarationText" className="block text-sm font-medium text-gray-700 mb-1">
-                            Satisfaction Declaration
-                          </label>
+                          <div className="flex justify-between items-center mb-2">
+                            <label htmlFor="declarationText" className="block text-sm font-medium text-gray-700">
+                              Satisfaction Declaration
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => getDeliveryTemplate(selectedOrder._id)}
+                              disabled={!selectedOrder}
+                              className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                            >
+                              Get Template
+                            </button>
+                          </div>
                           <textarea
                             id="declarationText"
                             value={declarationText}
                             onChange={(e) => setDeclarationText(e.target.value)}
                             rows={6}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Edit the satisfaction declaration..."
+                            placeholder="Click 'Get Template' to load the pre-filled declaration, then edit with your information"
                           />
-                          <p className="mt-1 text-xs text-gray-500">This declaration will be submitted as proof of delivery confirmation</p>
+                          <p className="mt-1 text-xs text-gray-500">Edit the template with your actual information before submitting</p>
+                          {declarationText && (
+                            <p className="mt-1 text-xs text-gray-400">Character count: {declarationText.length}</p>
+                          )}
                         </div>
 
                         {/* Image Uploads */}
@@ -269,54 +322,99 @@ const DeliveryPage = () => {
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                               <label className="block text-xs font-medium text-gray-500 mb-1">Product Image</label>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => handleFileChange(e, setProductImage)}
-                                className="w-full text-sm text-gray-500
-                                  file:mr-4 file:py-2 file:px-4
-                                  file:rounded-md file:border-0
-                                  file:text-sm file:font-semibold
-                                  file:bg-blue-50 file:text-blue-700
-                                  hover:file:bg-blue-100"
-                              />
-                              {productImage && (
+                              {productImagePreview ? (
+                                <div className="relative border border-gray-300 rounded-md p-2">
+                                  <img src={productImagePreview} alt="Product preview" className="w-full h-32 object-cover rounded" />
+                                  <button
+                                    type="button"
+                                    onClick={() => clearImage(setProductImage, setProductImagePreview)}
+                                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              ) : (
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleFileChange(e, setProductImage, setProductImagePreview)}
+                                  className="w-full text-sm text-gray-500
+                                    file:mr-4 file:py-2 file:px-4
+                                    file:rounded-md file:border-0
+                                    file:text-sm file:font-semibold
+                                    file:bg-blue-50 file:text-blue-700
+                                    hover:file:bg-blue-100"
+                                />
+                              )}
+                              {productImage && !productImagePreview && (
                                 <p className="mt-1 text-xs text-gray-500 truncate">{productImage.name}</p>
                               )}
                             </div>
                             
                             <div>
                               <label className="block text-xs font-medium text-gray-500 mb-1">Representative Image</label>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => handleFileChange(e, setRepresentativeImage)}
-                                className="w-full text-sm text-gray-500
-                                  file:mr-4 file:py-2 file:px-4
-                                  file:rounded-md file:border-0
-                                  file:text-sm file:font-semibold
-                                  file:bg-blue-50 file:text-blue-700
-                                  hover:file:bg-blue-100"
-                              />
-                              {representativeImage && (
+                              {representativeImagePreview ? (
+                                <div className="relative border border-gray-300 rounded-md p-2">
+                                  <img src={representativeImagePreview} alt="Representative preview" className="w-full h-32 object-cover rounded" />
+                                  <button
+                                    type="button"
+                                    onClick={() => clearImage(setRepresentativeImage, setRepresentativeImagePreview)}
+                                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              ) : (
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleFileChange(e, setRepresentativeImage, setRepresentativeImagePreview)}
+                                  className="w-full text-sm text-gray-500
+                                    file:mr-4 file:py-2 file:px-4
+                                    file:rounded-md file:border-0
+                                    file:text-sm file:font-semibold
+                                    file:bg-blue-50 file:text-blue-700
+                                    hover:file:bg-blue-100"
+                                />
+                              )}
+                              {representativeImage && !representativeImagePreview && (
                                 <p className="mt-1 text-xs text-gray-500 truncate">{representativeImage.name}</p>
                               )}
                             </div>
                             
                             <div>
                               <label className="block text-xs font-medium text-gray-500 mb-1">User Image</label>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => handleFileChange(e, setUserImage)}
-                                className="w-full text-sm text-gray-500
-                                  file:mr-4 file:py-2 file:px-4
-                                  file:rounded-md file:border-0
-                                  file:text-sm file:font-semibold
-                                  file:bg-blue-50 file:text-blue-700
-                                  hover:file:bg-blue-100"
-                              />
-                              {userImage && (
+                              {userImagePreview ? (
+                                <div className="relative border border-gray-300 rounded-md p-2">
+                                  <img src={userImagePreview} alt="User preview" className="w-full h-32 object-cover rounded" />
+                                  <button
+                                    type="button"
+                                    onClick={() => clearImage(setUserImage, setUserImagePreview)}
+                                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              ) : (
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleFileChange(e, setUserImage, setUserImagePreview)}
+                                  className="w-full text-sm text-gray-500
+                                    file:mr-4 file:py-2 file:px-4
+                                    file:rounded-md file:border-0
+                                    file:text-sm file:font-semibold
+                                    file:bg-blue-50 file:text-blue-700
+                                    hover:file:bg-blue-100"
+                                />
+                              )}
+                              {userImage && !userImagePreview && (
                                 <p className="mt-1 text-xs text-gray-500 truncate">{userImage.name}</p>
                               )}
                             </div>
@@ -358,9 +456,15 @@ const DeliveryPage = () => {
                         <div className="flex space-x-4 pt-4">
                           <button
                             onClick={() => setShowConfirmationModal(true)}
-                            disabled={!declarationText.trim()}
-                            className={`px-4 py-2 rounded-md text-sm font-medium ${
-                              !declarationText.trim()
+                            disabled={
+                              !declarationText.trim() ||
+                              (deliveryMode === 'shipping' && !deliveryAddress.trim()) ||
+                              ((deliveryMode === 'pickup_center' || deliveryMode === 'organization_location') && !pickupCenterName.trim())
+                            }
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                              !declarationText.trim() ||
+                              (deliveryMode === 'shipping' && !deliveryAddress.trim()) ||
+                              ((deliveryMode === 'pickup_center' || deliveryMode === 'organization_location') && !pickupCenterName.trim())
                                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                 : 'bg-blue-600 text-white hover:bg-blue-700'
                             }`}
@@ -372,6 +476,14 @@ const DeliveryPage = () => {
                             onClick={() => {
                               setSelectedOrder(null);
                               setDeclarationText('');
+                              setProductImage(null);
+                              setRepresentativeImage(null);
+                              setUserImage(null);
+                              setProductImagePreview(null);
+                              setRepresentativeImagePreview(null);
+                              setUserImagePreview(null);
+                              setImageComment('');
+                              setVideoUrl('');
                             }}
                             className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
                           >

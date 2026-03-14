@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { DataVerificationService, VerificationStatus } from '@/services/DataVerificationService';
+import DataVerificationService from '@/services/DataVerificationService';
 import { Plus, Search, Eye, Edit, Trash2, FileText, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface Verification {
   _id: string;
   verificationId: string;
   organizationName: string;
-  status: VerificationStatus;
+  status: 'draft' | 'submitted' | 'approved' | 'rejected';
   createdAt: string;
 }
 

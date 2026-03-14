@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Plus, X, Users, Building2 } from 'lucide-react';
-import { DataVerificationService } from '@/services/DataVerificationService';
+import DataVerificationService from '@/services/DataVerificationService';
 import { toast } from '@/app/components/hooks/use-toast';
 
 interface User {
@@ -29,6 +29,7 @@ interface OrganizationAssignment {
 
 const CreateAssignmentPage = () => {
   const router = useRouter();
+  const dataVerificationService = new DataVerificationService();
   const [roleName, setRoleName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -45,7 +46,8 @@ const CreateAssignmentPage = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await DataVerificationService.getVerificationUsers();
+      const token = localStorage.getItem('token') || '';
+      const response = await dataVerificationService.getVerificationUsers(token);
       setUsers(response.data.users.map((user: any) => ({
         ...user,
         role: user.role || 'VERIFIER',
@@ -58,7 +60,8 @@ const CreateAssignmentPage = () => {
 
   const fetchOrganizations = async () => {
     try {
-      const response = await DataVerificationService.getOrganizationsForAssignment();
+      const token = localStorage.getItem('token') || '';
+      const response = await dataVerificationService.getOrganizationsForAssignment(token);
       setOrganizations(response.data.organizations);
     } catch (error) {
       console.error('Error fetching organizations:', error);
@@ -130,13 +133,14 @@ const CreateAssignmentPage = () => {
 
     try {
       setLoading(true);
+      const token = localStorage.getItem('token') || '';
       
-      await DataVerificationService.createRoleWithAssignments({
+      await dataVerificationService.createRoleWithAssignments({
         roleName,
         description,
         selectedUserIds: selectedUsers,
         assignedOrganizations: validAssignments
-      });
+      }, token);
 
       toast({
         title: "Success",

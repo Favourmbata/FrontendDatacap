@@ -15,7 +15,7 @@ import {
   MapPin,
   Users
 } from 'lucide-react';
-import { DataVerificationService } from '@/services/DataVerificationService';
+import DataVerificationService from '@/services/DataVerificationService';
 import { toast } from '@/app/components/hooks/use-toast';
 
 interface Verification {
@@ -30,6 +30,7 @@ interface Verification {
 }
 
 const UserDataVerificationPage = () => {
+  const dataVerificationService = new DataVerificationService();
   const [verifications, setVerifications] = useState<Verification[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -47,7 +48,7 @@ const UserDataVerificationPage = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response: any = await DataVerificationService.getMyVerifications();
+      const response: any = await dataVerificationService.getMyVerifications();
       const verificationsData = response.data.verifications || [];
       
       setVerifications(verificationsData);

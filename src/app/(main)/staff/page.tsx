@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStaffAuth } from '@/contexts/StaffAuthContext';
-import { DataVerificationService } from '@/services/DataVerificationService';
+import DataVerificationService from '@/services/DataVerificationService';
 import { Plus, FileText, Users, Building, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function StaffDashboardPage() {

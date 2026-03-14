@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { DataVerificationService } from '@/services/DataVerificationService';
+import DataVerificationService from '@/services/DataVerificationService';
 import { ArrowLeft, FileText, Clock, CheckCircle, AlertCircle, Building, MapPin, User, Calendar } from 'lucide-react';
 
 interface VerificationDetail {
@@ -42,7 +42,7 @@ export default function ViewVerificationPage() {
     try {
       setLoading(true);
       const response = await dataVerificationService.getVerificationById(verificationId);
-      if (response.success) {
+      if (response.success && response.data) {
         setVerification(response.data.verification);
       }
     } catch (error) {

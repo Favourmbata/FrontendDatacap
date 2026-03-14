@@ -7,7 +7,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { 
   Users, 
-  FileCheck, 
+  FileCheck2, 
   Clock, 
   CheckCircle, 
   XCircle, 
@@ -22,7 +22,7 @@ import {
   ChevronRight, 
   Download
 } from 'lucide-react';
-import { DataVerificationService } from '@/services/DataVerificationService';
+import DataVerificationService from '@/services/DataVerificationService';
 import { toast } from '@/app/components/hooks/use-toast';
 import ReviewVerificationModal from './ReviewVerificationModal';
 
@@ -64,6 +64,7 @@ interface Stats {
 const DataVerificationPage = () => {
   const pathname = usePathname();
   const router = useRouter();
+  const dataVerificationService = new DataVerificationService();
   const [verifications, setVerifications] = useState<Verification[]>([]);
   const [filteredVerifications, setFilteredVerifications] = useState<Verification[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -121,10 +122,11 @@ const DataVerificationPage = () => {
       setLoading(true);
       
       // Fetch all data in parallel
+      const token = localStorage.getItem('token') || '';
       const [verificationsRes, usersRes, statsRes]: [any, any, any] = await Promise.all([
-        DataVerificationService.getAllVerifications(selectedStatus === 'all' ? undefined : selectedStatus),
-        DataVerificationService.getVerificationUsers(),
-        DataVerificationService.getVerificationStats()
+        dataVerificationService.getAllVerificationsSuperAdmin(selectedStatus === 'all' ? undefined : selectedStatus, token),
+        dataVerificationService.getDataVerificationUsers(token),
+        dataVerificationService.getVerificationStats(token)
       ]);
 
       setVerifications(verificationsRes.data.verifications);
@@ -220,7 +222,7 @@ const DataVerificationPage = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center">
-                <FileCheck className="h-8 w-8 text-blue-600 mr-3" />
+                <FileCheck2 className="h-8 w-8 text-blue-600 mr-3" />
                 <div>
                   <p className="text-sm text-gray-600">Total</p>
                   <p className="text-2xl font-bold">{stats.total}</p>
@@ -295,10 +297,21 @@ const DataVerificationPage = () => {
           <Card className="border-0 shadow-none">
             <CardHeader>
               <div className="flex items-center justify-between mb-4">
-                <CardTitle className="flex items-center">
-                  <FileCheck className="mr-2 h-5 w-5" />
+                <CardTitle className="flex items-center gap-2">
+                  <FileCheck2 className="h-5 w-5" />
                   All Verifications
                 </CardTitle>
+                
+                {/* Verification Users Button */}
+                <Button
+                  variant="outline"
+                  onClick={() => router.push('/super-admin/data-verification/verification-users')}
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Users className="w-4 h-4" />
+                  Verification Users
+                </Button>
               </div>
               
               {/* Status Filter Buttons - Outside Table */}

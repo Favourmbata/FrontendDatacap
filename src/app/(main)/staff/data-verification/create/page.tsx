@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { DataVerificationService } from '@/services/DataVerificationService';
+import DataVerificationService from '@/services/DataVerificationService';
 import { ArrowLeft, Save, Globe, MapPin, Building, User, ChevronDown, Search, Plus, Upload } from 'lucide-react';
 
 interface FormData {

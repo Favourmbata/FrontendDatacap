@@ -24,7 +24,7 @@ import {
   Camera,
   DollarSign
 } from 'lucide-react';
-import { DataVerificationService } from '@/services/DataVerificationService';
+import DataVerificationService from '@/services/DataVerificationService';
 import { toast } from '@/app/components/hooks/use-toast';
 
 interface VerificationDetail {
@@ -94,6 +94,7 @@ const ReviewVerificationModal = ({
   verificationId,
   onReviewComplete 
 }: ReviewVerificationModalProps) => {
+  const dataVerificationService = new DataVerificationService();
   const [verification, setVerification] = useState<VerificationDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [reviewStatus, setReviewStatus] = useState<'approved' | 'rejected' | null>(null);
@@ -109,7 +110,7 @@ const ReviewVerificationModal = ({
   const fetchVerificationDetails = async () => {
     try {
       setLoading(true);
-      const response: any = await DataVerificationService.getVerificationById(verificationId);
+      const response: any = await dataVerificationService.getVerificationById(verificationId);
       setVerification(response.data.verification);
     } catch (error) {
       console.error('Error fetching verification details:', error);
@@ -135,7 +136,7 @@ const ReviewVerificationModal = ({
 
     try {
       setSubmitting(true);
-      await DataVerificationService.reviewVerification(verificationId, {
+      await dataVerificationService.reviewVerification(verificationId, {
         status: reviewStatus,
         comments
       });

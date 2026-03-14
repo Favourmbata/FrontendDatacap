@@ -36,7 +36,7 @@ import {
   Plus,
   Trash2
 } from 'lucide-react';
-import { DataVerificationService } from '@/services/DataVerificationService';
+import DataVerificationService from '@/services/DataVerificationService';
 import { toast } from '@/app/components/hooks/use-toast';
 import { useAuth } from '@/api/hooks/useAuth';
 
@@ -78,6 +78,7 @@ interface FormData {
 
 const CreateVerificationForm = () => {
   const { user } = useAuth();
+  const dataVerificationService = new DataVerificationService();
   const [formData, setFormData] = useState<FormData>({
     country: '',
     state: '',
@@ -200,7 +201,7 @@ const CreateVerificationForm = () => {
       }
 
       // Get organization name based on selected ID
-      const selectedOrg = await DataVerificationService.getOrganizations();
+      const selectedOrg = await dataVerificationService.getOrganizations();
       const org = selectedOrg.data.organizations.find((o: any) => o.id === formData.organizationId);
       
       // Extract first and last name from user's fullName
@@ -224,7 +225,7 @@ const CreateVerificationForm = () => {
         }
       };
       
-      await DataVerificationService.createVerification(verificationRequest);
+      await dataVerificationService.createVerification(verificationRequest);
       
       toast({
         title: "Success",

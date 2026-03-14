@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Edit, Eye, Trash2, ChevronLeft, ChevronRight, Download } from 'lucide-react';
-import { DataVerificationService } from '@/services/DataVerificationService';
+import DataVerificationService from '@/services/DataVerificationService';
 import { toast } from '@/app/components/hooks/use-toast';
 
 interface User {
@@ -17,6 +17,7 @@ interface User {
 }
 
 const FieldAgentsPage = () => {
+  const dataVerificationService = new DataVerificationService();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -37,7 +38,13 @@ const FieldAgentsPage = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await DataVerificationService.getVerificationUsers();
+      const token = localStorage.getItem('token') || '';
+      const response = await dataVerificationService.getDataVerificationUsers(token);
+      
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to load field agents');
+      }
+      
       setUsers(response.data.users.map((user: any) => ({
         ...user,
         role: user.role || 'VERIFIER',

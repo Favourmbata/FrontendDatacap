@@ -98,7 +98,7 @@ class DeliveryService {
    */
   async getUserOrders(token: string): Promise<{ success: boolean; data?: { orders: Order[] }; message?: string }> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/orders/user`, {
+      const response = await fetch(`${this.baseUrl}/api/orders/user/my-orders`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
