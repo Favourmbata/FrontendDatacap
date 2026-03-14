@@ -46,66 +46,7 @@ const VerificationBadgeSubscriptionPage: React.FC = () => {
   
   const organizationProfileService = new OrganizationProfileService();
 
-  // Check for pending payment verification on page load
-  useEffect(() => {
-    const checkPendingPayment = async () => {
-      try {
-        const pendingPaymentStr = sessionStorage.getItem('pendingPayment');
-        if (pendingPaymentStr) {
-          const pendingPayment = JSON.parse(pendingPaymentStr);
-          
-          // Clear the session storage immediately to prevent duplicate processing
-          sessionStorage.removeItem('pendingPayment');
-          
-          console.log('Verifying pending payment:', pendingPayment);
-          
-          // Verify the payment
-          setPaymentProcessing(pendingPayment.locationIndex);
-          
-          const verifyResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}/api/payment/verify-verified-badge`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              reference: pendingPayment.transactionRef,
-              locationIndex: pendingPayment.locationIndex,
-              amount: pendingPayment.amount,
-            }),
-          });
-
-          const result = await verifyResponse.json();
-          console.log('Payment verification result:', result);
-
-          if (result.success) {
-            setSuccessMessage(`Payment successful! Location ${pendingPayment.locationDescription} is now paid.`);
-            
-            // Reload locations to show updated payment status
-            const locationsResponse = await organizationProfileService.getAllLocations();
-            if (locationsResponse.success && locationsResponse.data) {
-              const locationsWithGallery = locationsResponse.data.locations.map((loc: any) => ({
-                ...loc,
-                gallery: loc.gallery || { images: [], videos: [] }
-              }));
-              setLocations(locationsWithGallery);
-            }
-          } else {
-            console.error('Payment verification failed:', result);
-            setErrorMessage(result.message || 'Payment verification failed. Please contact support.');
-          }
-        }
-      } catch (error: any) {
-        console.error('Payment verification error:', error);
-        setErrorMessage(error.message || 'Failed to verify payment. Please contact support.');
-      } finally {
-        setPaymentProcessing(null);
-        setTimeout(() => setSuccessMessage(''), 5000);
-      }
-    };
-
-    checkPendingPayment();
-  }, [token]);
+  // Removed old sessionStorage verification flow - now using dedicated /payment/verify-location page
 
   const handleDeleteLocation = (index: number) => {
     const locationToDelete = locations[index];
@@ -195,18 +136,22 @@ const VerificationBadgeSubscriptionPage: React.FC = () => {
       
       const { HttpService } = await import('@/services/HttpService');
       
+      console.log('🚀 ===== INITIALIZING VERIFIED BADGE PAYMENT =====');
       console.log('Initializing payment with user data:', {
         email: user.email,
         name: user.fullName || locData.brandName,
         phone: user.phoneNumber || '+2348012345678',
+        redirect_url: `${window.location.origin}/payment/verify-verified-badge`,
       });
       
       const initializeResponse = await HttpService.post<any>(initializeUrl, {
         email: user.email,
         name: user.fullName || locData.brandName || 'Business Owner',
-        phone: user.phoneNumber || '+2348012345678', // Use user's phone or default
-        returnUrl: `${window.location.origin}/payment/verify-location`, // Redirect to location verification page
+        phone: user.phoneNumber || '+2348012345678',
+        redirect_url: `${window.location.origin}/payment/verify-verified-badge`, // ✅ Redirect to verified badge verification page
       });
+      
+      console.log('✅ Payment initialization response:', initializeResponse);
       
       if (!initializeResponse.success || !initializeResponse.data) {
         throw new Error(initializeResponse.message || 'Unable to initialize payment');
@@ -221,17 +166,9 @@ const VerificationBadgeSubscriptionPage: React.FC = () => {
         location: locationDescription,
       });
 
-      // Step 2: Redirect to payment page in the same window
+      // Step 2: Redirect to Flutterwave payment page
       if (paymentLink) {
-        // Store transaction data in sessionStorage for verification after payment
-        sessionStorage.setItem('pendingPayment', JSON.stringify({
-          transactionRef: transactionRef,
-          locationIndex: locationIndex,
-          amount: amount,
-          locationDescription: locationDescription,
-        }));
-        
-        // Redirect to payment page in the same window
+        // Redirect directly to Flutterwave - the returnUrl will handle redirect back
         window.location.href = paymentLink;
       } else {
         throw new Error('No payment URL received from server');

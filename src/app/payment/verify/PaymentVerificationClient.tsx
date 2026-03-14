@@ -17,6 +17,7 @@ const PaymentVerificationClient = () => {
         const transactionId = searchParams.get('tx_ref') || searchParams.get('transaction_id');
         const paymentStatus = searchParams.get('status');
 
+        console.log('🔍 Subscription Payment Verification');
         console.log('🔍 Extracted tx_ref from URL:', transactionId);
 
         if (!transactionId) {
@@ -25,15 +26,15 @@ const PaymentVerificationClient = () => {
           return;
         }
 
-        if (paymentStatus !== 'successful') {
+        if (paymentStatus !== 'successful' && paymentStatus !== 'success') {
           setStatus('error');
           setMessage('Payment was not successful');
           return;
         }
 
-        console.log('🔍 Verifying payment with tx_ref:', transactionId);
+        console.log('🔍 Verifying subscription payment with tx_ref:', transactionId);
 
-        // Verify payment with backend
+        // Verify subscription payment with backend
         const response = await PaymentService.verifyPayment({
           transactionId
         });
@@ -42,7 +43,7 @@ const PaymentVerificationClient = () => {
           setStatus('success');
           setMessage('Payment verified successfully! Subscription activated.');
           
-          // Redirect based on user type - prevent redirecting back to subscription
+          // Redirect based on user type
           setTimeout(() => {
             const userType = searchParams.get('userType') || 'organization';
             if (userType === 'individual') {
@@ -63,7 +64,6 @@ const PaymentVerificationClient = () => {
         if (error instanceof Error && error.message.includes('Authentication')) {
           setMessage('Please log in to verify your payment. Redirecting to login...');
           setTimeout(() => {
-            // Store the current URL to redirect back after login
             localStorage.setItem('redirectAfterLogin', window.location.href);
             router.push('/auth/login');
           }, 2000);

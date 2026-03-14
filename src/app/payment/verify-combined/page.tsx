@@ -3,9 +3,9 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle, XCircle, Clock } from 'lucide-react';
-import LocationPaymentService from '@/services/LocationPaymentService';
+import CombinedPaymentService from '@/services/CombinedPaymentService';
 
-const VerificationClientComponent = () => {
+const CombinedPaymentVerificationComponent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'success' | 'failed' | 'verifying'>('pending');
@@ -19,74 +19,66 @@ const VerificationClientComponent = () => {
   };
 
   useEffect(() => {
-    addLog('🔥🔥🔥 LOCATION PAYMENT VERIFICATION START 🔥🔥🔥');
+    addLog('🔥🔥🔥 COMBINED PAYMENT VERIFICATION START 🔥🔥🔥');
     
-    // Get the raw URL and decode it to handle double encoding
     const rawUrl = window.location.href;
     addLog(`📍 Raw URL: ${rawUrl}`);
     
-    // Decode the URL to fix &amp; issues
     const decodedUrl = rawUrl.replace(/&amp;/g, '&');
     addLog(`📍 Decoded URL: ${decodedUrl}`);
     
-    // Parse the decoded URL
     const urlObj = new URL(decodedUrl);
     const decodedParams = new URLSearchParams(urlObj.search);
     
     const status = decodedParams.get('status') || searchParams.get('status');
-    const transactionId = decodedParams.get('tx_ref') || decodedParams.get('transaction_id') || 
-                          searchParams.get('tx_ref') || searchParams.get('transaction_id');
+    const txRef = decodedParams.get('tx_ref') || searchParams.get('tx_ref');
     
     addLog(`🔍 Status: ${status}`);
-    addLog(`🔍 tx_ref: ${decodedParams.get('tx_ref')}`);
-    addLog(`🔍 transaction_id: ${decodedParams.get('transaction_id')}`);
-    addLog(`🔍 Final Transaction ID: ${transactionId}`);
+    addLog(`🔍 tx_ref: ${txRef}`);
     
-    if (status === 'success' && transactionId) {
-      addLog('✅ Status is success, proceeding with verification');
-      verifyLocationPayment(transactionId);
-    } else if (status === 'successful' && transactionId) {
-      addLog('✅ Status is successful (alternate), proceeding with verification');
-      verifyLocationPayment(transactionId);
+    if ((status === 'success' || status === 'successful') && txRef) {
+      addLog('✅ Valid payment, proceeding with verification');
+      verifyPayment(txRef);
     } else if (status === 'cancelled') {
       addLog('❌ Payment was cancelled');
       setVerificationStatus('failed');
       setMessage('Payment was cancelled. Please try again.');
     } else {
-      addLog(`❌ Invalid verification request - Status: ${status}, TxID: ${transactionId}`);
+      addLog(`❌ Invalid request - Status: ${status}, tx_ref: ${txRef}`);
       setVerificationStatus('failed');
       setMessage('Invalid payment verification request.');
     }
   }, [searchParams]);
 
-  const verifyLocationPayment = async (transactionId: string) => {
+  const verifyPayment = async (txRef: string) => {
     setVerificationStatus('verifying');
     setMessage('Verifying your payment...');
     
-    addLog('🔥 Calling LocationPaymentService.verifyPayment()');
-    addLog(`🔍 Transaction ID: ${transactionId}`);
+    addLog('🔥 Calling CombinedPaymentService.verifyCombinedPayment()');
+    addLog(`🔍 tx_ref: ${txRef}`);
     
     try {
-      const response = await LocationPaymentService.verifyPayment({ transactionId });
+      const service = new CombinedPaymentService();
+      const response = await service.verifyCombinedPayment({ transactionId: txRef });
       
-      addLog('✅ Response received from service');
+      addLog('✅ Response received');
       addLog(`✅ Response: ${JSON.stringify(response)}`);
       
       if (response.success) {
-        addLog('✅✅✅ PAYMENT VERIFICATION SUCCESSFUL!');
+        addLog('✅✅✅ COMBINED PAYMENT VERIFICATION SUCCESSFUL!');
         setVerificationStatus('success');
         setVerificationData(response.data);
-        setMessage('Location verification payment successful! Your profile will be updated to pending verification status.');
+        setMessage('Payment successful! Subscription activated and locations are pending admin verification.');
         
         setTimeout(() => {
-          addLog('🔄 Redirecting to verification-badge page...');
-          router.push('/admin/subscription/verification-badge');
+          addLog('🔄 Redirecting to admin dashboard...');
+          router.push('/admin');
         }, 3000);
       } else {
-        addLog('❌❌❌ PAYMENT VERIFICATION FAILED');
+        addLog('❌❌❌ COMBINED PAYMENT VERIFICATION FAILED');
         addLog(`❌ Response: ${JSON.stringify(response)}`);
         setVerificationStatus('failed');
-        setMessage(response.data?.message || 'Payment verification failed. Please contact support.');
+        setMessage(response.error || 'Payment verification failed. Please contact support.');
       }
     } catch (error: any) {
       addLog('❌❌❌ VERIFICATION ERROR CAUGHT');
@@ -138,7 +130,7 @@ const VerificationClientComponent = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
+      <div className="max-w-2xl w-full bg-white rounded-xl shadow-lg p-8 text-center">
         {getStatusIcon()}
         
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
@@ -156,20 +148,16 @@ const VerificationClientComponent = () => {
           <div className="mb-6 text-left bg-gray-50 rounded-lg p-4">
             <h3 className="font-semibold text-gray-900 mb-2">Payment Details:</h3>
             <div className="space-y-1 text-sm text-gray-700">
-              <p><span className="font-medium">Amount:</span> ₦{verificationData.amount?.toLocaleString('en-NG')}</p>
-              <p><span className="font-medium">Description:</span> {verificationData.description}</p>
-              <p><span className="font-medium">Locations Verified:</span> {verificationData.totalLocations}</p>
-              {verificationData.locationFees && (
-                <div className="mt-2">
-                  <p className="font-medium">Location Fees:</p>
-                  <ul className="list-disc pl-5 mt-1">
-                    {verificationData.locationFees.map((fee: any, index: number) => (
-                      <li key={index}>
-                        {fee.location}: ₦{fee.fee.toLocaleString('en-NG')}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+              <p><span className="font-medium">✅ Subscription:</span> Activated</p>
+              <p><span className="font-medium">⏳ Locations:</span> Pending Admin Verification</p>
+              {verificationData.totalAmountPaid && (
+                <p><span className="font-medium">Amount:</span> ₦{verificationData.totalAmountPaid?.toLocaleString('en-NG')}</p>
+              )}
+              {verificationData.packageAmount && (
+                <p><span className="font-medium">Subscription Amount:</span> ₦{verificationData.packageAmount?.toLocaleString('en-NG')}</p>
+              )}
+              {verificationData.locationAmount && (
+                <p><span className="font-medium">Verification Amount:</span> ₦{verificationData.locationAmount?.toLocaleString('en-NG')}</p>
               )}
             </div>
           </div>
@@ -178,10 +166,10 @@ const VerificationClientComponent = () => {
         <div className="flex flex-col gap-3">
           {verificationStatus === 'success' && (
             <button
-              onClick={() => router.push('/subscription')}
+              onClick={() => router.push('/admin')}
               className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
             >
-              Continue to Subscription
+              Go to Dashboard
             </button>
           )}
           
@@ -194,10 +182,10 @@ const VerificationClientComponent = () => {
                 Try Again
               </button>
               <button
-                onClick={() => router.push('/')}
+                onClick={() => router.push('/admin')}
                 className="w-full px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
               >
-                Go to Homepage
+                Go to Dashboard
               </button>
             </>
           )}
@@ -231,7 +219,7 @@ const VerificationClientComponent = () => {
   );
 };
 
-const LocationPaymentVerificationPage = () => {
+const CombinedPaymentVerificationPage = () => {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -241,9 +229,9 @@ const LocationPaymentVerificationPage = () => {
         </div>
       </div>
     }>
-      <VerificationClientComponent />
+      <CombinedPaymentVerificationComponent />
     </Suspense>
   );
 };
 
-export default LocationPaymentVerificationPage;
+export default CombinedPaymentVerificationPage;

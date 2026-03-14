@@ -79,9 +79,9 @@ const LocationModal: React.FC<LocationModalProps> = ({ isOpen, assignment, onClo
           </button>
         </div>
 
-        {/* Content */}
+      
         <div className="flex-1 overflow-y-auto p-6">
-          {/* Assignment Info */}
+          
           <div className="mb-6">
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>

@@ -16,7 +16,7 @@ export class HttpService {
   }
 
   private getHeaders(): HeadersInit {
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
@@ -37,31 +37,42 @@ export class HttpService {
       let errorData;
       try {
         errorData = await response.json();
+        console.log('\n🔴🔴🔴 ERROR RESPONSE 🔴🔴🔴');
+        console.log('❌ Status:', response.status);
+        console.log('❌ Error Data:', JSON.stringify(errorData, null, 2));
       } catch (e) {
-        // If response is not JSON, try to get text or use status text
         const errorText = await response.text().catch(() => `HTTP error! status: ${response.status}`);
+        console.log('\n🔴🔴🔴 ERROR RESPONSE (Non-JSON) 🔴🔴🔴');
+        console.log('❌ Status:', response.status);
+        console.log('❌ Error Text:', errorText);
         throw new Error(errorText || `HTTP error! status: ${response.status}`);
       }
       
       // Handle specific authentication errors
       if (response.status === 401) {
+        console.log('❌ 401 AUTHENTICATION ERROR');
         throw new Error(errorData.message || 'Authentication required. Please log in again.');
       }
       
       // Handle subscription-related errors
       if (errorData.message?.includes('subscription') || errorData.message?.includes('Active subscription required')) {
-        // Re-throw subscription errors to let SubscriptionGuard handle them
+        console.log('❌ SUBSCRIPTION ERROR');
         throw new Error(errorData.message);
       }
       
       // Handle 404 errors specifically
       if (response.status === 404) {
+        console.log('❌ 404 NOT FOUND');
         throw new Error(`Endpoint not found (${response.url}). Please check if the backend API is running and the endpoint exists.`);
       }
       
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
-    return response.json();
+    
+    const responseData = await response.json();
+    console.log('\n✅✅✅ SUCCESS RESPONSE ✅✅✅');
+    console.log('✅ Data:', JSON.stringify(responseData, null, 2));
+    return responseData;
   }
 
   async getData<T>(endpoint: string): Promise<T> {
@@ -73,11 +84,21 @@ export class HttpService {
   }
 
   async postData<T>(data: any, endpoint: string): Promise<T> {
+    console.log('\n🔵 HTTP POST:', `${this.baseUrl}${endpoint}`);
+    console.log('🔵 Payload:', JSON.stringify(data, null, 2));
+    
+    const headers = this.getHeaders() as Record<string, string>;
+    const hasAuth = headers['Authorization'] ? '✅ Has Auth Token' : '❌ No Auth Token';
+    console.log('🔵', hasAuth);
+    
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers: headers,
       body: JSON.stringify(data),
     });
+    
+    console.log('🔵 Response Status:', response.status, response.ok ? '✅' : '❌');
+    
     return this.handleResponse<T>(response);
   }
 

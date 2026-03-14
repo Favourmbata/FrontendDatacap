@@ -129,7 +129,7 @@ class CombinedPaymentService {
       console.log('🔍 Verifying combined payment:', request);
       
       const response = await this.httpService.postData<CombinedPaymentVerificationResponse>(
-        request,
+        { tx_ref: request.transactionId },
         '/api/payment/combined/verify'
       );
       
