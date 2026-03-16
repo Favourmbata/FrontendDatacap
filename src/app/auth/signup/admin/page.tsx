@@ -17,9 +17,11 @@ interface FormValues {
   confirmPassword: string;
   organizationName: string;
   country: string;
+  industry: string;
+  category: string;
 }
 
-// Define carousel image interface with optional text overlay properties
+
 interface CarouselImage {
   src: string;
   alt: string;
@@ -55,6 +57,8 @@ export default function OrganizationSignupPage() {
     confirmPassword: '',
     organizationName: '',
     country: '',
+    industry: '',
+    category: '',
   });
   const [errors, setErrors] = useState<Partial<FormValues>>({});
   const [showPassword, setShowPassword] = useState(false);
@@ -63,7 +67,7 @@ export default function OrganizationSignupPage() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const { mutate: submitMutate, isPending } = useMutation({
-    mutationFn: async (values: { name: string; email: string; phone: string; password: string; organizationName: string; country: string }) => {
+    mutationFn: async (values: { name: string; email: string; phone: string; password: string; organizationName: string; country: string; industry: string; category: string }) => {
       // Use the full name as provided
       const firstName = '';
       const lastName = '';
@@ -86,6 +90,8 @@ export default function OrganizationSignupPage() {
         phoneNumber: normalizedPhone,
         organizationName: values.organizationName,
         country: values.country,
+        industryId: values.industry,
+        categoryId: values.category,
         role: "ORGANIZATION"
       };
       
@@ -188,6 +194,8 @@ export default function OrganizationSignupPage() {
     else if (formValues.password !== formValues.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
     if (!formValues.organizationName.trim()) newErrors.organizationName = 'Organization name is required';
     if (!formValues.country.trim()) newErrors.country = 'Country is required';
+    if (!formValues.industry.trim()) newErrors.industry = 'Industry is required';
+    if (!formValues.category.trim()) newErrors.category = 'Category is required';
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -202,7 +210,9 @@ export default function OrganizationSignupPage() {
       phone: formValues.phone, 
       password: formValues.password,
       organizationName: formValues.organizationName,
-      country: formValues.country
+      country: formValues.country,
+      industry: formValues.industry,
+      category: formValues.category
     });
   };
 
@@ -867,6 +877,38 @@ export default function OrganizationSignupPage() {
             {errors.country && <p className="error-message">{errors.country}</p>}
           </div>
 
+          {/* Industry Input */}
+          <div className={`input-container mobile-input-container ${errors.industry ? 'error' : ''}`}>
+            <input
+              type="text"
+              name="industry"
+              value={formValues.industry}
+              onChange={handleChange}
+              placeholder="e.g., Technology, Healthcare, Finance"
+              className={`input-field mobile-input-field ${formValues.industry ? 'has-value' : ''}`}
+            />
+            {formValues.industry && (
+              <label className="input-label mobile-input-label">Industry</label>
+            )}
+            {errors.industry && <p className="error-message">{errors.industry}</p>}
+          </div>
+
+          {/* Category Input */}
+          <div className={`input-container mobile-input-container ${errors.category ? 'error' : ''}`}>
+            <input
+              type="text"
+              name="category"
+              value={formValues.category}
+              onChange={handleChange}
+              placeholder="e.g., Software Development, Medical Services"
+              className={`input-field mobile-input-field ${formValues.category ? 'has-value' : ''}`}
+            />
+            {formValues.category && (
+              <label className="input-label mobile-input-label">Category</label>
+            )}
+            {errors.category && <p className="error-message">{errors.category}</p>}
+          </div>
+
           {/* Password Input */}
           <div className={`input-container mobile-input-container ${errors.password ? 'error' : ''}`}>
             <input
@@ -1127,6 +1169,39 @@ export default function OrganizationSignupPage() {
                   )}
                   {errors.country && <p className="error-message">{errors.country}</p>}
                 </div>
+
+                {/* Industry */}
+                <div className={`input-container desktop-input-container ${errors.industry ? 'error' : ''}`}>
+                  <input
+                    type="text"
+                    name="industry"
+                    value={formValues.industry}
+                    onChange={handleChange}
+                    placeholder="e.g., Technology, Healthcare, Finance"
+                    className={`input-field desktop-input-field ${formValues.industry ? 'has-value' : ''}`}
+                  />
+                  {formValues.industry && (
+                    <label className="input-label desktop-input-label">Industry</label>
+                  )}
+                  {errors.industry && <p className="error-message">{errors.industry}</p>}
+                </div>
+
+                {/* Category */}
+                <div className={`input-container desktop-input-container ${errors.category ? 'error' : ''}`}>
+                  <input
+                    type="text"
+                    name="category"
+                    value={formValues.category}
+                    onChange={handleChange}
+                    placeholder="e.g., Software Development, Medical Services"
+                    className={`input-field desktop-input-field ${formValues.category ? 'has-value' : ''}`}
+                  />
+                  {formValues.category && (
+                    <label className="input-label desktop-input-label">Category</label>
+                  )}
+                  {errors.category && <p className="error-message">{errors.category}</p>}
+                </div>
+
                 {/* Password */}
                 <div className={`input-container desktop-input-container ${errors.password ? 'error' : ''}`}>
                   <input
