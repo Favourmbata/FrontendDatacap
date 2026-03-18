@@ -110,7 +110,8 @@ const ReviewVerificationModal = ({
   const fetchVerificationDetails = async () => {
     try {
       setLoading(true);
-      const response: any = await dataVerificationService.getVerificationById(verificationId);
+      const token = localStorage.getItem('token') || '';
+      const response: any = await dataVerificationService.getVerificationById(verificationId, token);
       setVerification(response.data.verification);
     } catch (error) {
       console.error('Error fetching verification details:', error);
@@ -240,7 +241,7 @@ const ReviewVerificationModal = ({
             </Card>
 
             {/* Building Pictures */}
-            {/* <Card>
+          <Card>
               <CardContent className="p-6">
                 <h3 className="font-semibold text-lg mb-4">Building Documentation</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -259,6 +260,11 @@ const ReviewVerificationModal = ({
                             src={url} 
                             alt={key} 
                             className="w-full h-32 object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = '/assets/uploading.png'; // Fallback image
+                              target.alt = 'Image not available';
+                            }}
                           />
                         )}
                       </div>
@@ -266,7 +272,7 @@ const ReviewVerificationModal = ({
                   ))}
                 </div>
               </CardContent>
-            </Card> */}
+            </Card> 
 
           
             <Card>

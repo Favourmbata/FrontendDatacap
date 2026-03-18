@@ -8,7 +8,9 @@ import {
   Shield,
   ChevronDown,
   Landmark,
-  ShoppingBag
+  ShoppingBag, 
+  FileCheck, 
+  FileText
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -200,7 +202,8 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
     { 
       id: 'data-verification', 
       name: 'Data Verification', 
-      icon: <Image src="/File Document Streamline Carbon.png" alt="Data Verification" width={24} height={24} className="object-contain" />,
+       icon: <FileText className="w-6 h-6" />,
+      // icon: <Image src="/File Document Streamline Carbon.png" alt="Data Verification" width={24} height={24} className="object-contain" />,
       subItems: [
         {
           id: 'field-agent',
