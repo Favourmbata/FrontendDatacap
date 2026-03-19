@@ -113,10 +113,10 @@ const Footer: React.FC = () => {
               <div className="flex items-start">
                 <Link href="/" className="inline-block">
                   <Image
-                    src="/Group 1.png"
+                    src="/assets/vetra.png"
                     alt="Brand Logo"
-                    width={55}
-                    height={48}
+                    width={200}
+                    height={200}
                     className="object-contain"
                   />
                 </Link>
@@ -383,11 +383,11 @@ const Footer: React.FC = () => {
             />
           </div>
 
-          {/* Texts below the purple card (width 313; gap 12; height 85) */}
+         
           <div style={{ width: 313, marginLeft: "auto", marginRight: "auto", marginTop: 14 }}>
-            {/* Quick links and contact side-by-side with space between so contact sits right */}
+           
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-              {/* Quick links container width 102, height 120 */}
+            
               <div style={{ width: 102, height: 120 }}>
                 <h4 style={{ fontFamily: "Manrope, sans-serif", fontWeight: 600, fontSize: 14, margin: 0, marginBottom: 8 }}>
                   Quick links
@@ -420,7 +420,7 @@ const Footer: React.FC = () => {
                 </ul>
               </div>
 
-              {/* Contact container width 155, height 168; sits to the right within the 313px area */}
+              
               <div style={{ width: 155, height: 168 }}>
                 <h4 style={{ fontFamily: "Manrope, sans-serif", fontWeight: 600, fontSize: 14, margin: 0, marginBottom: 8 }}>
                   Contact
@@ -439,17 +439,16 @@ const Footer: React.FC = () => {
               </div>
             </div>
 
-            {/* The logo on the next line (separate container) */}
             <div style={{ marginTop: 14 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Link href="/" className="inline-block">
-                  <Image src="/Group 1.png" alt="logo" width={36} height={32} />
+                  <Image src="/assets/vetra.png" alt="logo" width={100} height={79} />
                 </Link>
               </div>
             </div>
           </div>
 
-          {/* Bottom legal row and copyright (left-aligned, compact) */}
+         
           <div style={{ marginTop: 16, width: 369, paddingBottom: 20 }}>
             <div style={{ width: 313, marginLeft: "auto", marginRight: "auto", fontSize: 12, color: "#9B9B9B" }}>
               <div style={{ borderTop: "1px solid rgba(110,110,110,0.12)", marginTop: 12, paddingTop: 12 }}>

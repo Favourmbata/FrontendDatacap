@@ -106,7 +106,7 @@ export default function Navbar() {
           }}
         >
           <Link href="/">
-            <Image src="/Group 1.png" alt="Brand Logo" width={55} height={48} className="object-contain" />
+            <Image src="/assets/vetra.png" alt="Brand Logo" width={200} height={200} className="object-contain" />
           </Link>
         </div>
 
@@ -333,7 +333,7 @@ export default function Navbar() {
           }}
         >
           <Link href="/">
-            <Image src="/Group 1.png" alt="Brand Logo" width={45} height={39} className="object-contain" />
+            <Image src="/assets/vetra.png" alt="Brand Logo" width={100} height={79} className="object-contain" />
           </Link>
         </div>
 
@@ -399,7 +399,7 @@ export default function Navbar() {
                 {/* Logo and Close Button Row */}
                 <div className="w-full flex justify-between items-center mb-16">
                   <Link href="/" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Image src="/Group 1.png" alt="Brand Logo" width={45} height={39} className="object-contain" />
+                    <Image src="/assets/vetra.png" alt="Brand Logo" width={100} height={79} className="object-contain" />
                   </Link>
                   
                   {/* X Close Button */}
