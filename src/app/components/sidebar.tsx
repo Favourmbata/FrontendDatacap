@@ -3,7 +3,7 @@
 
 "use client";
 
-import React, { Dispatch, SetStateAction, ReactNode, useState } from 'react';
+import React, { Dispatch, SetStateAction, ReactNode, useState, useEffect } from 'react';
 import { 
   Menu, 
   ChevronDown
@@ -54,6 +54,16 @@ export const UserSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
   const pathname = usePathname();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
+  
+  // Auto-expand the submenu whose child route is currently active
+  useEffect(() => {
+    userMenuItems.forEach(item => {
+      if (item.subItems?.some(sub => pathname.startsWith(sub.route))) {
+        setExpandedMenu(item.id);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
   
   const toggleSidebar = (): string => onShow ? "block" : "hidden";
   const toggleLeftPadding = (): string => onShow ? "pl-4 md:pl-12" : "";
@@ -137,6 +147,11 @@ export const UserSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
           id: 'body-care-dashboard',
           name: 'Body Care Dashboard',
           route: '/user/body-care'
+        },
+        {
+          id: 'book-appointment',
+          name: 'Book Appointment',
+          route: '/user/book-appointment'
         },
         {
           id: 'my-orders',

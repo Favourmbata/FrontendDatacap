@@ -11,18 +11,30 @@ export async function POST(
     const body = await req.json();
     const { status, comments } = body;
     
+    // Get token from request headers or directly from localStorage as fallback
+    let authToken = req.headers.get('authorization');
+    
+    // If no auth header in request, try to get token from localStorage
+    if (!authToken) {
+      // This won't work in server-side, so we need to ensure client sends it
+      console.warn('No authorization header in request. Client must include Bearer token.');
+    }
+    
     // Call the actual backend API
     const backendUrl = `https://datacapture-backend.onrender.com/api/super-admin/data-verification/verifications/${id}/review`;
     
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Add authorization if available
+    if (authToken) {
+      headers['Authorization'] = authToken;
+    }
+    
     const response = await fetch(backendUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // Forward authorization header if present
-        ...req.headers.has('authorization') 
-          ? { authorization: req.headers.get('authorization')! } 
-          : {},
-      },
+      headers,
       body: JSON.stringify({ status, comments }),
     });
     

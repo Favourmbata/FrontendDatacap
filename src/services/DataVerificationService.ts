@@ -97,6 +97,7 @@ class DataVerificationService {
   async getMyAssignments(token: string): Promise<AssignmentsResponse> {
     try {
       const response = await fetch(`${this.baseUrl}/api/data-verification/assignments/my`, {
+        //  const response = await fetch(`${this.baseUrl}/api/data-verification/my-assigned-locations`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

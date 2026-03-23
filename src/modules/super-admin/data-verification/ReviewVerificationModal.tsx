@@ -111,15 +111,46 @@ const ReviewVerificationModal = ({
     try {
       setLoading(true);
       const token = localStorage.getItem('token') || '';
+      
+      // Validate token before making request
+      if (!token || token === 'undefined' || token === 'null') {
+        toast({
+          title: "Session Expired",
+          description: "Please login again",
+          variant: "destructive"
+        });
+        setTimeout(() => {
+          window.location.href = '/auth/login';
+        }, 1000);
+        return;
+      }
+      
       const response: any = await dataVerificationService.getVerificationById(verificationId, token);
+      
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to load verification');
+      }
+      
       setVerification(response.data.verification);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching verification details:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load verification details",
-        variant: "destructive"
-      });
+      
+      if (error.message?.includes('Access token required') || error.message?.includes('Unauthorized')) {
+        toast({
+          title: "Session Expired",
+          description: "Please login again",
+          variant: "destructive"
+        });
+        setTimeout(() => {
+          window.location.href = '/auth/login';
+        }, 1000);
+      } else {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to load verification details",
+          variant: "destructive"
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -137,25 +168,59 @@ const ReviewVerificationModal = ({
 
     try {
       setSubmitting(true);
-      await dataVerificationService.reviewVerification(verificationId, {
+      
+      // Get token from localStorage
+      const token = localStorage.getItem('token') || '';
+      
+      // Validate token exists
+      if (!token || token === 'undefined' || token === 'null') {
+        toast({
+          title: "Authentication Error",
+          description: "Your session has expired. Please login again.",
+          variant: "destructive"
+        });
+        // Optionally redirect to login
+        setTimeout(() => {
+          window.location.href = '/auth/login';
+        }, 2000);
+        return;
+      }
+      
+      const result = await dataVerificationService.reviewVerification(verificationId, {
         status: reviewStatus,
         comments
-      });
+      }, token);
 
-      toast({
-        title: "Success",
-        description: `Verification ${reviewStatus} successfully`
-      });
-
-      onReviewComplete();
-      onClose();
-    } catch (error) {
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: result.message || `Verification ${reviewStatus} successfully`
+        });
+        onReviewComplete();
+        onClose();
+      } else {
+        throw new Error(result.message || 'Failed to submit review');
+      }
+    } catch (error: any) {
       console.error('Error submitting review:', error);
-      toast({
-        title: "Error",
-        description: "Failed to submit review",
-        variant: "destructive"
-      });
+      
+      // Check if it's an authentication error
+      if (error.message?.includes('Access token required') || error.message?.includes('Unauthorized')) {
+        toast({
+          title: "Session Expired",
+          description: "Please login again to continue",
+          variant: "destructive"
+        });
+        setTimeout(() => {
+          window.location.href = '/auth/login';
+        }, 2000);
+      } else {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to submit review",
+          variant: "destructive"
+        });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -175,6 +240,9 @@ const ReviewVerificationModal = ({
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-white" style={{ marginLeft: '100px' }}>
+          <DialogHeader>
+            <DialogTitle>Loading...</DialogTitle>
+          </DialogHeader>
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
@@ -245,31 +313,41 @@ const ReviewVerificationModal = ({
               <CardContent className="p-6">
                 <h3 className="font-semibold text-lg mb-4">Building Documentation</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {Object.entries(verification.buildingPictures).map(([key, url]) => (
-                    <div key={key} className="space-y-2">
-                      <Label className="text-sm capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</Label>
-                      <div className="border rounded-lg overflow-hidden">
-                        {url.endsWith('.mp4') ? (
-                          <video 
-                            src={url} 
-                            controls 
-                            className="w-full h-32 object-cover"
-                          />
-                        ) : (
-                          <img 
-                            src={url} 
-                            alt={key} 
-                            className="w-full h-32 object-cover"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.src = '/assets/uploading.png'; // Fallback image
-                              target.alt = 'Image not available';
-                            }}
-                          />
-                        )}
+                  {Object.entries(verification.buildingPictures).map(([key, url]) => {
+                    // Check if url is a valid string before processing
+                    const urlString = typeof url === 'string' ? url : '';
+                    const isVideo = urlString.endsWith('.mp4');
+                    
+                    return (
+                      <div key={key} className="space-y-2">
+                        <Label className="text-sm capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</Label>
+                        <div className="border rounded-lg overflow-hidden">
+                          {isVideo && urlString ? (
+                            <video 
+                              src={urlString} 
+                              controls 
+                              className="w-full h-32 object-cover"
+                            />
+                          ) : urlString ? (
+                            <img 
+                              src={urlString} 
+                              alt={key} 
+                              className="w-full h-32 object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = '/assets/uploading.png'; // Fallback image
+                                target.alt = 'Image not available';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-32 bg-gray-100 flex items-center justify-center">
+                              <span className="text-gray-400 text-sm">No media</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card> 
@@ -359,7 +437,7 @@ const ReviewVerificationModal = ({
                     />
                   </div>
 
-                  {/* <div className="flex justify-end gap-3 pt-4">
+                  <div className="flex justify-end gap-3 pt-4">
                     <Button variant="outline" onClick={onClose}>
                       Cancel
                     </Button>
@@ -368,9 +446,9 @@ const ReviewVerificationModal = ({
                       disabled={submitting || !reviewStatus}
                       className={reviewStatus === 'approved' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
                     >
-                      {submitting ? 'Submitting...' : `Submit ${reviewStatus}`}
+                      {submitting ? 'Submitting...' : `Submit ${reviewStatus ? reviewStatus.charAt(0).toUpperCase() + reviewStatus.slice(1) : ''}`}
                     </Button>
-                  </div> */}
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -11,7 +11,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [showSidebar, setShowSidebar] = useState(false); // Start with sidebar closed on mobile
+  const [showSidebar, setShowSidebar] = useState(true) // Open by default on desktop
 
   return (
     <SubscriptionGuard>
