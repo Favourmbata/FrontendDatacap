@@ -172,7 +172,6 @@ export class PublicProductService {
       if (!params.sortOrder) queryParams.append('sortOrder', 'desc');
 
       const url = `${BASE_URL}/api/public/products/search?${queryParams.toString()}`;
-      console.log('PublicProductService: Fetching from URL:', url);
 
       const response = await fetch(url, {
         method: 'GET',
@@ -188,7 +187,6 @@ export class PublicProductService {
       const result = await response.json();
       return result;
     } catch (error) {
-      console.error('Error searching public products:', error);
       return {
         success: false,
         data: {
@@ -208,7 +206,6 @@ export class PublicProductService {
   static async getProductDetails(itemId: string): Promise<PublicProductDetailsResponse> {
     try {
       const url = `${BASE_URL}/api/public/products/${itemId}`;
-      console.log('PublicProductService: Fetching product details from:', url);
 
       const response = await fetch(url, {
         method: 'GET',
@@ -227,7 +224,6 @@ export class PublicProductService {
       const result = await response.json();
       return result;
     } catch (error) {
-      console.error('Error fetching product details:', error);
       throw error;
     }
   }
@@ -236,7 +232,6 @@ export class PublicProductService {
   static async getProductByCode(platformCode: string): Promise<PublicProductDetailsResponse> {
     try {
       const url = `${BASE_URL}/api/public/products/code/${platformCode}`;
-      console.log('PublicProductService: Fetching product by code from:', url);
 
       const response = await fetch(url, {
         method: 'GET',
@@ -255,16 +250,13 @@ export class PublicProductService {
       const result = await response.json();
       return result;
     } catch (error) {
-      console.error('Error fetching product by code:', error);
       throw error;
     }
   }
 
-  
   static async getAllCategories(): Promise<CategoryListResponse> {
     try {
       const url = `${BASE_URL}/api/public/products/categories`;
-      console.log('PublicProductService: Fetching categories from:', url);
 
       const response = await fetch(url, {
         method: 'GET',
@@ -280,7 +272,6 @@ export class PublicProductService {
       const result = await response.json();
       return result;
     } catch (error) {
-      console.error('Error fetching categories:', error);
       return {
         success: false,
         data: {

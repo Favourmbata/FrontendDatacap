@@ -13,6 +13,8 @@ const PaymentPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [paymentLink, setPaymentLink] = useState<string | null>(null);
   const [selectedPaymentType, setSelectedPaymentType] = useState<'upfront' | 'remaining' | 'full'>('upfront');
+  const [bookingDate, setBookingDate] = useState('');
+  const [bookingTime, setBookingTime] = useState('');
 
   // Get order data from localStorage
   const [orderData, setOrderData] = useState<any>(null);
@@ -23,13 +25,11 @@ const PaymentPage = () => {
       try {
         const productData = JSON.parse(savedProduct);
         
-       
-        console.log('Retrieved product data from localStorage:', productData);
         setOrderData({
           productId: productData.productId,
           productName: productData.name,
           productPrice: productData.price,
-          upfrontPayment: productData.upfrontPayment || productData.price * 0.1, // Use product's upfront amount or 10% default
+          upfrontPayment: productData.upfrontPayment || productData.price * 0.1,
           organizationId: productData.organizationId || 'ORG1766704354663',
           organizationName: productData.organizationName || 'Service Provider',
           customerEmail: user?.email || '',
@@ -41,9 +41,16 @@ const PaymentPage = () => {
           platformChargePercent: 2.5, 
           deliveryFee: 500 
         });
+
+        // Set booking date and time if they exist (for services)
+        if (productData.bookingDate) {
+          setBookingDate(productData.bookingDate);
+        }
+        if (productData.bookingTime) {
+          setBookingTime(productData.bookingTime);
+        }
       } catch (err) {
         setError('Failed to load order data');
-        console.error('Error parsing order data:', err);
       }
     } else {
       setError('No order data found. Please select a product first.');
@@ -64,11 +71,6 @@ const PaymentPage = () => {
   // No payment breakdown calculation needed since we removed the section
 
   const handleInitiatePayment = async () => {
-    console.log('Pay button clicked');
-    console.log('Order data:', orderData);
-    console.log('Selected payment type:', selectedPaymentType);
-    console.log('User:', user);
-    
     try {
       setLoading(true);
       setError(null);
@@ -84,15 +86,13 @@ const PaymentPage = () => {
       if (!orderData.productId || !orderData.productName || !orderData.organizationId || !orderData.organizationName || 
           !orderData.customerEmail || !orderData.customerName || !orderData.itemType) {
         setError('Missing required customer information. Please ensure you are logged in and your profile is complete.');
-        console.log('Missing fields:', {
-          productId: orderData.productId,
-          productName: orderData.productName,
-          organizationId: orderData.organizationId,
-          organizationName: orderData.organizationName,
-          customerEmail: orderData.customerEmail,
-          customerName: orderData.customerName,
-          itemType: orderData.itemType
-        });
+        setLoading(false);
+        return;
+      }
+      
+      // For services, validate booking date and time
+      if (orderData.itemType === 'service' && (!bookingDate || !bookingTime)) {
+        setError('Booking date and time are required for services');
         setLoading(false);
         return;
       }
@@ -107,26 +107,23 @@ const PaymentPage = () => {
         userId: user?.id,
         customerEmail: orderData.customerEmail,
         customerName: orderData.customerName,
-        customerPhone: orderData.customerPhone || '', // Phone is optional
+        customerPhone: orderData.customerPhone || '',
         paymentType: selectedPaymentType,
-        itemType: orderData.itemType, // Include item type (product or service)
-        // Include callback URL for payment verification after completion
+        itemType: orderData.itemType,
+        bookingDate: bookingDate,
+        bookingTime: bookingTime,
         redirectUrl: `${window.location.origin}/user/payment/callback`
       };
 
-      console.log('Sending payment data:', paymentData);
       const response = await OrderService.initiatePayment(paymentData, token || undefined);
-      console.log('Payment response:', response);
       
       if (response.success) {
-        // Redirect to Flutterwave payment page
         window.location.href = response.data.link;
       } else {
         setError(response.message || 'Failed to initiate payment');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to process payment');
-      console.error('Payment initiation error:', err);
     } finally {
       setLoading(false);
     }
@@ -156,13 +153,67 @@ const PaymentPage = () => {
 
             <div className="p-6">
               <div className="max-w-2xl mx-auto">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Select Payment Type</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Payment Details</h2>
                             
                 <div className="bg-white border-2 border-[#5d2a8b] rounded-lg p-6 mb-8">
                  
+                  {/* Booking Information for Services */}
+                  {orderData.itemType === 'service' && (
+                    <div className="mb-8 pb-6 border-b-2 border-gray-200">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        <span className="w-8 h-8 bg-[#5d2a8b] text-white rounded-full flex items-center justify-center text-sm mr-2">1</span>
+                        Service Booking Information
+                      </h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Booking Date <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            value={bookingDate}
+                            onChange={(e) => setBookingDate(e.target.value)}
+                            min={new Date().toISOString().split('T')[0]}
+                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5d2a8b] focus:border-[#5d2a8b]"
+                            required
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Booking Time <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="time"
+                            value={bookingTime}
+                            onChange={(e) => setBookingTime(e.target.value)}
+                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5d2a8b] focus:border-[#5d2a8b]"
+                            required
+                          />
+                        </div>
+                      </div>
+                      
+                      {!bookingDate || !bookingTime ? (
+                        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start">
+                          <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 mr-2 flex-shrink-0" />
+                          <p className="text-sm text-yellow-700">
+                            Please select your preferred booking date and time to proceed with payment.
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {/* Payment Type Selection */}
                   <div className="space-y-4 mb-8">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Choose your payment option:</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        <span className="w-8 h-8 bg-[#5d2a8b] text-white rounded-full flex items-center justify-center text-sm mr-2">
+                          {orderData.itemType === 'service' ? '2' : '1'}
+                        </span>
+                        Choose your payment option:
+                      </h3>
                                   
                       <div className="space-y-3">
                         <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-[#5d2a8b] transition-colors">

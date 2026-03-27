@@ -15,6 +15,11 @@ export interface UserProfile {
   updatedAt?: string;
   organizationId?: string;
   organizationName?: string;
+  country?: string;
+  industryId?: string;
+  industryName?: string;
+  isVerified?: boolean;
+  status?: string;
 }
 
 export class ProfileService {

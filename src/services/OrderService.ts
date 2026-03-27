@@ -10,7 +10,9 @@ interface InitiatePaymentData {
   customerName: string;
   customerPhone?: string;
   paymentType: 'upfront' | 'remaining' | 'full';
-  itemType: 'product' | 'service'; // Include item type (product or service)
+  itemType: 'product' | 'service';
+  bookingDate?: string | null;
+  bookingTime?: string | null;
   redirectUrl?: string;
 }
 
@@ -70,7 +72,6 @@ class OrderService {
 
       return result;
     } catch (error) {
-      console.error('Error initiating payment:', error);
       throw error;
     }
   }
@@ -80,8 +81,6 @@ class OrderService {
    */
   static async verifyPayment(data: VerifyPaymentData): Promise<VerifyResponse> {
     try {
-      console.log('🔍 Order payment - Verifying with transactionId:', data.transactionId);
-      
       const response = await fetch(`${this.BASE_URL}/api/orders/public/verify`, {
         method: 'POST',
         headers: {
@@ -92,15 +91,12 @@ class OrderService {
 
       const result = await response.json();
       
-      console.log('✅ Order payment verification response:', result);
-      
       if (!response.ok) {
         throw new Error(result.message || 'Failed to verify payment');
       }
 
       return result;
     } catch (error) {
-      console.error('❌ Error verifying order payment:', error);
       throw error;
     }
   }
@@ -125,7 +121,6 @@ class OrderService {
 
       return result;
     } catch (error) {
-      console.error('Error fetching user orders:', error);
       throw error;
     }
   }
@@ -150,7 +145,6 @@ class OrderService {
 
       return result;
     } catch (error) {
-      console.error('Error fetching order details:', error);
       throw error;
     }
   }

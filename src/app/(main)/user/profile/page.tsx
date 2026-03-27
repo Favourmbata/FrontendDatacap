@@ -16,6 +16,9 @@ const ProfilePage = () => {
     fullName: '',
     email: '',
     phoneNumber: '',
+    country: '',
+    industryName: '',
+    organizationName: '',
   });
   const [errors, setErrors] = useState({
     fullName: '',
@@ -38,7 +41,10 @@ const ProfilePage = () => {
           ? `${profile.firstName} ${profile.lastName}`
           : '',
         email: profile.email || '',
-        phoneNumber: profile.phoneNumber || profile.phoneNumber || '',
+        phoneNumber: profile.phoneNumber || '',
+        country: profile.country || '',
+        industryName: profile.industryName || '',
+        organizationName: profile.organizationName || '',
       });
     }
   }, [profile]);
@@ -331,6 +337,66 @@ const ProfilePage = () => {
                     {errors.phoneNumber}
                   </p>
                 )}
+
+                {/* Organization Name (Read-only) */}
+                <div>
+                  <label className="manrope block text-sm font-medium text-gray-700 mb-2">
+                    Organization
+                  </label>
+                  <input
+                    type="text"
+                    name="organizationName"
+                    value={formData.organizationName}
+                    readOnly
+                    placeholder="Organization Name"
+                    className="manrope w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      fontSize: '14px',
+                      backgroundColor: '#F9FAFB'
+                    }}
+                  />
+                </div>
+
+                {/* Country (Read-only) */}
+                <div>
+                  <label className="manrope block text-sm font-medium text-gray-700 mb-2">
+                    Country
+                  </label>
+                  <input
+                    type="text"
+                    name="country"
+                    value={formData.country}
+                    readOnly
+                    placeholder="Country"
+                    className="manrope w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      fontSize: '14px',
+                      backgroundColor: '#F9FAFB'
+                    }}
+                  />
+                </div>
+
+                {/* Industry (Read-only) */}
+                <div>
+                  <label className="manrope block text-sm font-medium text-gray-700 mb-2">
+                    Industry
+                  </label>
+                  <input
+                    type="text"
+                    name="industryName"
+                    value={formData.industryName}
+                    readOnly
+                    placeholder="Industry"
+                    className="manrope w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      fontSize: '14px',
+                      backgroundColor: '#F9FAFB'
+                    }}
+                  />
+                </div>
               </div>
 
               {/* Save Profile Button */}

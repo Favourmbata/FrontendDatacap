@@ -21,6 +21,12 @@ interface FormValues {
   category: string;
 }
 
+interface Industry {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 
 interface CarouselImage {
   src: string;
@@ -65,6 +71,10 @@ export default function OrganizationSignupPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [industries, setIndustries] = useState<Industry[]>([]);
+  const [loadingIndustries, setLoadingIndustries] = useState(false);
+  const [showIndustriesDropdown, setShowIndustriesDropdown] = useState(false);
+  const [industrySearch, setIndustrySearch] = useState('');
 
   const { mutate: submitMutate, isPending } = useMutation({
     mutationFn: async (values: { name: string; email: string; phone: string; password: string; organizationName: string; country: string; industry: string; category: string }) => {
@@ -83,6 +93,9 @@ export default function OrganizationSignupPage() {
         normalizedPhone = '+234' + normalizedPhone;
       }
       
+      // Find the selected industry to get its name
+      const selectedIndustry = industries.find(ind => ind.id === values.industry);
+      
       const payload = {
         fullName: values.name,
         email: values.email.toLowerCase().trim(),
@@ -91,6 +104,7 @@ export default function OrganizationSignupPage() {
         organizationName: values.organizationName,
         country: values.country,
         industryId: values.industry,
+        industryName: selectedIndustry?.name || '',
         categoryId: values.category,
         role: "ORGANIZATION"
       };
@@ -178,6 +192,15 @@ export default function OrganizationSignupPage() {
     }
   };
 
+  const handleIndustrySelect = (industryId: string) => {
+    setFormValues(prev => ({ ...prev, industry: industryId }));
+    setShowIndustriesDropdown(false);
+    setIndustrySearch('');
+    if (errors.industry) {
+      setErrors(prev => ({ ...prev, industry: '' }));
+    }
+  };
+
   const validate = (): boolean => {
     const newErrors: Partial<FormValues> = {};
     
@@ -247,6 +270,46 @@ export default function OrganizationSignupPage() {
       backgroundColor: "#ccbddb"
     }
   ];
+
+  // Fetch industries from API
+  useEffect(() => {
+    const fetchIndustries = async () => {
+      try {
+        setLoadingIndustries(true);
+        const response = await client.get('/api/auth/industries');
+        if (response.data && response.data.success) {
+          // Handle response format: { success: true, data: { industries: [...] } }
+          const industriesData = response.data.data?.industries || response.data.data || [];
+          setIndustries(industriesData);
+        }
+      } catch (error) {
+        console.error('Error fetching industries:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load industries. Please try again.',
+          variant: 'destructive'
+        });
+      } finally {
+        setLoadingIndustries(false);
+      }
+    };
+
+    fetchIndustries();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array - only fetch on mount
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showIndustriesDropdown && !(event.target as Element).closest('.input-container')) {
+        setShowIndustriesDropdown(false);
+        setIndustrySearch('');
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showIndustriesDropdown]);
 
   // Auto-rotate carousel
   useEffect(() => {
@@ -877,20 +940,73 @@ export default function OrganizationSignupPage() {
             {errors.country && <p className="error-message">{errors.country}</p>}
           </div>
 
-          {/* Industry Input */}
-          <div className={`input-container mobile-input-container ${errors.industry ? 'error' : ''}`}>
-            <input
-              type="text"
-              name="industry"
-              value={formValues.industry}
-              onChange={handleChange}
-              placeholder="e.g., Technology, Healthcare, Finance"
+          {/* Industry Input - Dropdown */}
+          <div className={`input-container mobile-input-container ${errors.industry ? 'error' : ''}`} style={{ position: 'relative' }}>
+            <div
+              onClick={() => setShowIndustriesDropdown(!showIndustriesDropdown)}
               className={`input-field mobile-input-field ${formValues.industry ? 'has-value' : ''}`}
-            />
+              style={{ 
+                cursor: 'pointer',
+                background: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236E6E6E' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E") no-repeat right 16px center/16px, white`,
+                paddingRight: '40px'
+              }}
+            >
+              {formValues.industry ? (() => {
+                const selected = industries.find(ind => ind.id === formValues.industry);
+                return selected ? selected.name : 'Select industry';
+              })() : 'Select industry'}
+            </div>
             {formValues.industry && (
               <label className="input-label mobile-input-label">Industry</label>
             )}
             {errors.industry && <p className="error-message">{errors.industry}</p>}
+            
+            {/* Dropdown */}
+            {showIndustriesDropdown && (
+              <div className="absolute z-50 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto" style={{ top: '100%' }}>
+                <div className="p-2 border-b border-gray-200 sticky top-0 bg-white">
+                  <input
+                    type="text"
+                    placeholder="Search industries..."
+                    value={industrySearch}
+                    onChange={(e) => setIndustrySearch(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5D2A8B] focus:border-transparent text-sm"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+                <div className="max-h-48 overflow-y-auto">
+                  {loadingIndustries ? (
+                    <div className="p-3 text-sm text-gray-500 text-center">Loading industries...</div>
+                  ) : (
+                    industries
+                      .filter(industry => 
+                        industry.name.toLowerCase().includes(industrySearch.toLowerCase())
+                      )
+                      .map(industry => (
+                        <label
+                          key={industry.id}
+                          className="flex items-center px-4 py-3 hover:bg-gray-100 cursor-pointer transition-colors"
+                        >
+                          <input
+                            type="radio"
+                            name="industry"
+                            value={industry.id}
+                            checked={formValues.industry === industry.id}
+                            onChange={() => handleIndustrySelect(industry.id)}
+                            className="w-4 h-4 text-[#5D2A8B] focus:ring-[#5D2A8B]"
+                          />
+                          <span className="ml-3 text-sm text-gray-700 flex-1">
+                            {industry.name}
+                          </span>
+                        </label>
+                      ))
+                  )}
+                  {!loadingIndustries && industries.filter(i => i.name.toLowerCase().includes(industrySearch.toLowerCase())).length === 0 && (
+                    <div className="p-3 text-sm text-gray-500 text-center">No industries found</div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Category Input */}
@@ -1170,20 +1286,73 @@ export default function OrganizationSignupPage() {
                   {errors.country && <p className="error-message">{errors.country}</p>}
                 </div>
 
-                {/* Industry */}
-                <div className={`input-container desktop-input-container ${errors.industry ? 'error' : ''}`}>
-                  <input
-                    type="text"
-                    name="industry"
-                    value={formValues.industry}
-                    onChange={handleChange}
-                    placeholder="e.g., Technology, Healthcare, Finance"
+                {/* Industry - Dropdown */}
+                <div className={`input-container desktop-input-container ${errors.industry ? 'error' : ''}`} style={{ position: 'relative' }}>
+                  <div
+                    onClick={() => setShowIndustriesDropdown(!showIndustriesDropdown)}
                     className={`input-field desktop-input-field ${formValues.industry ? 'has-value' : ''}`}
-                  />
+                    style={{ 
+                      cursor: 'pointer',
+                      background: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='%236E6E6E' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E") no-repeat right 30px center/20px, white`,
+                      paddingRight: '60px'
+                    }}
+                  >
+                    {formValues.industry ? (() => {
+                      const selected = industries.find(ind => ind.id === formValues.industry);
+                      return selected ? selected.name : 'Select industry';
+                    })() : 'Select industry'}
+                  </div>
                   {formValues.industry && (
                     <label className="input-label desktop-input-label">Industry</label>
                   )}
                   {errors.industry && <p className="error-message">{errors.industry}</p>}
+                  
+                  {/* Dropdown */}
+                  {showIndustriesDropdown && (
+                    <div className="absolute z-50 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto" style={{ top: '100%' }}>
+                      <div className="p-3 border-b border-gray-200 sticky top-0 bg-white">
+                        <input
+                          type="text"
+                          placeholder="Search industries..."
+                          value={industrySearch}
+                          onChange={(e) => setIndustrySearch(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5D2A8B] focus:border-transparent"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        {loadingIndustries ? (
+                          <div className="p-3 text-sm text-gray-500 text-center">Loading industries...</div>
+                        ) : (
+                          industries
+                            .filter(industry => 
+                              industry.name.toLowerCase().includes(industrySearch.toLowerCase())
+                            )
+                            .map(industry => (
+                              <label
+                                key={industry.id}
+                                className="flex items-center px-4 py-3 hover:bg-gray-100 cursor-pointer transition-colors"
+                              >
+                                <input
+                                  type="radio"
+                                  name="industry"
+                                  value={industry.id}
+                                  checked={formValues.industry === industry.id}
+                                  onChange={() => handleIndustrySelect(industry.id)}
+                                  className="w-4 h-4 text-[#5D2A8B] focus:ring-[#5D2A8B]"
+                                />
+                                <span className="ml-3 text-sm text-gray-700 flex-1">
+                                  {industry.name}
+                                </span>
+                              </label>
+                            ))
+                        )}
+                        {!loadingIndustries && industries.filter(i => i.name.toLowerCase().includes(industrySearch.toLowerCase())).length === 0 && (
+                          <div className="p-3 text-sm text-gray-500 text-center">No industries found</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Category */}
