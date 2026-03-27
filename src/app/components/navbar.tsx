@@ -91,22 +91,16 @@ export default function Navbar() {
     >
       {/* Desktop Navbar */}
       <div 
-        className="relative mx-auto hidden md:block"
+        className="relative mx-auto hidden md:flex items-center justify-between px-8 lg:px-20 xl:px-24"
         style={{
-          width: "1440px",
+          maxWidth: "1920px",
           height: "110px",
         }}
       >
         {/* Logo */}
-        <div 
-          className="absolute flex items-center"
-          style={{
-            top: "31px",
-            left: "80px",
-          }}
-        >
+        <div className="flex items-center">
           <Link href="/">
-            <Image src="/assets/vetra.png" alt="Brand Logo" width={200} height={200} className="object-contain" />
+            <Image src="/assets/vetra.png" alt="Brand Logo" width={180} height={180} className="object-contain" />
           </Link>
         </div>
 
@@ -114,12 +108,7 @@ export default function Navbar() {
           <>
             {/* Navigation Links */}
             <nav 
-              className="absolute flex items-center"
-              style={{
-                top: "55px",
-                left: "824px",
-                gap: "40px",
-              }}
+              className="hidden lg:flex items-center gap-8 xl:gap-10"
             >
               <Link
                 href="/feature"
@@ -190,17 +179,12 @@ export default function Navbar() {
 
             {/* Auth Buttons */}
             <div 
-              className="absolute flex items-center"
-              style={{
-                top: "47px",
-                left: "1172px",
-                gap: "20px",
-              }}
+              className="flex items-center gap-3 xl:gap-5"
             >
               {/* Download App + Sign Up share the same dropdown */}
               <div className="relative">
                 {/* Two trigger buttons side by side */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 xl:gap-3">
                   {/* Download App button */}
                   <button
                     type="button"
@@ -228,7 +212,7 @@ export default function Navbar() {
                     onClick={() => setIsSignUpDropdownOpen(!isSignUpDropdownOpen)}
                     className="flex items-center justify-center transition-all duration-200"
                     style={{
-                      width: "106px",
+                      minWidth: "100px",
                       height: "40px",
                       borderRadius: "20px",
                       border: "1px solid #5D2A8B",
@@ -241,7 +225,8 @@ export default function Navbar() {
                       fontSize: "16px",
                     }}
                   >
-                    <span>Sign up</span>
+                    <span className="hidden xl:inline">Sign up</span>
+                    <span className="xl:hidden">Sign up</span>
                     <svg
                       className={`w-4 h-4 transition-transform ${isSignUpDropdownOpen ? "rotate-180" : ""}`}
                       fill="none"
@@ -256,12 +241,10 @@ export default function Navbar() {
                 {/* Shared dropdown */}
                 {isSignUpDropdownOpen && (
                   <div
-                    className="absolute bg-white border border-[#5D2A8B] shadow-lg z-50"
+                    className="absolute right-0 bg-white border border-[#5D2A8B] shadow-lg z-50"
                     style={{
                       top: "50px",
-                      left: "7px",
                       width: "194px",
-                      transform: "translateX(-50%)",
                       borderRadius: "10px",
                       padding: "8px 12px",
                       gap: "8px",
@@ -295,14 +278,14 @@ export default function Navbar() {
               {/* Login button */}
               <Link
                 href="/auth/login"
-                className="flex items-center justify-center transition-all duration-200 hover:opacity-90"
+                className="flex items-center justify-center transition-all duration-200 hover:opacity-90 whitespace-nowrap"
                 style={{
-                  width: "62px",
-                  height: "38px",
+                  minWidth: "70px",
+                  height: "40px",
                   borderRadius: "20px",
                   background: "#5D2A8B",
                   color: "#FFFFFF",
-                  padding: "8px 10px",
+                  padding: "8px 12px",
                   fontFamily: "Manrope",
                   fontWeight: 500,
                   fontSize: "16px",
