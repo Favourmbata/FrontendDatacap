@@ -480,39 +480,6 @@ export default function GalleryPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
-
-              {/* <div className="flex border border-gray-300 rounded-md overflow-hidden shadow-sm">
-                <button
-                  onClick={() => setFilterVisible('all')}
-                  className={`px-4 py-2 text-sm font-medium ${
-                    filterVisible === 'all'
-                      ? 'bg-[#5d2a8b] text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setFilterVisible('public')}
-                  className={`px-4 py-2 text-sm font-medium ${
-                    filterVisible === 'public'
-                      ? 'bg-[#5d2a8b] text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Public
-                </button>
-                <button
-                  onClick={() => setFilterVisible('private')}
-                  className={`px-4 py-2 text-sm font-medium ${
-                    filterVisible === 'private'
-                      ? 'bg-[#5d2a8b] text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Private
-                </button>
-              </div> */}
             </div>
           </div>
         </div>

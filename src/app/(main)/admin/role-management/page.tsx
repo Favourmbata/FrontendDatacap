@@ -5,11 +5,13 @@ import { Search, Plus, Edit, Eye, Trash2, MoreHorizontal, UserCheck, X } from 'l
 import { useRouter } from 'next/navigation';
 import { RoleService, Role } from '@/services/RoleService';
 import { toast } from '@/app/components/hooks/use-toast';
+import { useAuthContext } from '@/AuthContext';
 
 
 
 const RoleManagementPage = () => {
   const router = useRouter();
+  const { token } = useAuthContext();
   const [roles, setRoles] = useState<Role[]>([]);
   const [filteredRoles, setFilteredRoles] = useState<Role[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,12 +36,32 @@ const RoleManagementPage = () => {
   
   // Fetch roles from API
   useEffect(() => {
-    fetchRoles();
-  }, []);
+    if (token) {
+      fetchRoles();
+    }
+  }, [token]);
   
   const fetchRoles = async () => {
     try {
       setLoading(true);
+      
+      // Debug: Check if token exists
+      if (typeof window !== 'undefined') {
+        const localStorageToken = localStorage.getItem('token');
+        console.log('🔑 Role Management - Auth Context Token:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
+        console.log('🔑 Role Management - localStorage Token:', localStorageToken ? `${localStorageToken.substring(0, 20)}...` : 'NO TOKEN');
+        
+        if (!token && !localStorageToken) {
+          console.warn('⚠️ No authentication token found. Please ensure you are logged in.');
+          toast({
+            title: 'Authentication Error',
+            description: 'No access token found. Please log in again.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+      
       const roleService = new RoleService();
       const response = await roleService.getRoles();
       setRoles(response.data.roles);
@@ -238,8 +260,22 @@ const RoleManagementPage = () => {
         <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8 min-h-screen">
           {/* Header Section */}
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">Role Management</h1>
-            <p className="text-gray-600">Manage roles and their permissions for your organisation</p>
+            <div className="flex justify-between items-start">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-800 mb-2">Role Management</h1>
+                <p className="text-gray-600">Manage roles and their permissions for your organisation</p>
+              </div>
+              <button
+                onClick={fetchRoles}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center gap-2"
+                title="Refresh roles list"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                </svg>
+                Refresh
+              </button>
+            </div>
           </div>
 
           {/* Search and Action Section */}

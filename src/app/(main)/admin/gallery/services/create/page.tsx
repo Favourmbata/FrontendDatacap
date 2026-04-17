@@ -160,6 +160,7 @@ export default function ServiceSetupPage() {
   const [service, setService] = useState<Service>(INITIAL_SERVICE);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showLocationMessage, setShowLocationMessage] = useState(false);
   
   const [modal, setModal] = useState({
     isOpen: false,
@@ -218,6 +219,14 @@ export default function ServiceSetupPage() {
       const result = await GalleryService.getLocations(token);
       if (result.success && result.data) {
         setLocations(result.data);
+      } else if (result.message) {
+        // Show message if no locations found
+        setModal({
+          isOpen: true,
+          title: 'No Locations Found',
+          message: result.message,
+          type: 'warning'
+        });
       }
     } catch (error) {
       console.error('Error fetching locations:', error);
@@ -513,13 +522,34 @@ export default function ServiceSetupPage() {
                     options={categories.map(c => ({ value: c.id, label: c.name }))}
                   />
                   
-                  <Select
-                    label="Location *"
-                    value={service.locationIndex ?? ''}
-                    onChange={(v: string) => handleServiceChange("locationIndex", parseInt(v))}
-                    error={errors.locationIndex}
-                    options={locationOptions}
-                  />
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-600">Location *</label>
+                    <select
+                      value={service.locationIndex ?? ''}
+                      onChange={(e) => handleServiceChange("locationIndex", parseInt(e.target.value))}
+                      onClick={() => {
+                        if (locations.length === 0) {
+                          setShowLocationMessage(true);
+                        }
+                      }}
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5d2a8b] focus:border-transparent ${
+                        errors.locationIndex ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    >
+                      <option value="">Select a location</option>
+                      {locations.map(loc => (
+                        <option key={loc.locationIndex} value={loc.locationIndex}>
+                          {loc.brandName} - {loc.cityRegion}, {loc.city}, {loc.state} ({loc.status})
+                        </option>
+                      ))}
+                    </select>
+                    {errors.locationIndex && <p className="text-red-500 text-xs mt-1">{errors.locationIndex}</p>}
+                    {showLocationMessage && locations.length === 0 && (
+                      <p className="text-yellow-600 text-xs mt-1">
+                        No locations found. Add locations first to create gallery items.
+                      </p>
+                    )}
+                  </div>
                   
                   <Input
                     label="SKU"

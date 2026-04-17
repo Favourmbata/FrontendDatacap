@@ -22,10 +22,20 @@ export class HttpService {
 
     // Add authorization header if token exists
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token');
-      console.log('🔑 Token from localStorage:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
+      // Try localStorage first, then sessionStorage as fallback
+      let token = localStorage.getItem('token');
+      if (!token) {
+        token = sessionStorage.getItem('token');
+        console.log('🔑 HttpService getHeaders - Token from sessionStorage:', token ? `${token.substring(0, 30)}...` : 'NO TOKEN');
+      } else {
+        console.log('🔑 HttpService getHeaders - Token from localStorage:', token ? `${token.substring(0, 30)}...` : 'NO TOKEN');
+      }
+      
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
+        console.log('✅ HttpService - Authorization header added');
+      } else {
+        console.warn('⚠️ HttpService - No token found in localStorage or sessionStorage');
       }
     }
 
@@ -76,10 +86,18 @@ export class HttpService {
   }
 
   async getData<T>(endpoint: string): Promise<T> {
+    console.log('\n🔵 HTTP GET:', `${this.baseUrl}${endpoint}`);
+    const headers = this.getHeaders();
+    const hasAuth = (headers as Record<string, string>)['Authorization'] ? '✅ Has Auth Token' : '❌ No Auth Token';
+    console.log('🔵', hasAuth);
+    
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: 'GET',
-      headers: this.getHeaders(),
+      headers: headers,
     });
+    
+    console.log('🔵 Response Status:', response.status, response.ok ? '✅' : '❌');
+    
     return this.handleResponse<T>(response);
   }
 

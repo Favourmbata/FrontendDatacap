@@ -520,12 +520,12 @@ static async getPlatformCommissionByCategory(token: string, categoryId: string):
 
   /**
    * Get industries for dropdown
-   * GET /api/admin/gallery/industries
+   * GET /api/auth/industries
    */
   static async getIndustries(token: string): Promise<{ success: boolean; data?: { industries: Array<{ id: string; name: string }> }; message?: string }> {
     try {
       console.log('GalleryService: Fetching industries');
-      const url = `${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}/api/admin/gallery/industries`;
+      const url = `${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}/api/auth/industries`;
       const response = await fetch(url, {
         headers: this.getHeaders(token)
       });

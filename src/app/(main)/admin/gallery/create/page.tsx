@@ -113,7 +113,7 @@ const [commissionLoading, setCommissionLoading] = useState(false);
     endTime: '',
     visibilityToPublic: true,
     notes: '',
-    locationIndex: 0
+    locationIndex: -1 // Changed from 0 to -1 to indicate no selection
   });
   
   const [images, setImages] = useState<File[]>([]);
@@ -163,8 +163,18 @@ const [commissionLoading, setCommissionLoading] = useState(false);
       
       try {
         setLoadingLocations(true);
+        console.log('Create Gallery: Fetching locations...');
         const locationsList = await GalleryService.getLocationsForSelect(token);
+        console.log('Create Gallery: Locations fetched:', locationsList);
         setLocations(locationsList);
+        
+        if (locationsList.length === 0) {
+          console.warn('Create Gallery: No locations available');
+        } else {
+          locationsList.forEach((loc, idx) => {
+            console.log(`Create Gallery: Location ${idx} - Value: ${loc.value}, Disabled: ${loc.disabled}, Label: ${loc.label}`);
+          });
+        }
       } catch (error) {
         console.error('Error fetching locations:', error);
         setLocations([]);
@@ -427,7 +437,7 @@ useEffect(() => {
         endTime: formData.endTime,
         visibilityToPublic: formData.visibilityToPublic,
         notes: formData.notes || undefined,
-        locationIndex: Number(formData.locationIndex) || 0
+        locationIndex: formData.locationIndex >= 0 ? Number(formData.locationIndex) : 0 // Only use locationIndex if it's >= 0
       });
 
       if (result.success && result.data?._id) {
@@ -711,13 +721,20 @@ useEffect(() => {
             </label>
             <select
               value={formData.locationIndex}
-              onChange={(e) => setFormData(prev => ({ ...prev, locationIndex: parseInt(e.target.value) }))}
+              onChange={(e) => {
+                const selectedValue = e.target.value;
+                console.log('Create Gallery: Location selected:', selectedValue);
+                // Parse to number, but keep as -1 if empty
+                const locationIdx = selectedValue === '' ? -1 : parseInt(selectedValue);
+                console.log('Create Gallery: Location index set to:', locationIdx);
+                setFormData(prev => ({ ...prev, locationIndex: locationIdx }));
+              }}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
                 errors.locationIndex ? 'border-red-500' : 'border-gray-300'
               }`}
               disabled={loadingLocations}
             >
-              <option value="0">No location selected</option>
+              <option value={-1}>No location selected</option>
               {locations.map((location) => (
                 <option 
                   key={location.value} 
@@ -725,10 +742,15 @@ useEffect(() => {
                   disabled={location.disabled}
                 >
                   {location.label}
-                  {!location.isPaidFor && ' (Payment Required)'}
+                  {location.disabled && ' - Disabled (Payment Required)'}
                 </option>
               ))}
             </select>
+            {locations.length > 0 && locations.every(loc => loc.disabled) && (
+              <p className="mt-1 text-sm text-amber-600">
+                ⚠️ All locations require payment. Please complete payment to enable location selection.
+              </p>
+            )}
             {errors.locationIndex && (
               <p className="mt-1 text-sm text-red-600">{errors.locationIndex}</p>
             )}

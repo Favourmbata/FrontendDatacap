@@ -4,6 +4,7 @@
 import { AdminSidebar } from "@/app/components/AdminSidebar";
 import { useState } from "react";
 import SubscriptionGuard from "@/components/SubscriptionGuard";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 
 export default function RootLayout({
   children,
@@ -14,15 +15,17 @@ export default function RootLayout({
 
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen relative">
-        
-        <AdminSidebar onShow={showSidebar} setShow={setShowSidebar}  />
-        
-        
-        <div className="relative w-full pt-0 md:pt-0">
-          {children}
+      <NotificationProvider>
+        <div className="min-h-screen relative">
+          
+          <AdminSidebar onShow={showSidebar} setShow={setShowSidebar}  />
+          
+          
+          <div className="relative w-full pt-0 md:pt-0">
+            {children}
+          </div>
         </div>
-      </div>
+      </NotificationProvider>
     </SubscriptionGuard>
   );
 }

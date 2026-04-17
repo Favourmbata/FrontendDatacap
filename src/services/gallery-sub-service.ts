@@ -387,7 +387,7 @@ export class GalleryService {
   ): Promise<{ success: boolean; data?: ApiIndustry[]; message?: string }> {
     try {
       const response = await GalleryService.httpService.getData<ApiIndustriesResponse>(
-        '/api/admin/gallery/industries'
+        '/api/auth/industries'
       );
       return {
         success: response.success,

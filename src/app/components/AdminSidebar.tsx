@@ -10,7 +10,8 @@ import {
   Landmark,
   ShoppingBag, 
   FileCheck, 
-  FileText
+  FileText,
+  Bell
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -114,6 +115,12 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
       name: 'Dashboard', 
       route: '/admin', 
       icon: <Image src="/Dashboard Circle Streamline Core Remix - Free.png" alt="Dashboard" width={24} height={24} className="object-contain" />,
+    },
+    { 
+      id: 'notifications', 
+      name: 'Notifications', 
+      route: '/admin/notifications', 
+      icon: <Bell className="w-6 h-6" />,
     },
     { 
       id: 'body-measurement', 
