@@ -173,6 +173,11 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
           route: '/admin/remittance/order'
         },
         {
+          id: 'task-management',
+          name: 'Task Management',
+          route: '/admin/settlement/task-management'
+        },
+        {
           id: 'settlement-bank',
           name: 'Bank Details',
           route: '/admin/remittance'
@@ -201,6 +206,11 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
           id: 'service-provider',
           name: 'Service Provider',
           route: '/admin/gallery/service-provider'
+        },
+        {
+          id: 'service-provider-assignment',
+          name: 'Service Provider Assignment',
+          route: '/admin/gallery/service-provider-assignment'
         },
       ]
     },

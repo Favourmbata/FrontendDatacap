@@ -1,342 +1,4 @@
-// "use client";
 
-// import { useState, useEffect } from 'react';
-// import { Calendar, Clock, User, Phone, Mail, MapPin, ArrowLeft } from 'lucide-react';
-// import { useRouter } from 'next/navigation';
-
-// const BookAppointmentPage = () => {
-//   const router = useRouter();
-//   const [product, setProduct] = useState<any>(null);
-//   const [formData, setFormData] = useState({
-//     fullName: '',
-//     email: '',
-//     phone: '',
-//     appointmentDate: '',
-//     appointmentTime: '',
-//     notes: ''
-//   });
-//   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
-//   const [isSubmitting, setIsSubmitting] = useState(false);
-
-//   useEffect(() => {
-//     // Load product data from localStorage
-//     const savedProduct = localStorage.getItem('appointmentProduct');
-//     if (savedProduct) {
-//       setProduct(JSON.parse(savedProduct));
-//     }
-    
-//     // Generate available time slots (9AM to 6PM in 30-minute intervals)
-//     const times = [];
-//     for (let hour = 9; hour <= 18; hour++) {
-//       times.push(`${hour}:00`);
-//       if (hour < 18) {
-//         times.push(`${hour}:30`);
-//       }
-//     }
-//     setAvailableTimes(times);
-//   }, []);
-
-//   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-//     const { name, value } = e.target;
-//     setFormData(prev => ({
-//       ...prev,
-//       [name]: value
-//     }));
-//   };
-
-//   const handleSubmit = (e: React.FormEvent) => {
-//     e.preventDefault();
-//     setIsSubmitting(true);
-    
-//     // Simulate appointment booking
-//     console.log("Appointment booking data:", {
-//       product,
-//       ...formData
-//     });
-    
-//     // In a real app, you would send this to your backend
-//     setTimeout(() => {
-//       setIsSubmitting(false);
-//       alert("Appointment booked successfully! You will receive a confirmation shortly.");
-//       router.push('/user/body-care');
-//     }, 1500);
-//   };
-
-//   const formatCurrency = (amount: number) => {
-//     return new Intl.NumberFormat('en-NG', {
-//       style: 'currency',
-//       currency: 'NGN',
-//       minimumFractionDigits: 0,
-//       maximumFractionDigits: 0,
-//     }).format(amount);
-//   };
-
-//   if (!product) {
-//     return (
-//       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-//         <div className="text-center">
-//           <p className="text-gray-600">No product selected for appointment</p>
-//           <button 
-//             onClick={() => router.push('/user/body-care')}
-//             className="mt-4 text-[#5d2a8b] hover:text-[#7a3aa3] font-medium"
-//           >
-//             Back to Products
-//           </button>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="min-h-screen bg-gray-50">
-//       <div className="ml-0 md:ml-[350px] pt-8 md:pt-8 p-4 md:p-8">
-//         <div className="max-w-4xl mx-auto">
-//           <div className="bg-white rounded-xl shadow-sm overflow-hidden border-2 border-[#5d2a8b]">
-//             {/* Header */}
-//             <div className="bg-gradient-to-r from-[#5d2a8b] to-[#7a3aa3] p-6 text-white">
-//               <div className="flex items-center justify-between">
-//                 <button 
-//                   onClick={() => router.back()}
-//                   className="flex items-center text-white hover:text-gray-200 transition-colors"
-//                 >
-//                   <ArrowLeft className="w-6 h-6 mr-2" />
-//                   Back
-//                 </button>
-//                 <h1 className="text-3xl font-bold">Book Appointment</h1>
-//                 <div className="w-16"></div> {/* Spacer for alignment */}
-//               </div>
-//             </div>
-
-//             <div className="p-6">
-//               {/* Product Summary */}
-//               <div className="bg-gray-50 rounded-lg p-6 mb-8">
-//                 <h2 className="text-xl font-bold text-gray-900 mb-4">Service Details</h2>
-//                 <div className="flex items-start gap-4">
-//                   <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg flex items-center justify-center flex-shrink-0">
-//                     <div className="w-8 h-8 rounded-full bg-purple-200 flex items-center justify-center">
-//                       <div className="w-4 h-4 rounded-full bg-[#5d2a8b]"></div>
-//                     </div>
-//                   </div>
-//                   <div className="flex-1">
-//                     <h3 className="text-lg font-semibold text-gray-900">{product.productName}</h3>
-//                     <p className="text-gray-600 mb-2">By {product.producer}</p>
-//                     <div className="flex items-center gap-4 text-sm text-gray-600">
-//                       <span className="flex items-center">
-//                         <MapPin className="w-4 h-4 mr-1" />
-//                         {product.address}
-//                       </span>
-//                       <span className="font-bold text-[#5d2a8b]">
-//                         {formatCurrency(product.actualAmount)}
-//                       </span>
-//                     </div>
-//                   </div>
-//                 </div>
-//               </div>
-
-//               {/* Appointment Form */}
-//               <div className="bg-white border-2 border-[#5d2a8b] rounded-lg p-6">
-//                 <h2 className="text-xl font-bold text-gray-900 mb-6">Appointment Information</h2>
-                
-//                 <form onSubmit={handleSubmit} className="space-y-6">
-//                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//                     <div>
-//                       <label className="block text-sm font-medium text-gray-700 mb-2">
-//                         Full Name *
-//                       </label>
-//                       <div className="relative">
-//                         <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-//                         <input
-//                           type="text"
-//                           name="fullName"
-//                           value={formData.fullName}
-//                           onChange={handleInputChange}
-//                           required
-//                           className="w-full pl-10 pr-4 py-3 border border-[#5d2a8b] rounded-lg focus:ring-2 focus:ring-[#5d2a8b] focus:border-[#5d2a8b]"
-//                           placeholder="Enter your full name"
-//                         />
-//                       </div>
-//                     </div>
-
-//                     <div>
-//                       <label className="block text-sm font-medium text-gray-700 mb-2">
-//                         Email Address *
-//                       </label>
-//                       <div className="relative">
-//                         <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-//                         <input
-//                           type="email"
-//                           name="email"
-//                           value={formData.email}
-//                           onChange={handleInputChange}
-//                           required
-//                           className="w-full pl-10 pr-4 py-3 border border-[#5d2a8b] rounded-lg focus:ring-2 focus:ring-[#5d2a8b] focus:border-[#5d2a8b]"
-//                           placeholder="your@email.com"
-//                         />
-//                       </div>
-//                     </div>
-
-//                     <div>
-//                       <label className="block text-sm font-medium text-gray-700 mb-2">
-//                         Phone Number *
-//                       </label>
-//                       <div className="relative">
-//                         <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-//                         <input
-//                           type="tel"
-//                           name="phone"
-//                           value={formData.phone}
-//                           onChange={handleInputChange}
-//                           required
-//                           className="w-full pl-10 pr-4 py-3 border border-[#5d2a8b] rounded-lg focus:ring-2 focus:ring-[#5d2a8b] focus:border-[#5d2a8b]"
-//                           placeholder="+234 801 234 5678"
-//                         />
-//                       </div>
-//                     </div>
-
-//                     <div>
-//                       <label className="block text-sm font-medium text-gray-700 mb-2">
-//                         Appointment Date *
-//                       </label>
-//                       <div className="relative">
-//                         <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-//                         <input
-//                           type="date"
-//                           name="appointmentDate"
-//                           value={formData.appointmentDate}
-//                           onChange={handleInputChange}
-//                           required
-//                           min={new Date().toISOString().split('T')[0]}
-//                           className="w-full pl-10 pr-4 py-3 border border-[#5d2a8b] rounded-lg focus:ring-2 focus:ring-[#5d2a8b] focus:border-[#5d2a8b]"
-//                         />
-//                       </div>
-//                     </div>
-
-//                     <div>
-//                       <label className="block text-sm font-medium text-gray-700 mb-2">
-//                         Appointment Time *
-//                       </label>
-//                       <div className="relative">
-//                         <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-//                         <select
-//                           name="appointmentTime"
-//                           value={formData.appointmentTime}
-//                           onChange={handleInputChange}
-//                           required
-//                           className="w-full pl-10 pr-4 py-3 border border-[#5d2a8b] rounded-lg focus:ring-2 focus:ring-[#5d2a8b] focus:border-[#5d2a8b] appearance-none"
-//                         >
-//                           <option value="">Select time</option>
-//                           {availableTimes.map(time => (
-//                             <option key={time} value={time}>{time}</option>
-//                           ))}
-//                         </select>
-//                       </div>
-//                     </div>
-//                   </div>
-
-//                   <div>
-//                     <label className="block text-sm font-medium text-gray-700 mb-2">
-//                       Additional Notes
-//                     </label>
-//                     <textarea
-//                       name="notes"
-//                       value={formData.notes}
-//                       onChange={handleInputChange}
-//                       rows={4}
-//                       className="w-full px-4 py-3 border border-[#5d2a8b] rounded-lg focus:ring-2 focus:ring-[#5d2a8b] focus:border-[#5d2a8b]"
-//                       placeholder="Any special requests or information you'd like to share..."
-//                     ></textarea>
-//                   </div>
-
-//                   {/* Payment Breakdown */}
-//                   <div className="bg-gray-50 rounded-lg p-4">
-//                     <h3 className="font-semibold text-gray-900 mb-4">Payment Breakdown</h3>
-                    
-//                     <div className="space-y-3">
-//                       <div className="flex justify-between">
-//                         <span>Service cost:</span>
-//                         <span className="font-semibold">{formatCurrency(product.actualAmount)}</span>
-//                       </div>
-                      
-//                       <div className="flex justify-between">
-//                         <span>Up-front payment (deposit) %:</span>
-//                         <span className="font-semibold">10%</span>
-//                       </div>
-                      
-//                       <div className="flex justify-between">
-//                         <span>Actual up-front payment:</span>
-//                         <span className="font-semibold text-[#5d2a8b]">
-//                           {formatCurrency(product.actualAmount * 0.1)}
-//                         </span>
-//                       </div>
-                      
-//                       <div className="flex justify-between">
-//                         <span>Remaining balance:</span>
-//                         <span className="font-semibold">
-//                           {formatCurrency(product.actualAmount * 0.9)}
-//                         </span>
-//                       </div>
-                      
-//                       <div className="flex justify-between">
-//                         <span>Discount on up-front payment (balance):</span>
-//                         <span className="font-semibold">5%</span>
-//                       </div>
-//                     </div>
-//                   </div>
-                  
-//                   {/* Service Provider Info */}
-//                   <div className="bg-gray-50 rounded-lg p-4">
-//                     <h3 className="font-semibold text-gray-900 mb-2">Service Provider Contact</h3>
-//                     <div className="flex items-center gap-4 text-sm text-gray-600">
-//                       <span className="flex items-center">
-//                         <Phone className="w-4 h-4 mr-1 text-[#5d2a8b]" />
-//                         {product.contact?.phone || 'N/A'}
-//                       </span>
-//                       <span className="flex items-center">
-//                         <Mail className="w-4 h-4 mr-1 text-[#5d2a8b]" />
-//                         {product.contact?.email || 'N/A'}
-//                       </span>
-//                     </div>
-//                     <p className="text-xs text-gray-500 mt-2">
-//                       You can also contact the service provider directly using the information above.
-//                     </p>
-//                   </div>
-
-//                   <div className="flex flex-col sm:flex-row gap-4 pt-4">
-//                     <button
-//                       type="button"
-//                       onClick={() => router.back()}
-//                       className="flex-1 px-6 py-3 border border-[#5d2a8b] text-[#5d2a8b] rounded-lg font-semibold hover:bg-[#5d2a8b] hover:text-white transition-colors"
-//                     >
-//                       Cancel
-//                     </button>
-//                     <button
-//                       type="submit"
-//                       disabled={isSubmitting}
-//                       className={`flex-1 px-6 py-3 bg-[#5d2a8b] text-white rounded-lg font-semibold hover:bg-[#7a3aa3] transition-colors ${
-//                         isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
-//                       }`}
-//                     >
-//                       {isSubmitting ? (
-//                         <div className="flex items-center justify-center">
-//                           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-//                           Booking...
-//                         </div>
-//                       ) : (
-//                         'Confirm Appointment'
-//                       )}
-//                     </button>
-//                   </div>
-//                 </form>
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default BookAppointmentPage;
 
 
 
@@ -360,7 +22,13 @@ import {
   CheckCircle,
   Loader2,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import BookingService, {
+  ServiceItem,
+  TimeSlot,
+  LocationOption,
+  BookingLocation,
+} from "@/services/BookingService";
 
 interface Product {
   productName: string;
@@ -370,48 +38,28 @@ interface Product {
   contact?: { phone?: string; email?: string };
 }
 
-interface TimeSlot {
-  time: string;
-  time24: string;
-  duration: number;
-  totalProviders: number;
-  bookedCount: number;
-}
-
 interface Guest {
   id: number;
   name: string;
   email: string;
 }
 
-type LocationType = "merchant" | "customer" | "new" | "whatsapp";
+interface GuestWithPhone {
+  name: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  slotDateTime: string;
+}
+
+type LocationType = "merchant_location" | "customer_address" | "new_address" | "whatsapp_location";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
 const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
-
-function generateSlots(year: number, month: number, day: number): TimeSlot[] {
-  const seed = day + month * 31 + year * 365;
-  const slots: TimeSlot[] = [];
-  const startHour = 9;
-  const endHour = 21;
-
-  for (let h = startHour; h < endHour; h++) {
-    const booked = Math.floor(((seed * h * 7) % 10) + 0);
-    slots.push({
-      time: `${h > 12 ? h - 12 : h}:00 ${h >= 12 ? "PM" : "AM"}`,
-      time24: `${String(h).padStart(2, "0")}:00`,
-      duration: 60,
-      totalProviders: 10,
-      bookedCount: Math.min(booked % 11, 10),
-    });
-  }
-  return slots;
-}
-
-const AVAILABLE_DAYS = new Set([18, 19, 20, 21, 23, 24, 25, 26, 27, 28, 30, 31]);
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-NG", {
@@ -475,80 +123,201 @@ function StepDots({ step }: { step: number }) {
 
 const BookAppointmentPage = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [product, setProduct] = useState<Product | null>(null);
+  // URL params
+  const organizationId = searchParams.get("organizationId") || "";
+  const serviceId = searchParams.get("serviceId") || "";
+
+  const [service, setService] = useState<ServiceItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const today = new Date();
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [viewMonth, setViewMonth] = useState(today.getMonth() + 1); // API uses 1-12
   const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [selectedDate, setSelectedDate] = useState<{
-    day: number;
-    month: number;
-    year: number;
-  } | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null); // YYYY-MM-DD
 
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
-  const [primaryGuest, setPrimaryGuest] = useState({ name: "", email: "" });
+  const [primaryGuest, setPrimaryGuest] = useState({ name: "", email: "", phone: "" });
   const [extraGuests, setExtraGuests] = useState<Guest[]>([]);
 
-  const [locationType, setLocationType] = useState<LocationType>("merchant");
+  const [locationType, setLocationType] = useState<LocationType>("merchant_location");
   const [newAddress, setNewAddress] = useState("");
   const [whatsappLink, setWhatsappLink] = useState("");
+  const [locationOptions, setLocationOptions] = useState<{
+    merchantLocation?: LocationOption;
+    customerAddress?: LocationOption;
+    newAddress?: LocationOption;
+    whatsappLocation?: LocationOption;
+  } | null>(null);
 
   const [notes, setNotes] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Fetch service details on mount
   useEffect(() => {
-    const saved = localStorage.getItem("appointmentProduct");
-    if (saved) setProduct(JSON.parse(saved));
-  }, []);
+    const fetchService = async () => {
+      if (!organizationId) {
+        setError("Organization ID is required");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const response = await BookingService.getOrganizationServices(organizationId);
+        
+        if (response.success && response.data.services.length > 0) {
+          // If serviceId is provided, find that specific service
+          const foundService = serviceId
+            ? response.data.services.find((s) => s.id === serviceId)
+            : response.data.services[0];
+          
+          if (foundService) {
+            setService(foundService);
+          } else {
+            setError("Service not found");
+          }
+        } else {
+          setError("No services available");
+        }
+      } catch (err: any) {
+        setError(err.message || "Failed to load services");
+        console.error("Error fetching services:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchService();
+  }, [organizationId, serviceId]);
+
+  // Fetch location options
+  useEffect(() => {
+    const fetchLocationOptions = async () => {
+      if (!organizationId) return;
+
+      try {
+        const response = await BookingService.getLocationOptions({
+          organizationId,
+          serviceId: serviceId || undefined,
+        });
+
+        if (response.success) {
+          setLocationOptions(response.data.locationOptions);
+          setLocationOptions(response.data.locationOptions);
+          // Set default location type
+          const defaultOpt = response.data.defaultOption;
+          if (defaultOpt === "merchant_location") setLocationType("merchant_location");
+          else if (defaultOpt === "customer_address") setLocationType("customer_address");
+          else if (defaultOpt === "new_address") setLocationType("new_address");
+          else if (defaultOpt === "whatsapp_location") setLocationType("whatsapp_location");
+        }
+      } catch (err) {
+        console.error("Error fetching location options:", err);
+      }
+    };
+
+    if (service) {
+      fetchLocationOptions();
+    }
+  }, [organizationId, serviceId, service]);
+
+  // Fetch available days when month/year changes
+  const [availableDays, setAvailableDays] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!selectedDate) return;
-    const s = generateSlots(selectedDate.year, selectedDate.month, selectedDate.day);
-    setSlots(s);
-    setSelectedSlot(null);
-  }, [selectedDate]);
+    const fetchAvailableDays = async () => {
+      if (!organizationId) return;
+
+      try {
+        const response = await BookingService.getAvailableDays({
+          organizationId,
+          month: viewMonth,
+          year: viewYear,
+          serviceId: serviceId || undefined,
+        });
+
+        if (response.success) {
+          // Convert to Set for faster lookup
+          const daysSet = new Set(response.data.availableDays);
+          setAvailableDays(daysSet);
+        }
+      } catch (err) {
+        console.error("Error fetching available days:", err);
+      }
+    };
+
+    fetchAvailableDays();
+  }, [organizationId, viewMonth, viewYear, serviceId]);
+
+  // Fetch available slots when date is selected
+  useEffect(() => {
+    if (!selectedDate || !organizationId) return;
+
+    const fetchSlots = async () => {
+      try {
+        setLoadingSlots(true);
+        const response = await BookingService.getAvailableSlots({
+          organizationId,
+          date: selectedDate,
+          serviceId: serviceId || undefined,
+        });
+
+        if (response.success) {
+          setSlots(response.data.slots);
+          setSelectedSlot(null);
+        }
+      } catch (err) {
+        console.error("Error fetching slots:", err);
+        setSlots([]);
+      } finally {
+        setLoadingSlots(false);
+      }
+    };
+
+    fetchSlots();
+  }, [selectedDate, organizationId, serviceId]);
 
   const firstDayOfMonth = useCallback(() => {
-    const d = new Date(viewYear, viewMonth, 1).getDay();
+    const d = new Date(viewYear, viewMonth - 1, 1).getDay(); // month - 1 because JS uses 0-11
     return d === 0 ? 6 : d - 1;
   }, [viewMonth, viewYear]);
 
   const daysInMonth = useCallback(
-    () => new Date(viewYear, viewMonth + 1, 0).getDate(),
+    () => new Date(viewYear, viewMonth, 0).getDate(),
     [viewMonth, viewYear]
   );
 
   const isAvailable = (day: number) => {
-    if (viewMonth === today.getMonth() && viewYear === today.getFullYear()) {
-      return AVAILABLE_DAYS.has(day) && day >= today.getDate();
-    }
-    return day % 7 !== 0 && day % 7 !== 6;
+    const dateStr = `${viewYear}-${String(viewMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return availableDays.has(dateStr);
   };
 
   const isToday = (day: number) =>
     day === today.getDate() &&
-    viewMonth === today.getMonth() &&
+    viewMonth === today.getMonth() + 1 &&
     viewYear === today.getFullYear();
 
-  const isSelected = (day: number) =>
-    selectedDate?.day === day &&
-    selectedDate?.month === viewMonth &&
-    selectedDate?.year === viewYear;
+  const isSelected = (day: number) => {
+    const dateStr = `${viewYear}-${String(viewMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return selectedDate === dateStr;
+  };
 
   function selectDay(day: number) {
     if (!isAvailable(day)) return;
-    setSelectedDate({ day, month: viewMonth, year: viewYear });
+    const dateStr = `${viewYear}-${String(viewMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    setSelectedDate(dateStr);
   }
 
   function handleSlotSelect(slot: TimeSlot) {
-    if (slot.bookedCount >= slot.totalProviders) return;
     setSelectedSlot(slot);
   }
 
@@ -570,34 +339,150 @@ const BookAppointmentPage = () => {
   }
 
   const totalPeople = 1 + extraGuests.length;
-  const serviceAmount = product?.actualAmount ?? 0;
+  const serviceAmount = service?.price ?? 0;
+  const serviceDuration = service?.duration ?? 60;
   const depositPercent = 0.1;
   const depositAmount = serviceAmount * depositPercent;
   const balance = serviceAmount - depositAmount;
   const discountOnBalance = 0.05;
 
   async function handleConfirm() {
+    if (!service || !selectedDate || !selectedSlot) {
+      alert("Please complete all required fields");
+      return;
+    }
+
     setIsSubmitting(true);
-    const payload = {
-      product,
-      selectedDate,
-      selectedSlot,
-      primaryGuest,
-      extraGuests,
-      locationType,
-      newAddress: locationType === "new" ? newAddress : undefined,
-      whatsappLink: locationType === "whatsapp" ? whatsappLink : undefined,
-      notes,
-      totalPeople,
-    };
-    console.log("Booking payload:", payload);
-    
-    await new Promise((r) => setTimeout(r, 1500));
-    setIsSubmitting(false);
-    setStep(4);
+
+    try {
+      // Build booking location object
+      let bookingLocation: BookingLocation;
+      switch (locationType) {
+        case "merchant_location":
+          bookingLocation = { type: "merchant_location" };
+          break;
+        case "customer_address":
+          bookingLocation = { type: "customer_address" };
+          break;
+        case "new_address":
+          bookingLocation = {
+            type: "new_address",
+            address: newAddress,
+          };
+          break;
+        case "whatsapp_location":
+          bookingLocation = {
+            type: "whatsapp_location",
+            whatsappLocationUrl: whatsappLink,
+          };
+          break;
+        default:
+          bookingLocation = { type: "merchant_location" };
+      }
+
+      // Parse name into first/last
+      const nameParts = primaryGuest.name.trim().split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || firstName;
+
+      // Build booked persons array
+      const bookedForPersons: GuestWithPhone[] = [
+        {
+          name: primaryGuest.name,
+          firstName,
+          lastName,
+          email: primaryGuest.email,
+          phone: primaryGuest.phone,
+          slotDateTime: selectedSlot.datetime,
+        },
+        ...extraGuests.map((guest) => {
+          const guestNameParts = guest.name.trim().split(" ");
+          return {
+            name: guest.name,
+            firstName: guestNameParts[0] || "",
+            lastName: guestNameParts.slice(1).join(" ") || "Guest",
+            email: guest.email,
+            slotDateTime: selectedSlot.datetime,
+          };
+        }),
+      ];
+
+      // Get user ID from localStorage if available
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      let userId: string | undefined;
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split(".")[1]));
+          userId = payload.userId || payload.id;
+        } catch (e) {
+          console.error("Error parsing token:", e);
+        }
+      }
+
+      // Initiate payment
+      const paymentRequest = {
+        productId: service.id,
+        productName: service.name,
+        organizationId,
+        organizationName: locationOptions?.merchantLocation?.address || "",
+        productPrice: serviceAmount,
+        upfrontPercentage: 100, // Full payment for now
+        userId,
+        customerEmail: primaryGuest.email,
+        customerName: primaryGuest.name,
+        customerPhone: primaryGuest.phone,
+        paymentType: "full" as const,
+        itemType: "service" as const,
+        platform: "web" as const,
+        bookingDate: selectedDate,
+        bookingTime: selectedSlot.time,
+        bookingDuration: serviceDuration,
+        bookingLocation,
+        bookedForPersons,
+        bookingNotes: notes || undefined,
+      };
+
+      console.log("Booking payload:", paymentRequest);
+
+      const response = await BookingService.initiatePayment(paymentRequest);
+
+      if (response.success && response.data.link) {
+        // Redirect to Flutterwave payment page
+        window.location.href = response.data.link;
+      } else {
+        alert("Failed to initiate payment. Please try again.");
+        setIsSubmitting(false);
+      }
+    } catch (err: any) {
+      console.error("Booking error:", err);
+      alert(err.message || "Failed to process booking. Please try again.");
+      setIsSubmitting(false);
+    }
   }
 
-  if (!product) {
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#f8f5ff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <Loader2
+            size={40}
+            style={{ animation: "spin 1s linear infinite", color: "#5d2a8b", margin: "0 auto 16px" }}
+          />
+          <p style={{ color: "#666" }}>Loading booking details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !service) {
     return (
       <div
         style={{
@@ -610,10 +495,10 @@ const BookAppointmentPage = () => {
       >
         <div style={{ textAlign: "center" }}>
           <p style={{ color: "#666", marginBottom: 16 }}>
-            No service selected for booking.
+            {error || "No service selected for booking."}
           </p>
           <button
-            onClick={() => router.push("/user/body-care")}
+            onClick={() => router.back()}
             style={{
               color: "#5d2a8b",
               background: "none",
@@ -622,7 +507,7 @@ const BookAppointmentPage = () => {
               fontWeight: 500,
             }}
           >
-            ← Back to services
+            ← Back
           </button>
         </div>
       </div>
@@ -718,7 +603,10 @@ const BookAppointmentPage = () => {
   }
 
   const dateLabelStr = selectedDate
-    ? `${selectedDate.day} ${MONTHS[selectedDate.month].slice(0, 3)} ${selectedDate.year}`
+    ? (() => {
+        const [year, month, day] = selectedDate.split("-");
+        return `${parseInt(day)} ${MONTHS[parseInt(month) - 1].slice(0, 3)} ${year}`;
+      })()
     : "";
 
   const RadioOption = ({
@@ -847,7 +735,7 @@ const BookAppointmentPage = () => {
                   <div
                     style={{ fontWeight: 600, fontSize: 16, color: "#1a1a2e" }}
                   >
-                    {product.productName}
+                    {service.name}
                   </div>
                   <div
                     style={{
@@ -869,14 +757,14 @@ const BookAppointmentPage = () => {
                           display: "inline-block",
                         }}
                       />
-                      {product.producer}
+                      {service.name}
                     </span>
                     <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                      <Clock size={12} />1 hour
+                      <MapPin size={12} />{service.duration || 60} min
                     </span>
                     <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
                       <Users size={12} />
-                      10 stylists
+                      10 providers
                     </span>
                   </div>
                   <div
@@ -1020,12 +908,10 @@ const BookAppointmentPage = () => {
 
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {slots.map((slot) => {
-                        const avail = slot.totalProviders - slot.bookedCount;
-                        const full = avail === 0;
-                        const isSel = selectedSlot?.time24 === slot.time24;
+                        const isSel = selectedSlot?.time === slot.time;
                         return (
                           <div
-                            key={slot.time24}
+                            key={slot.time}
                             style={{
                               display: "flex",
                               alignItems: "center",
@@ -1033,55 +919,38 @@ const BookAppointmentPage = () => {
                             }}
                           >
                             <button
-                              onClick={() => !full && handleSlotSelect(slot)}
+                              onClick={() => handleSlotSelect(slot)}
                               style={{
                                 flex: 1,
                                 padding: "10px 14px",
                                 border: isSel
                                   ? "none"
-                                  : full
-                                  ? "0.5px solid #e8e0f5"
                                   : "0.5px solid #d0c4e8",
                                 borderRadius: 8,
                                 background: isSel
                                   ? "#5d2a8b"
-                                  : full
-                                  ? "#f9f7ff"
                                   : "#fff",
                                 color: isSel
                                   ? "#fff"
-                                  : full
-                                  ? "#ccc"
                                   : "#5d2a8b",
                                 fontSize: 14,
                                 fontWeight: 500,
-                                cursor: full ? "not-allowed" : "pointer",
+                                cursor: "pointer",
                                 textAlign: "center",
                                 transition: "all 0.15s",
                               }}
                             >
-                              {slot.time}
-                              {full && (
-                                <span
-                                  style={{ fontSize: 11, marginLeft: 6, color: "#bbb" }}
-                                >
-                                  Fully booked
-                                </span>
-                              )}
+                              {slot.displayTime}
                             </button>
 
-                            {!full && !isSel && (
+                            {!isSel && (
                               <span
                                 style={{
                                   fontSize: 12,
                                   color: "#888",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  whiteSpace: "nowrap",
                                 }}
                               >
-                                <AvailabilityDot avail={avail} />
-                                {avail} available
+                                Available
                               </span>
                             )}
 
@@ -1249,7 +1118,7 @@ const BookAppointmentPage = () => {
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <RadioOption
-                      value="merchant"
+                      value="merchant_location"
                       label="Merchant's registered location"
                       sublabel="The salon's official address on the platform"
                     >
@@ -1264,12 +1133,12 @@ const BookAppointmentPage = () => {
                         }}
                       >
                         <MapPin size={11} />
-                        {product.address}
+                        {locationOptions?.merchantLocation?.address || "Merchant address"}
                       </div>
                     </RadioOption>
 
                     <RadioOption
-                      value="customer"
+                      value="customer_address"
                       label="My registered address"
                       sublabel="Service will come to your platform address"
                     >
@@ -1281,7 +1150,7 @@ const BookAppointmentPage = () => {
                     </RadioOption>
 
                     <RadioOption
-                      value="new"
+                      value="new_address"
                       label="New address"
                       sublabel="Enter a different address"
                     >
@@ -1295,7 +1164,7 @@ const BookAppointmentPage = () => {
                     </RadioOption>
 
                     <RadioOption
-                      value="whatsapp"
+                      value="whatsapp_location"
                       label="WhatsApp location link"
                       sublabel="Share a pin from WhatsApp"
                     >
@@ -1345,8 +1214,8 @@ const BookAppointmentPage = () => {
                   </div>
 
                   {[
-                    ["Service", product.productName],
-                    ["Provider", product.producer],
+                    ["Service", service.name],
+                    ["Provider", service.name],
                     [
                       "Date & time",
                       `${dateLabelStr}, ${selectedSlot?.time}`,
@@ -1392,11 +1261,11 @@ const BookAppointmentPage = () => {
                       }}
                     >
                       <MapPin size={11} style={{ color: "#5d2a8b" }} />
-                      {locationType === "merchant"
+                      {locationType === "merchant_location"
                         ? "Merchant's address"
-                        : locationType === "customer"
+                        : locationType === "customer_address"
                         ? "My address"
-                        : locationType === "new"
+                        : locationType === "new_address"
                         ? newAddress || "New address"
                         : "WhatsApp location"}
                     </span>
@@ -1478,18 +1347,10 @@ const BookAppointmentPage = () => {
                       color: "#888",
                     }}
                   >
-                    {product.contact?.phone && (
-                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <Phone size={12} style={{ color: "#5d2a8b" }} />
-                        {product.contact.phone}
-                      </span>
-                    )}
-                    {product.contact?.email && (
-                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <Mail size={12} style={{ color: "#5d2a8b" }} />
-                        {product.contact.email}
-                      </span>
-                    )}
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <Phone size={12} style={{ color: "#5d2a8b" }} />
+                      Contact provider
+                    </span>
                   </div>
                 </div>
 

@@ -229,7 +229,12 @@ const BodyCarePage = () => {
     } : product;
     
     localStorage.setItem('appointmentProduct', JSON.stringify(appointmentData));
-    router.push('/user/book-appointment');
+    
+    // Pass organizationId and serviceId as URL params
+    const organizationId = product.product.productInfo.platformUniqueCode;
+    const serviceId = subService?.subPlatformUniqueCode || product.product.id;
+    
+    router.push(`/user/book-appointment?organizationId=${organizationId}&serviceId=${serviceId}`);
   };
 
   const clearFilters = () => {
