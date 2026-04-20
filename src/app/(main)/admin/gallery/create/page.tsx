@@ -6,10 +6,42 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, Image as ImageIcon, Video, Calendar, DollarSign, Tag, Check, Briefcase, Package, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Upload, Image as ImageIcon, Video, Calendar, DollarSign, Tag, Check, Briefcase, Package, AlertCircle, Plus, Trash2 } from 'lucide-react';
 
 import { GalleryService } from '@/services/GalleryService';
 import { useAuthContext } from '@/AuthContext';
+
+interface SubService {
+  name: string;
+  description: string;
+  price: number;
+}
+
+interface TimeWindow {
+  startTime: string;
+  endTime: string;
+}
+
+interface DayAvailability {
+  dayOfWeek: number;
+  isAvailable: boolean;
+  timeWindows: TimeWindow[];
+}
+
+interface AvailabilityPeriod {
+  type: 'unlimited' | 'dateRange' | 'rollingWeeks';
+  startDate?: string;
+  endDate?: string;
+  weeksAhead?: number;
+}
+
+interface BookingAvailability {
+  daysAvailable: DayAvailability[];
+  slotDurationMinutes: number;
+  concurrentProviders: number;
+  availabilityPeriod: AvailabilityPeriod;
+  timezone: string;
+}
 
 interface FormData {
   name: string; 
@@ -22,7 +54,7 @@ interface FormData {
   upc: string;
   platformUniqueCode: string;
   totalAvailableQuantity: number;
-  priceInNaira: number; // Changed from priceInDollars
+  priceInNaira: number;
   discountPercentage: number;
   upfrontPaymentPercentage: number;
   platformChargePercentage: number;
@@ -34,6 +66,12 @@ interface FormData {
   visibilityToPublic: boolean;
   notes: string;
   locationIndex: number;
+  // Service-specific fields
+  producer: string;
+  totalAvailableServiceProviders: number;
+  hasSubServices: boolean;
+  subServices: SubService[];
+  bookingAvailability: BookingAvailability;
 }
 
 interface Industry {
@@ -59,6 +97,8 @@ interface PlatformCodePreview {
   orgProductNumber: string;
   globalProductNumber: string;
 }
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const CreateGalleryItemPage = () => {
   const router = useRouter();
@@ -113,7 +153,25 @@ const [commissionLoading, setCommissionLoading] = useState(false);
     endTime: '',
     visibilityToPublic: true,
     notes: '',
-    locationIndex: -1 // Changed from 0 to -1 to indicate no selection
+    locationIndex: -1,
+    // Service-specific fields
+    producer: '',
+    totalAvailableServiceProviders: 1,
+    hasSubServices: false,
+    subServices: [],
+    bookingAvailability: {
+      daysAvailable: DAY_NAMES.map((_, index) => ({
+        dayOfWeek: index,
+        isAvailable: index >= 1 && index <= 5, // Monday-Friday by default
+        timeWindows: [{ startTime: '09:00', endTime: '17:00' }]
+      })),
+      slotDurationMinutes: 60,
+      concurrentProviders: 1,
+      availabilityPeriod: {
+        type: 'unlimited'
+      },
+      timezone: 'Africa/Lagos'
+    }
   });
   
   const [images, setImages] = useState<File[]>([]);
@@ -279,6 +337,7 @@ useEffect(() => {
           platformChargePercentage: commission.commissionRate,
           platformCommissionId: commission.id
         }));
+        setCommissionError(null); // Clear any previous error
       } else {
         // No commission found for this category
         setPlatformCommission(null);
@@ -287,7 +346,9 @@ useEffect(() => {
           platformChargePercentage: 0,
           platformCommissionId: undefined
         }));
-        setCommissionError('No commission rate found for this category');
+        // Display the actual error message from the API response
+        const errorMsg = result.message || 'No platform commission found for this category. Please contact Super Admin.';
+        setCommissionError(errorMsg);
       }
     } catch (error) {
       console.error('Error fetching platform commission:', error);
@@ -358,6 +419,45 @@ useEffect(() => {
       newErrors.itemType = 'Item type is required';
     }
 
+    // Service-specific validation
+    if (formData.itemType === 'service') {
+      if (!formData.producer.trim()) {
+        newErrors.producer = 'Producer/service provider name is required';
+      }
+      if (formData.totalAvailableServiceProviders < 1) {
+        newErrors.totalAvailableServiceProviders = 'At least 1 service provider is required';
+      }
+      if (formData.hasSubServices && formData.subServices.length === 0) {
+        newErrors.subServices = 'At least one sub-service is required';
+      }
+      // Validate sub-service count (must be between 2 and 100)
+      if (formData.hasSubServices && formData.subServices.length < 2) {
+        newErrors.subServices = 'At least 2 sub-services are required when sub-services are enabled';
+      }
+      if (formData.hasSubServices && formData.subServices.length > 100) {
+        newErrors.subServices = 'Maximum 100 sub-services allowed';
+      }
+      // Validate sub-services
+      formData.subServices.forEach((sub, idx) => {
+        if (!sub.name.trim()) {
+          newErrors[`subService_${idx}_name`] = `Sub-service ${idx + 1} name is required`;
+        }
+        if (sub.price <= 0) {
+          newErrors[`subService_${idx}_price`] = `Sub-service ${idx + 1} price must be greater than 0`;
+        }
+      });
+      
+      // Validate booking availability dates if type is dateRange
+      if (formData.bookingAvailability.availabilityPeriod.type === 'dateRange') {
+        if (!formData.startDate) {
+          newErrors.startDate = 'Start date is required for date range availability';
+        }
+        if (!formData.endDate) {
+          newErrors.endDate = 'End date is required for date range availability';
+        }
+      }
+    }
+
     if (formData.priceInNaira <= 0) {
       newErrors.priceInNaira = 'Price must be greater than 0';
     }
@@ -416,7 +516,7 @@ useEffect(() => {
       // Get the selected category name
       const selectedCategory = categories.find(c => c.id === formData.categoryId);
       
-      const result = await GalleryService.createGalleryItem(token, {
+      const galleryData: any = {
         name: formData.name,
         description: formData.description.trim(),
         category: selectedCategory?.name || formData.category,
@@ -427,7 +527,7 @@ useEffect(() => {
         upc: formData.upc || undefined,
         platformUniqueCode: formData.platformUniqueCode || undefined,
         totalAvailableQuantity: Number(formData.totalAvailableQuantity) || 0,
-        priceInDollars: Number(formData.priceInNaira) || 0, // Send as priceInDollars but value is NGN
+        priceInDollars: Number(formData.priceInNaira) || 0,
         discountPercentage: Number(formData.discountPercentage) || 0,
         upfrontPaymentPercentage: Number(formData.upfrontPaymentPercentage) || 0,
         platformChargePercentage: formData.platformChargePercentage,
@@ -437,23 +537,73 @@ useEffect(() => {
         endTime: formData.endTime,
         visibilityToPublic: formData.visibilityToPublic,
         notes: formData.notes || undefined,
-        locationIndex: formData.locationIndex >= 0 ? Number(formData.locationIndex) : 0 // Only use locationIndex if it's >= 0
-      });
+        locationIndex: formData.locationIndex >= 0 ? Number(formData.locationIndex) : 0
+      };
+
+      // Add service-specific fields
+      if (formData.itemType === 'service') {
+        galleryData.producer = formData.producer;
+        galleryData.totalAvailableServiceProviders = Number(formData.totalAvailableServiceProviders);
+        galleryData.hasSubServices = formData.hasSubServices;
+        
+        if (formData.hasSubServices && formData.subServices.length > 0) {
+          galleryData.subServiceCount = formData.subServices.length;
+          galleryData.subServices = formData.subServices.map(sub => ({
+            name: sub.name,
+            description: sub.description,
+            price: Number(sub.price)
+          }));
+        }
+
+        // Add booking availability
+        galleryData.bookingAvailability = {
+          daysAvailable: formData.bookingAvailability.daysAvailable,
+          slotDurationMinutes: Number(formData.bookingAvailability.slotDurationMinutes),
+          concurrentProviders: Number(formData.bookingAvailability.concurrentProviders),
+          availabilityPeriod: {
+            type: formData.bookingAvailability.availabilityPeriod.type,
+            // Include startDate and endDate if type is 'dateRange'
+            ...(formData.bookingAvailability.availabilityPeriod.type === 'dateRange' && {
+              startDate: formData.startDate,
+              endDate: formData.endDate
+            }),
+            // Include weeksAhead if type is 'rollingWeeks'
+            ...(formData.bookingAvailability.availabilityPeriod.type === 'rollingWeeks' && {
+              weeksAhead: formData.bookingAvailability.availabilityPeriod.weeksAhead || 6
+            })
+          },
+          timezone: formData.bookingAvailability.timezone
+        };
+      }
+      
+      const result = await GalleryService.createGalleryItem(token, galleryData);
 
       if (result.success && result.data?._id) {
+        const galleryItemId = result.data._id;
+        
         // Upload images if any
         if (images.length > 0) {
           console.log('Create page: Uploading', images.length, 'images');
-          for (const image of images) {
-            await GalleryService.uploadImage(token, result.data._id, image);
+          for (let i = 0; i < images.length; i++) {
+            // Set the first image as the main/primary image
+            const isMainImage = i === 0;
+            console.log(`Create page: Uploading image ${i + 1}/${images.length}, isMain: ${isMainImage}`);
+            const uploadResult = await GalleryService.uploadImage(token, galleryItemId, images[i], isMainImage);
+            if (!uploadResult.success) {
+              console.error(`Failed to upload image ${i + 1}:`, uploadResult.message);
+            }
           }
         }
 
         // Upload videos if any
         if (videos.length > 0) {
           console.log('Create page: Uploading', videos.length, 'videos');
-          for (const video of videos) {
-            await GalleryService.uploadVideo(token, result.data._id, video);
+          for (let i = 0; i < videos.length; i++) {
+            console.log(`Create page: Uploading video ${i + 1}/${videos.length}`);
+            const uploadResult = await GalleryService.uploadVideo(token, galleryItemId, videos[i]);
+            if (!uploadResult.success) {
+              console.error(`Failed to upload video ${i + 1}:`, uploadResult.message);
+            }
           }
         }
 
@@ -791,6 +941,370 @@ useEffect(() => {
               <p className="mt-1 text-sm text-red-600">{errors.itemType}</p>
             )}
           </div>
+
+          {/* Service-Specific Fields */}
+          {formData.itemType === 'service' && (
+            <>
+              {/* Producer Name */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Service Provider/Producer <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.producer}
+                  onChange={(e) => setFormData(prev => ({ ...prev, producer: e.target.value }))}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                    errors.producer ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="e.g., Elite Beauty Salon"
+                />
+                {errors.producer && (
+                  <p className="mt-1 text-sm text-red-600">{errors.producer}</p>
+                )}
+              </div>
+
+              {/* Total Available Service Providers */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Total Service Providers <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={formData.totalAvailableServiceProviders || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, totalAvailableServiceProviders: e.target.value ? Number(e.target.value) : 1 }))}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                    errors.totalAvailableServiceProviders ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  min="1"
+                  placeholder="1"
+                />
+                {errors.totalAvailableServiceProviders && (
+                  <p className="mt-1 text-sm text-red-600">{errors.totalAvailableServiceProviders}</p>
+                )}
+              </div>
+
+              {/* Has Sub-Services Toggle */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between mb-4">
+                  <label className="text-sm font-medium text-gray-700">
+                    Has Sub-Services
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ 
+                      ...prev, 
+                      hasSubServices: !prev.hasSubServices,
+                      subServices: !prev.hasSubServices ? [] : prev.subServices
+                    }))}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      formData.hasSubServices ? 'bg-purple-600' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        formData.hasSubServices ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Sub-Services List */}
+                {formData.hasSubServices && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-medium text-gray-700">Sub-Services</h4>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({
+                          ...prev,
+                          subServices: [...prev.subServices, { name: '', description: '', price: 0 }]
+                        }))}
+                        className="flex items-center gap-1 px-3 py-1 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Sub-Service
+                      </button>
+                    </div>
+                    {errors.subServices && (
+                      <p className="text-sm text-red-600">{errors.subServices}</p>
+                    )}
+                    
+                    {formData.subServices.map((subService, index) => (
+                      <div key={index} className="p-4 bg-white border border-gray-200 rounded-lg">
+                        <div className="flex items-center justify-between mb-3">
+                          <h5 className="text-sm font-medium text-gray-800">Sub-Service {index + 1}</h5>
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({
+                              ...prev,
+                              subServices: prev.subServices.filter((_, i) => i !== index)
+                            }))}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Name <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={subService.name}
+                              onChange={(e) => setFormData(prev => ({
+                                ...prev,
+                                subServices: prev.subServices.map((s, i) => 
+                                  i === index ? { ...s, name: e.target.value } : s
+                                )
+                              }))}
+                              className={`w-full px-3 py-2 border rounded-lg text-sm ${
+                                errors[`subService_${index}_name`] ? 'border-red-500' : 'border-gray-300'
+                              }`}
+                              placeholder="Sub-service name"
+                            />
+                            {errors[`subService_${index}_name`] && (
+                              <p className="mt-1 text-xs text-red-600">{errors[`subService_${index}_name`]}</p>
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Description
+                            </label>
+                            <textarea
+                              value={subService.description}
+                              onChange={(e) => setFormData(prev => ({
+                                ...prev,
+                                subServices: prev.subServices.map((s, i) => 
+                                  i === index ? { ...s, description: e.target.value } : s
+                                )
+                              }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              rows={2}
+                              placeholder="Sub-service description"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Price (₦) <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              value={subService.price || ''}
+                              onChange={(e) => setFormData(prev => ({
+                                ...prev,
+                                subServices: prev.subServices.map((s, i) => 
+                                  i === index ? { ...s, price: e.target.value ? Number(e.target.value) : 0 } : s
+                                )
+                              }))}
+                              className={`w-full px-3 py-2 border rounded-lg text-sm ${
+                                errors[`subService_${index}_price`] ? 'border-red-500' : 'border-gray-300'
+                              }`}
+                              min="0"
+                              placeholder="0"
+                            />
+                            {errors[`subService_${index}_price`] && (
+                              <p className="mt-1 text-xs text-red-600">{errors[`subService_${index}_price`]}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {formData.subServices.length === 0 && (
+                      <p className="text-sm text-gray-500 text-center py-4">No sub-services added yet</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Booking Availability Configuration */}
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="text-lg font-medium text-blue-800 mb-4">Booking Availability</h3>
+                
+                {/* Days of Week Availability */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-blue-800 mb-2">
+                    Days Available
+                  </label>
+                  <div className="space-y-2">
+                    {formData.bookingAvailability.daysAvailable.map((day, index) => (
+                      <div key={index} className="flex items-center gap-3 bg-white p-2 rounded">
+                        <input
+                          type="checkbox"
+                          checked={day.isAvailable}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            bookingAvailability: {
+                              ...prev.bookingAvailability,
+                              daysAvailable: prev.bookingAvailability.daysAvailable.map((d, i) =>
+                                i === index ? { ...d, isAvailable: e.target.checked } : d
+                              )
+                            }
+                          }))}
+                          className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                        />
+                        <span className="text-sm text-gray-700 w-24">{DAY_NAMES[day.dayOfWeek]}</span>
+                        {day.isAvailable && (
+                          <div className="flex items-center gap-2 flex-1">
+                            <input
+                              type="time"
+                              value={day.timeWindows[0]?.startTime || '09:00'}
+                              onChange={(e) => setFormData(prev => ({
+                                ...prev,
+                                bookingAvailability: {
+                                  ...prev.bookingAvailability,
+                                  daysAvailable: prev.bookingAvailability.daysAvailable.map((d, i) =>
+                                    i === index ? { ...d, timeWindows: [{ ...d.timeWindows[0], startTime: e.target.value }] } : d
+                                  )
+                                }
+                              }))}
+                              className="px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                            <span className="text-gray-500">to</span>
+                            <input
+                              type="time"
+                              value={day.timeWindows[0]?.endTime || '17:00'}
+                              onChange={(e) => setFormData(prev => ({
+                                ...prev,
+                                bookingAvailability: {
+                                  ...prev.bookingAvailability,
+                                  daysAvailable: prev.bookingAvailability.daysAvailable.map((d, i) =>
+                                    i === index ? { ...d, timeWindows: [{ ...d.timeWindows[0], endTime: e.target.value }] } : d
+                                  )
+                                }
+                              }))}
+                              className="px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Slot Duration */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-blue-800 mb-2">
+                    Slot Duration (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.bookingAvailability.slotDurationMinutes || ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      bookingAvailability: {
+                        ...prev.bookingAvailability,
+                        slotDurationMinutes: e.target.value ? Number(e.target.value) : 60
+                      }
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    min="15"
+                    max="480"
+                    placeholder="60"
+                  />
+                  <p className="text-xs text-blue-600 mt-1">15-480 minutes per booking slot</p>
+                </div>
+
+                {/* Concurrent Providers */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-blue-800 mb-2">
+                    Concurrent Providers
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.bookingAvailability.concurrentProviders || ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      bookingAvailability: {
+                        ...prev.bookingAvailability,
+                        concurrentProviders: e.target.value ? Number(e.target.value) : 1
+                      }
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    min="1"
+                    max="100"
+                    placeholder="1"
+                  />
+                  <p className="text-xs text-blue-600 mt-1">How many providers can book the same slot (1-100)</p>
+                </div>
+
+                {/* Availability Period Type */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-blue-800 mb-2">
+                    Availability Period Type
+                  </label>
+                  <select
+                    value={formData.bookingAvailability.availabilityPeriod.type}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      bookingAvailability: {
+                        ...prev.bookingAvailability,
+                        availabilityPeriod: {
+                          type: e.target.value as 'unlimited' | 'dateRange' | 'rollingWeeks',
+                          weeksAhead: e.target.value === 'rollingWeeks' ? 6 : undefined,
+                          startDate: e.target.value === 'dateRange' ? formData.startDate : undefined,
+                          endDate: e.target.value === 'dateRange' ? formData.endDate : undefined
+                        }
+                      }
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  >
+                    <option value="unlimited">Unlimited</option>
+                    <option value="dateRange">Date Range</option>
+                    <option value="rollingWeeks">Rolling Weeks</option>
+                  </select>
+                </div>
+
+                {/* Rolling Weeks */}
+                {formData.bookingAvailability.availabilityPeriod.type === 'rollingWeeks' && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-blue-800 mb-2">
+                      Weeks Ahead
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.bookingAvailability.availabilityPeriod.weeksAhead || ''}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        bookingAvailability: {
+                          ...prev.bookingAvailability,
+                          availabilityPeriod: {
+                            ...prev.bookingAvailability.availabilityPeriod,
+                            weeksAhead: e.target.value ? Number(e.target.value) : 6
+                          }
+                        }
+                      }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      min="1"
+                      max="52"
+                      placeholder="6"
+                    />
+                  </div>
+                )}
+
+                {/* Timezone */}
+                <div>
+                  <label className="block text-sm font-medium text-blue-800 mb-2">
+                    Timezone
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.bookingAvailability.timezone}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      bookingAvailability: {
+                        ...prev.bookingAvailability,
+                        timezone: e.target.value
+                      }
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    placeholder="Africa/Lagos"
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Description */}
           <div className="mb-6">

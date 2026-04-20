@@ -48,30 +48,25 @@ const ServiceProviderAssignmentPage: React.FC = () => {
 
       // Handle users response
       if (usersRes.status === 'fulfilled' && usersRes.value.success) {
-        // API returns 'users' or 'serviceProviders' depending on endpoint
-        const usersList = usersRes.value.data.users || usersRes.value.data.serviceProviders || [];
+        // API returns users array directly
+        const usersList = usersRes.value.data.users || [];
         setUsers(usersList);
       } else if (usersRes.status === 'rejected') {
         console.error('Error fetching users:', usersRes.reason);
       }
 
-      // Handle summary response (endpoint might not exist yet)
-      if (summaryRes.status === 'fulfilled' && summaryRes.value.success) {
-        // Transform the API response to match our interface - use any to bypass TypeScript checking
-        const summaryData: any = (summaryRes.value as any).data;
-        const apiSummary = summaryData.summary;
+      // Handle summary response - use data from the users endpoint
+      if (usersRes.status === 'fulfilled' && usersRes.value.success) {
+        const summaryData = usersRes.value.data;
         setSummary({
-          totalUsers: apiSummary.statistics.totalOrgUsers,
-          totalServiceProviders: apiSummary.statistics.totalServiceProviders,
-          activeProviders: apiSummary.statistics.activeServiceProviders,
-          inactiveProviders: apiSummary.statistics.inactiveServiceProviders,
+          totalUsers: summaryData.total || 0,
+          totalServiceProviders: summaryData.serviceProviders || 0,
+          activeProviders: 0, // Not provided by API yet
+          inactiveProviders: 0, // Not provided by API yet
           averageRating: 0, // Not provided by API yet
           totalBookings: 0, // Not provided by API yet
           completedBookings: 0 // Not provided by API yet
         });
-      } else {
-        // Summary endpoint not available yet - that's okay, module might not be created
-        console.log('Summary endpoint not available yet');
       }
     } catch (err: any) {
       console.error('Error fetching data:', err);
@@ -88,7 +83,7 @@ const ServiceProviderAssignmentPage: React.FC = () => {
         setModuleInfo(response.data.module);
       }
     } catch (err: any) {
-      // Module doesn't exist yet
+      
       setModuleExists(false);
     }
   };
@@ -343,20 +338,20 @@ const ServiceProviderAssignmentPage: React.FC = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Avg Rating</p>
-                  <p className="text-3xl font-bold text-yellow-600">
-                    {summary.averageRating != null ? summary.averageRating.toFixed(1) : 'N/A'}
+                  <p className="text-sm text-gray-600 mb-1">Regular Users</p>
+                  <p className="text-3xl font-bold text-blue-600">
+                    {(summary.totalUsers || 0) - (summary.totalServiceProviders || 0)}
                   </p>
                 </div>
-                <BarChart3 className="w-12 h-12 text-yellow-600 opacity-20" />
+                <Users className="w-12 h-12 text-blue-600 opacity-20" />
               </div>
             </div>
 
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Completed Bookings</p>
-                  <p className="text-3xl font-bold text-purple-600">{summary.completedBookings}</p>
+                  <p className="text-sm text-gray-600 mb-1">Active Providers</p>
+                  <p className="text-3xl font-bold text-purple-600">{summary.activeProviders || summary.totalServiceProviders || 0}</p>
                 </div>
                 <UserPlus className="w-12 h-12 text-purple-600 opacity-20" />
               </div>

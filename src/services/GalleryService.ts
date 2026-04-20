@@ -356,12 +356,15 @@ export class GalleryService {
   static async uploadImage(
     token: string, 
     itemId: string, 
-    imageFile: File
+    imageFile: File,
+    isMainImage: boolean = false
   ): Promise<{ success: boolean; data?: { imageUrl: string }; message?: string }> {
     try {
-      console.log('GalleryService: Uploading image for item', itemId, 'file:', imageFile.name);
+      console.log('GalleryService: Uploading image for item', itemId, 'file:', imageFile.name, 'isMain:', isMainImage);
       const formData = new FormData();
       formData.append('image', imageFile);
+      // Note: Backend automatically sets first uploaded image as main image
+      // isMain flag is logged but not sent to match API spec
 
       const fullUrl = `${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}${routes.gallery.uploadImage(itemId)}`;
       const response = await fetch(fullUrl, {

@@ -11,7 +11,8 @@ import {
   ShoppingBag, 
   FileCheck, 
   FileText,
-  Bell
+  Bell,
+  Calendar
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -220,6 +221,12 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
           route: '/admin/gallery/service-provider-assignment'
         },
       ]
+    },
+    { 
+      id: 'booking', 
+      name: 'Booking Management', 
+      route: '/admin/booking', 
+      icon: <Calendar className="w-6 h-6" />,
     },
     { 
       id: 'data-verification', 

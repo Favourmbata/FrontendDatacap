@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, UserPlus, UserMinus, Loader2, Plus, X } from 'lucide-react';
+import { ArrowLeft, UserPlus, UserMinus, Loader2, Plus, X, CheckCircle, AlertCircle } from 'lucide-react';
 import ServiceProviderAssignmentService, { 
   OrganizationUser,
   UserAssignment
@@ -15,6 +15,8 @@ const AssignServiceProvidersPage: React.FC = () => {
   const [users, setUsers] = useState<OrganizationUser[]>([]);
   const [assignments, setAssignments] = useState<Map<string, UserAssignment>>(new Map());
   const [newSpecialty, setNewSpecialty] = useState('');
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const preSelectedUsers = searchParams.get('users');
@@ -27,12 +29,12 @@ const AssignServiceProvidersPage: React.FC = () => {
       const response = await ServiceProviderAssignmentService.getAllUsers();
       
       if (response.success) {
-        let filteredUsers = response.data.users;
+        let filteredUsers = response.data.users || [];
         
         // If specific users were pre-selected, filter to those
         if (preSelectedUsers) {
           const userIds = preSelectedUsers.split(',');
-          filteredUsers = response.data.users.filter(u => userIds.includes(u.userId));
+          filteredUsers = filteredUsers.filter(u => userIds.includes(u.userId));
         }
         
         setUsers(filteredUsers);
@@ -51,7 +53,7 @@ const AssignServiceProvidersPage: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Error fetching users:', err);
-      alert(err.message || 'Failed to load users');
+      setErrorMessage(err.message || 'Failed to load users');
     } finally {
       setLoading(false);
     }
@@ -108,6 +110,8 @@ const AssignServiceProvidersPage: React.FC = () => {
   const handleSubmit = async () => {
     try {
       setLoading(true);
+      setSuccessMessage(null);
+      setErrorMessage(null);
       
       const userAssignments: UserAssignment[] = Array.from(assignments.values());
       
@@ -116,12 +120,16 @@ const AssignServiceProvidersPage: React.FC = () => {
       });
 
       if (response.success) {
-        alert(`Successfully assigned ${response.data.assigned} and unassigned ${response.data.unassigned} users`);
-        router.push('/admin/gallery/service-provider-assignment');
+        setSuccessMessage(`Successfully assigned ${response.data.assigned} and unassigned ${response.data.unassigned} users`);
+        
+        // Clear success message after 5 seconds and redirect
+        setTimeout(() => {
+          router.push('/admin/gallery/service-provider-assignment');
+        }, 3000);
       }
     } catch (err: any) {
       console.error('Error assigning users:', err);
-      alert(err.message || 'Failed to assign users');
+      setErrorMessage(err.message || 'Failed to assign users');
     } finally {
       setLoading(false);
     }
@@ -153,6 +161,34 @@ const AssignServiceProvidersPage: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Assign Service Providers</h1>
           <p className="text-gray-600">Assign or remove service provider roles and configure specialties</p>
         </div>
+
+        {/* Success Message */}
+        {successMessage && (
+          <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+            <p className="text-green-800 font-medium">{successMessage}</p>
+            <button
+              onClick={() => setSuccessMessage(null)}
+              className="ml-auto text-green-600 hover:text-green-800"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Error Message */}
+        {errorMessage && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            <p className="text-red-800 font-medium">{errorMessage}</p>
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="ml-auto text-red-600 hover:text-red-800"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Users Assignment Cards */}
         <div className="space-y-6">
