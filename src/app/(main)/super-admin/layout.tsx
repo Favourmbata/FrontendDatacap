@@ -3,6 +3,7 @@
 import { SuperAdminSidebar } from "@/app/components/SuperAdminSidebar";
 import { useState } from "react";
 import SubscriptionGuard from "@/components/SubscriptionGuard";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 
 export default function RootLayout({
   children,
@@ -13,13 +14,15 @@ export default function RootLayout({
 
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen relative">
-        <SuperAdminSidebar onShow={showSidebar} setShow={setShowSidebar} />
-        
-        <div className="relative w-full pt-0 md:pt-0">
-          {children}
+      <NotificationProvider>
+        <div className="min-h-screen relative">
+          <SuperAdminSidebar onShow={showSidebar} setShow={setShowSidebar} />
+          
+          <div className="relative w-full pt-0 md:pt-0">
+            {children}
+          </div>
         </div>
-      </div>
+      </NotificationProvider>
     </SubscriptionGuard>
   );
 }
