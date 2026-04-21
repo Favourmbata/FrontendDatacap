@@ -160,7 +160,7 @@ export class GalleryService {
   }
 
   // Create a new gallery item
-  static async createGalleryItem(token: string, data: GalleryItemCreateData): Promise<{ success: boolean; data?: GalleryItem; message?: string }> {
+  static async createGalleryItem(token: string, data: GalleryItemCreateData): Promise<{ success: boolean; data?: { galleryItem: GalleryItem }; message?: string }> {
     try {
       console.log('GalleryService: Creating gallery item with data:', data);
       const fullUrl = `${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}${routes.gallery.base}`;

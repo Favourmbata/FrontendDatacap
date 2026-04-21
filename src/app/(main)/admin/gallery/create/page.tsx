@@ -1,4 +1,4 @@
-
+﻿
 
 
 
@@ -346,12 +346,12 @@ useEffect(() => {
           platformChargePercentage: 0,
           platformCommissionId: undefined
         }));
-        // Display the actual error message from the API response
+        
         const errorMsg = result.message || 'No platform commission found for this category. Please contact Super Admin.';
         setCommissionError(errorMsg);
       }
     } catch (error) {
-      console.error('Error fetching platform commission:', error);
+    
       setCommissionError('Failed to load commission rate');
     } finally {
       setCommissionLoading(false);
@@ -393,8 +393,7 @@ useEffect(() => {
     return false;
   };
 
-  // Remove default dates - they should be empty
-  // No useEffect for default dates
+
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -419,7 +418,7 @@ useEffect(() => {
       newErrors.itemType = 'Item type is required';
     }
 
-    // Service-specific validation
+   
     if (formData.itemType === 'service') {
       if (!formData.producer.trim()) {
         newErrors.producer = 'Producer/service provider name is required';
@@ -430,14 +429,14 @@ useEffect(() => {
       if (formData.hasSubServices && formData.subServices.length === 0) {
         newErrors.subServices = 'At least one sub-service is required';
       }
-      // Validate sub-service count (must be between 2 and 100)
+     
       if (formData.hasSubServices && formData.subServices.length < 2) {
         newErrors.subServices = 'At least 2 sub-services are required when sub-services are enabled';
       }
       if (formData.hasSubServices && formData.subServices.length > 100) {
         newErrors.subServices = 'Maximum 100 sub-services allowed';
       }
-      // Validate sub-services
+   
       formData.subServices.forEach((sub, idx) => {
         if (!sub.name.trim()) {
           newErrors[`subService_${idx}_name`] = `Sub-service ${idx + 1} name is required`;
@@ -447,7 +446,7 @@ useEffect(() => {
         }
       });
       
-      // Validate booking availability dates if type is dateRange
+      
       if (formData.bookingAvailability.availabilityPeriod.type === 'dateRange') {
         if (!formData.startDate) {
           newErrors.startDate = 'Start date is required for date range availability';
@@ -496,7 +495,7 @@ useEffect(() => {
       return;
     }
 
-    // Check media limits before proceeding
+   
     const limits = await checkMediaLimits();
     if (limits && images.length > limits.images.remaining) {
       setErrors({ images: `You only have ${limits.images.remaining} image slots available` });
@@ -513,7 +512,7 @@ useEffect(() => {
     try {
       console.log('Create page: Creating gallery item with data:', formData);
       
-      // Get the selected category name
+  
       const selectedCategory = categories.find(c => c.id === formData.categoryId);
       
       const galleryData: any = {
@@ -540,7 +539,7 @@ useEffect(() => {
         locationIndex: formData.locationIndex >= 0 ? Number(formData.locationIndex) : 0
       };
 
-      // Add service-specific fields
+  
       if (formData.itemType === 'service') {
         galleryData.producer = formData.producer;
         galleryData.totalAvailableServiceProviders = Number(formData.totalAvailableServiceProviders);
@@ -555,19 +554,19 @@ useEffect(() => {
           }));
         }
 
-        // Add booking availability
+       
         galleryData.bookingAvailability = {
           daysAvailable: formData.bookingAvailability.daysAvailable,
           slotDurationMinutes: Number(formData.bookingAvailability.slotDurationMinutes),
           concurrentProviders: Number(formData.bookingAvailability.concurrentProviders),
           availabilityPeriod: {
             type: formData.bookingAvailability.availabilityPeriod.type,
-            // Include startDate and endDate if type is 'dateRange'
+            
             ...(formData.bookingAvailability.availabilityPeriod.type === 'dateRange' && {
               startDate: formData.startDate,
               endDate: formData.endDate
             }),
-            // Include weeksAhead if type is 'rollingWeeks'
+            
             ...(formData.bookingAvailability.availabilityPeriod.type === 'rollingWeeks' && {
               weeksAhead: formData.bookingAvailability.availabilityPeriod.weeksAhead || 6
             })
@@ -578,14 +577,14 @@ useEffect(() => {
       
       const result = await GalleryService.createGalleryItem(token, galleryData);
 
-      if (result.success && result.data?._id) {
-        const galleryItemId = result.data._id;
+      if (result.success && result.data?.galleryItem?._id) {
+        const galleryItemId = result.data.galleryItem._id;
         
-        // Upload images if any
+      
         if (images.length > 0) {
           console.log('Create page: Uploading', images.length, 'images');
           for (let i = 0; i < images.length; i++) {
-            // Set the first image as the main/primary image
+         
             const isMainImage = i === 0;
             console.log(`Create page: Uploading image ${i + 1}/${images.length}, isMain: ${isMainImage}`);
             const uploadResult = await GalleryService.uploadImage(token, galleryItemId, images[i], isMainImage);
@@ -595,7 +594,7 @@ useEffect(() => {
           }
         }
 
-        // Upload videos if any
+       
         if (videos.length > 0) {
           console.log('Create page: Uploading', videos.length, 'videos');
           for (let i = 0; i < videos.length; i++) {
@@ -768,10 +767,7 @@ useEffect(() => {
                   readOnly
                   className="w-full px-3 py-2 bg-purple-100 border border-purple-300 rounded-lg text-purple-800 font-mono text-sm cursor-not-allowed"
                 />
-                {/* <p className="text-xs text-purple-600 mt-1">
-                  This product will be #{platformCodePreview.orgProductNumber} in your organization and 
-                  #{platformCodePreview.globalProductNumber} globally
-                </p> */}
+               
               </div>
             </div>
           </div>
@@ -873,10 +869,9 @@ useEffect(() => {
               value={formData.locationIndex}
               onChange={(e) => {
                 const selectedValue = e.target.value;
-                console.log('Create Gallery: Location selected:', selectedValue);
-                // Parse to number, but keep as -1 if empty
+                
                 const locationIdx = selectedValue === '' ? -1 : parseInt(selectedValue);
-                console.log('Create Gallery: Location index set to:', locationIdx);
+          
                 setFormData(prev => ({ ...prev, locationIndex: locationIdx }));
               }}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
@@ -898,7 +893,7 @@ useEffect(() => {
             </select>
             {locations.length > 0 && locations.every(loc => loc.disabled) && (
               <p className="mt-1 text-sm text-amber-600">
-                ⚠️ All locations require payment. Please complete payment to enable location selection.
+                All locations require payment. Please complete payment to enable location selection.
               </p>
             )}
             {errors.locationIndex && (
@@ -942,10 +937,10 @@ useEffect(() => {
             )}
           </div>
 
-          {/* Service-Specific Fields */}
+       
           {formData.itemType === 'service' && (
             <>
-              {/* Producer Name */}
+             
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Service Provider/Producer <span className="text-red-500">*</span>
@@ -964,7 +959,6 @@ useEffect(() => {
                 )}
               </div>
 
-              {/* Total Available Service Providers */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Total Service Providers <span className="text-red-500">*</span>
@@ -984,7 +978,7 @@ useEffect(() => {
                 )}
               </div>
 
-              {/* Has Sub-Services Toggle */}
+            
               <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                 <div className="flex items-center justify-between mb-4">
                   <label className="text-sm font-medium text-gray-700">
@@ -1009,7 +1003,7 @@ useEffect(() => {
                   </button>
                 </div>
 
-                {/* Sub-Services List */}
+            
                 {formData.hasSubServices && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
@@ -1087,7 +1081,7 @@ useEffect(() => {
                           </div>
                           <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Price (₦) <span className="text-red-500">*</span>
+                              Price <span className="text-red-500">*</span>
                             </label>
                             <input
                               type="number"
@@ -1118,11 +1112,10 @@ useEffect(() => {
                 )}
               </div>
 
-              {/* Booking Availability Configuration */}
               <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <h3 className="text-lg font-medium text-blue-800 mb-4">Booking Availability</h3>
                 
-                {/* Days of Week Availability */}
+           
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-blue-800 mb-2">
                     Days Available
@@ -1372,10 +1365,10 @@ useEffect(() => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Price (₦) <span className="text-red-500">*</span>
+                  Price <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">₦</span>
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium"></span>
                   <input
                     type="number"
                     value={formData.priceInNaira || ''}
@@ -1433,32 +1426,6 @@ useEffect(() => {
                 )}
                 <p className="text-xs text-gray-500 mt-1">Optional</p>
               </div>
-
-              {/* <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Platform Charge
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={loadingCommission ? 'Loading...' : `${formData.platformChargePercentage}%`}
-                    readOnly
-                    className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 cursor-not-allowed"
-                  />
-                </div>
-                {platformCommission && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Commission: {platformCommission.commissionName}
-                  </p>
-                )}
-                {!formData.categoryId && (
-                  <p className="text-xs text-amber-600 mt-1">
-                    Select a category to view platform commission
-                  </p>
-                )}
-              </div> */}
-
-
 <div>
   <label className="block text-sm font-medium text-gray-700 mb-2">
     Platform Charge
@@ -1655,7 +1622,7 @@ useEffect(() => {
                 <p className="mt-1 text-sm text-red-600">{errors.images}</p>
               )}
               
-              {/* Image Preview */}
+              
               {images.length > 0 && (
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   {images.map((image, index) => (
@@ -1670,7 +1637,7 @@ useEffect(() => {
                         onClick={() => removeImage(index)}
                         className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
                       >
-                        ×
+                       
                       </button>
                     </div>
                   ))}
@@ -1700,7 +1667,7 @@ useEffect(() => {
                 <p className="mt-1 text-sm text-red-600">{errors.videos}</p>
               )}
               
-              {/* Video List */}
+            
               {videos.length > 0 && (
                 <div className="mt-3 space-y-2">
                   {videos.map((video, index) => (
@@ -1717,7 +1684,7 @@ useEffect(() => {
                         onClick={() => removeVideo(index)}
                         className="text-red-500 hover:text-red-700"
                       >
-                        ×
+                       
                       </button>
                     </div>
                   ))}
@@ -1726,7 +1693,7 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* Action Buttons */}
+      
           <div className="flex justify-end gap-3">
             <button
               type="button"
