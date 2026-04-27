@@ -78,8 +78,9 @@ function VerifyOtpContent() {
     onSuccess: (response) => {
       setApiError(null);
       
+      // Check if response has JWT token (auto-login after verification)
       if (response.success && response.data && response.data.jwtToken && response.data.user) {
-        // Successfully verified OTP, sign in user and redirect
+        // Successfully verified OTP with JWT token, sign in user and redirect
         signIn(response.data.jwtToken, response.data.user);
         
         const userRole = response.data.user.role?.toLowerCase();
@@ -97,6 +98,18 @@ function VerifyOtpContent() {
           });
           router.replace("/user");
         }
+      } else if (response.success && response.data && response.data.user) {
+        // Successfully verified but no JWT token - user needs to login
+        toast({ 
+          title: "Verification Successful!",
+          description: response.message || "Email verified successfully! Please login to continue.",
+          variant: "default"
+        });
+        
+        // Redirect to login page with email pre-filled
+        setTimeout(() => {
+          router.replace(`/auth/login?email=${encodeURIComponent(response.data.user.email)}`);
+        }, 1500);
       } else {
         const errorMsg = response.message || "Failed to verify OTP";
         setApiError(errorMsg);

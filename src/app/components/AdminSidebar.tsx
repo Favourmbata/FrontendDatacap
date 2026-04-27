@@ -12,7 +12,8 @@ import {
   FileCheck, 
   FileText,
   Bell,
-  Calendar
+  Calendar,
+  Smartphone
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -116,6 +117,12 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
       name: 'Dashboard', 
       route: '/admin', 
       icon: <Image src="/Dashboard Circle Streamline Core Remix - Free.png" alt="Dashboard" width={24} height={24} className="object-contain" />,
+    },
+     { 
+      id: 'mobile-app-stats', 
+      name: 'Mobile App Statistics', 
+      route: '/admin/mobile-app-stats', 
+      icon: <Smartphone className="w-6 h-6" />,
     },
     { 
       id: 'notifications', 
@@ -228,6 +235,7 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
       route: '/admin/booking', 
       icon: <Calendar className="w-6 h-6" />,
     },
+   
     { 
       id: 'data-verification', 
       name: 'Data Verification', 

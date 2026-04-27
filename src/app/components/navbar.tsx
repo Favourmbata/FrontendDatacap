@@ -4,6 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
+import DownloadAppModal from "./DownloadAppModal"
 
 
 export default function Navbar() {
@@ -11,6 +12,7 @@ export default function Navbar() {
   const [isSignUpDropdownOpen, setIsSignUpDropdownOpen] = useState(false)
   const [navbarBackground, setNavbarBackground] = useState<string>("#F4EFFA")
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false)
 
   const shouldShowLinks = !pathname?.startsWith("/auth")
 
@@ -181,64 +183,60 @@ export default function Navbar() {
             <div 
               className="flex items-center gap-3 xl:gap-5"
             >
-              {/* Download App + Sign Up share the same dropdown */}
+              {/* Download App button */}
+              <button
+                type="button"
+                onClick={() => setIsDownloadModalOpen(true)}
+                className="flex items-center justify-center transition-all duration-200 hover:opacity-90"
+                style={{
+                  height: "40px",
+                  borderRadius: "20px",
+                  background: "#5D2A8B",
+                  color: "#FFFFFF",
+                  padding: "8px 16px",
+                  fontFamily: "Manrope",
+                  fontWeight: 500,
+                  fontSize: "14px",
+                  border: "none",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Download App
+              </button>
+
+              {/* Sign Up dropdown */}
               <div className="relative">
-                {/* Two trigger buttons side by side */}
-                <div className="flex items-center gap-2 xl:gap-3">
-                  {/* Download App button */}
-                  <button
-                    type="button"
-                    onClick={() => setIsSignUpDropdownOpen(!isSignUpDropdownOpen)}
-                    className="flex items-center justify-center transition-all duration-200 hover:opacity-90"
-                    style={{
-                      height: "40px",
-                      borderRadius: "20px",
-                      background: "#5D2A8B",
-                      color: "#FFFFFF",
-                      padding: "8px 16px",
-                      fontFamily: "Manrope",
-                      fontWeight: 500,
-                      fontSize: "14px",
-                      border: "none",
-                      whiteSpace: "nowrap",
-                    }}
+                <button
+                  type="button"
+                  onClick={() => setIsSignUpDropdownOpen(!isSignUpDropdownOpen)}
+                  className="flex items-center justify-center transition-all duration-200"
+                  style={{
+                    minWidth: "100px",
+                    height: "40px",
+                    borderRadius: "20px",
+                    border: "1px solid #5D2A8B",
+                    background: "transparent",
+                    color: "#5D2A8B",
+                    padding: "8px 10px",
+                    gap: "6px",
+                    fontFamily: "Manrope",
+                    fontWeight: 500,
+                    fontSize: "16px",
+                  }}
+                >
+                  <span className="hidden xl:inline">Sign up</span>
+                  <span className="xl:hidden">Sign up</span>
+                  <svg
+                    className={`w-4 h-4 transition-transform ${isSignUpDropdownOpen ? "rotate-180" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    Download App
-                  </button>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
 
-                  {/* Sign Up button */}
-                  <button
-                    type="button"
-                    onClick={() => setIsSignUpDropdownOpen(!isSignUpDropdownOpen)}
-                    className="flex items-center justify-center transition-all duration-200"
-                    style={{
-                      minWidth: "100px",
-                      height: "40px",
-                      borderRadius: "20px",
-                      border: "1px solid #5D2A8B",
-                      background: "transparent",
-                      color: "#5D2A8B",
-                      padding: "8px 10px",
-                      gap: "6px",
-                      fontFamily: "Manrope",
-                      fontWeight: 500,
-                      fontSize: "16px",
-                    }}
-                  >
-                    <span className="hidden xl:inline">Sign up</span>
-                    <span className="xl:hidden">Sign up</span>
-                    <svg
-                      className={`w-4 h-4 transition-transform ${isSignUpDropdownOpen ? "rotate-180" : ""}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Shared dropdown */}
+                {/* Sign Up dropdown */}
                 {isSignUpDropdownOpen && (
                   <div
                     className="absolute right-0 bg-white border border-[#5D2A8B] shadow-lg z-50"
@@ -495,9 +493,13 @@ export default function Navbar() {
                     Login
                   </Link>
 
-                  {/* Download App — same links as Sign Up */}
-                  <Link
-                    href="/auth/signup/admin"
+                  {/* Download App */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false)
+                      setIsDownloadModalOpen(true)
+                    }}
                     className="flex items-center justify-center transition-all duration-200 hover:opacity-90"
                     style={{
                       width: "160px",
@@ -511,16 +513,21 @@ export default function Navbar() {
                       fontSize: "14px",
                       textAlign: "center",
                     }}
-                    onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Download App
-                  </Link>
+                  </button>
                 </div>
               </div>
             )}
           </>
         )}
       </div>
+
+      {/* Download App Modal */}
+      <DownloadAppModal 
+        isOpen={isDownloadModalOpen} 
+        onClose={() => setIsDownloadModalOpen(false)} 
+      />
     </header>
   )
 }
