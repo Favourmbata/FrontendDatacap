@@ -102,6 +102,8 @@ export interface AdminBooking {
   location: BookingLocation;
   customerNotes?: string;
   providerNotes?: string;
+  serviceProviderId?: string;
+  assignedProvider?: string;
   acceptedAt?: string;
   completedAt?: string;
   rejectedAt?: string;
@@ -114,8 +116,47 @@ export interface AdminBookingsResponse {
   data: {
     bookings: AdminBooking[];
     total: number;
-    page: number;
-    limit: number;
+    pagination: {
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  };
+  message?: string;
+}
+
+export interface UpdateBookingStatusRequest {
+  status: string;
+  newDate?: string;
+  newTime?: string;
+  adminNotes?: string;
+}
+
+export interface UpdateBookingStatusResponse {
+  success: boolean;
+  data: {
+    booking: AdminBooking;
+  };
+  message?: string;
+}
+
+export interface AssignServiceProviderRequest {
+  serviceProviderId: string;
+}
+
+export interface AssignServiceProviderResponse {
+  success: boolean;
+  data: {
+    booking: {
+      bookingId: string;
+      serviceProviderId: string;
+      status: string;
+    };
+    provider: {
+      id: string;
+      name: string;
+      email: string;
+    };
   };
   message?: string;
 }
@@ -358,32 +399,6 @@ class BookingService {
   }
 
   /**
-   * Admin: View all organization bookings
-   */
-  static async getAdminBookings(
-    params?: {
-      page?: number;
-      limit?: number;
-      status?: string;
-      dateFrom?: string;
-      dateTo?: string;
-    }
-  ): Promise<AdminBookingsResponse> {
-    const queryParams = new URLSearchParams();
-    
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.status) queryParams.append('status', params.status);
-    if (params?.dateFrom) queryParams.append('dateFrom', params.dateFrom);
-    if (params?.dateTo) queryParams.append('dateTo', params.dateTo);
-
-    const queryString = queryParams.toString();
-    const url = `/api/booking/admin/bookings${queryString ? `?${queryString}` : ''}`;
-
-    return HttpService.get<AdminBookingsResponse>(url);
-  }
-
-  /**
    * Service Provider: Get assigned tasks
    */
   static async getProviderAssignedTasks(): Promise<ProviderTasksResponse> {
@@ -559,6 +574,69 @@ class BookingService {
   ): Promise<CreateAdminBookingResponse> {
     return HttpService.post<CreateAdminBookingResponse>(
       '/api/admin/booking/create',
+      data
+    );
+  }
+
+  /**
+   * Get all admin bookings with pagination and filters
+   * GET /api/admin/bookings
+   */
+  static async getAdminBookings(
+    page: number = 1,
+    limit: number = 20,
+    status?: string,
+    dateFrom?: string,
+    dateTo?: string
+  ): Promise<AdminBookingsResponse> {
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString()
+    });
+
+    if (status) queryParams.append('status', status);
+    if (dateFrom) queryParams.append('dateFrom', dateFrom);
+    if (dateTo) queryParams.append('dateTo', dateTo);
+
+    return HttpService.get<AdminBookingsResponse>(
+      `/api/admin/bookings?${queryParams.toString()}`
+    );
+  }
+
+  /**
+   * Get single booking details
+   * GET /api/admin/bookings/{bookingId}
+   */
+  static async getAdminBooking(bookingId: string): Promise<{ success: boolean; data: { booking: AdminBooking }; message?: string }> {
+    return HttpService.get<{ success: boolean; data: { booking: AdminBooking }; message?: string }>(
+      `/api/admin/bookings/${bookingId}`
+    );
+  }
+
+  /**
+   * Update booking status
+   * PUT /api/admin/bookings/{bookingId}/status
+   */
+  static async updateBookingStatus(
+    bookingId: string,
+    data: UpdateBookingStatusRequest
+  ): Promise<UpdateBookingStatusResponse> {
+    return HttpService.put<UpdateBookingStatusResponse>(
+      `/api/admin/bookings/${bookingId}/status`,
+      data
+    );
+  }
+
+  /**
+   * Assign service provider to booking
+   * POST /api/admin/bookings/{bookingId}/assign-provider
+   */
+  static async assignServiceProvider(
+    bookingId: string,
+    data: AssignServiceProviderRequest
+  ): Promise<AssignServiceProviderResponse> {
+    return HttpService.post<AssignServiceProviderResponse>(
+      `/api/admin/bookings/${bookingId}/assign-provider`,
       data
     );
   }

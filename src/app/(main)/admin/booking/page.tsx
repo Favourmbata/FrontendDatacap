@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Calendar, Filter, DollarSign, CheckCircle, XCircle, Clock, Loader2, 
   AlertCircle, MapPin, User, Mail, FileText, Plus, Search, ArrowLeft,
-  ArrowRight
+  ArrowRight, Users
 } from 'lucide-react';
 import BookingAdminService, { 
   AdminBooking, AvailableSlot, OrganizationUser, ServiceProvider, 
@@ -48,6 +48,15 @@ const AdminBookingsPage: React.FC = () => {
   const [dateTo, setDateTo] = useState<string>('');
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<AdminBooking | null>(null);
+  const [showStatusUpdateModal, setShowStatusUpdateModal] = useState(false);
+  const [showAssignProviderModal, setShowAssignProviderModal] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [assigningProvider, setAssigningProvider] = useState(false);
+  const [selectedProviderForAssignment, setSelectedProviderForAssignment] = useState<string>('');
+  const [newStatus, setNewStatus] = useState('');
+  const [newDate, setNewDate] = useState('');
+  const [newTime, setNewTime] = useState('');
+  const [adminNotes, setAdminNotes] = useState('');
 
   // Create booking flow states
   const [currentStep, setCurrentStep] = useState<BookingStep>('service-date');
@@ -105,11 +114,39 @@ const AdminBookingsPage: React.FC = () => {
   const [createdBooking, setCreatedBooking] = useState<any>(null);
 
   // Load bookings list
+  const fetchBookings = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await BookingAdminService.getAdminBookings(
+        currentPage,
+        20,
+        activeTab === 'all' ? undefined : activeTab,
+        dateFrom || undefined,
+        dateTo || undefined
+      );
+
+      if (response.success) {
+        setBookings(response.data.bookings);
+        setTotalBookings(response.data.total);
+        setTotalPages(response.data.pagination.totalPages);
+      } else {
+        setError(response.message || 'Failed to load bookings');
+      }
+    } catch (err: any) {
+      console.error('Error fetching bookings:', err);
+      setError(err.message || 'Failed to load bookings');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, activeTab, dateFrom, dateTo]);
+
   useEffect(() => {
     if (viewMode === 'list') {
       fetchBookings();
     }
-  }, [activeTab, currentPage, dateFrom, dateTo, viewMode]);
+  }, [viewMode, fetchBookings]);
 
   // Load available days when month/year changes
   useEffect(() => {
@@ -155,27 +192,6 @@ const AdminBookingsPage: React.FC = () => {
       fetchLocationOptions();
     }
   }, [selectedServiceId, viewMode, currentStep]);
-
-  const fetchBookings = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // TODO: Replace with new endpoint when available
-      // Currently disabled: /api/booking/admin/bookings
-      console.log('Booking list endpoint temporarily disabled');
-      
-      // Set empty state until new endpoint is configured
-      setBookings([]);
-      setTotalBookings(0);
-      setTotalPages(1);
-    } catch (err: any) {
-      console.error('Error fetching bookings:', err);
-      setError(err.message || 'Failed to load bookings');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchAvailableDays = async () => {
     try {
@@ -313,9 +329,108 @@ const AdminBookingsPage: React.FC = () => {
     }
   };
 
-  const handleViewDetails = (booking: AdminBooking) => {
-    setSelectedBooking(booking);
-    setShowDetailsModal(true);
+  const handleViewDetails = async (booking: AdminBooking) => {
+    try {
+      setSelectedBooking(booking);
+      setShowDetailsModal(true);
+      
+      // Fetch latest booking details
+      const response = await BookingAdminService.getAdminBooking(booking.bookingId);
+      if (response.success) {
+        setSelectedBooking(response.data.booking);
+      }
+
+      // Fetch service providers for assignment
+      const providersResponse = await BookingAdminService.getServiceProviders();
+      if (providersResponse.success) {
+        setServiceProviders(providersResponse.data.providers);
+      }
+    } catch (err: any) {
+      console.error('Error fetching booking details:', err);
+    }
+  };
+
+  const handleUpdateStatus = async () => {
+    try {
+      if (!selectedBooking || !newStatus) {
+        alert('Please select a status');
+        return;
+      }
+
+      setUpdatingStatus(true);
+      
+      const response = await BookingAdminService.updateBookingStatus(
+        selectedBooking.bookingId,
+        {
+          status: newStatus,
+          newDate: newDate || undefined,
+          newTime: newTime || undefined,
+          adminNotes: adminNotes || undefined
+        }
+      );
+
+      if (response.success) {
+        // Fetch updated booking details
+        const bookingResponse = await BookingAdminService.getAdminBooking(selectedBooking.bookingId);
+        if (bookingResponse.success) {
+          setSelectedBooking(bookingResponse.data.booking);
+        }
+        setShowStatusUpdateModal(false);
+        // Refresh bookings list
+        fetchBookings();
+        // Reset form
+        setNewStatus('');
+        setNewDate('');
+        setNewTime('');
+        setAdminNotes('');
+      } else {
+        alert(response.message || 'Failed to update booking status');
+      }
+    } catch (err: any) {
+      console.error('Error updating booking status:', err);
+      alert(err.message || 'Failed to update booking status');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleAssignProvider = async () => {
+    try {
+      if (!selectedBooking || !selectedProviderForAssignment) {
+        alert('Please select a service provider');
+        return;
+      }
+
+      setAssigningProvider(true);
+      
+      const response = await BookingAdminService.assignServiceProvider(
+        selectedBooking.bookingId,
+        {
+          serviceProviderId: selectedProviderForAssignment
+        }
+      );
+
+      if (response.success) {
+        // Fetch updated booking details
+        const bookingResponse = await BookingAdminService.getAdminBooking(selectedBooking.bookingId);
+        if (bookingResponse.success) {
+          setSelectedBooking(bookingResponse.data.booking);
+        }
+        setShowAssignProviderModal(false);
+        // Refresh bookings list
+        fetchBookings();
+        // Reset form
+        setSelectedProviderForAssignment('');
+        alert(`Service provider "${response.data.provider.name}" assigned successfully!`);
+      } else {
+        alert(response.message || 'Failed to assign service provider');
+      }
+    } catch (err: any) {
+      console.error('Error assigning service provider:', err);
+      alert(err.message || 'Failed to assign service provider');
+    } finally {
+      setAssigningProvider(false);
+    }
   };
 
   const handleCreateBooking = async () => {
@@ -1231,13 +1346,22 @@ const AdminBookingsPage: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Booking Management</h1>
             <p className="text-gray-600">View and manage all service bookings</p>
           </div>
-          <button
-            onClick={() => setViewMode('create')}
-            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            Create New Booking
-          </button>
+          <div className="flex gap-3">
+            <a
+              href="/admin/booking/assign-provider"
+              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+            >
+              <Users className="w-5 h-5" />
+              Assign Providers
+            </a>
+            <button
+              onClick={() => setViewMode('create')}
+              className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              Create New Booking
+            </button>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -1531,12 +1655,232 @@ const AdminBookingsPage: React.FC = () => {
               <div className="flex gap-3">
                 <button
                   onClick={() => {
+                    setSelectedProviderForAssignment(selectedBooking.serviceProviderId || '');
+                    setShowAssignProviderModal(true);
+                  }}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  Assign Provider
+                </button>
+                <button
+                  onClick={() => {
+                    setNewStatus(selectedBooking.status);
+                    setShowStatusUpdateModal(true);
+                  }}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Update Status
+                </button>
+                <button
+                  onClick={() => {
                     setShowDetailsModal(false);
                     setSelectedBooking(null);
                   }}
                   className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
                 >
                   Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status Update Modal */}
+      {showStatusUpdateModal && selectedBooking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-2xl font-semibold mb-4">Update Booking Status</h2>
+              
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600">Booking ID</p>
+                <p className="font-mono font-bold">{selectedBooking.bookingId}</p>
+                <p className="text-sm text-gray-600 mt-2">Current Status</p>
+                <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(selectedBooking.status)}`}>
+                  {selectedBooking.status}
+                </span>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">New Status *</label>
+                  <select
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">Select status</option>
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="rescheduled">Rescheduled</option>
+                  </select>
+                </div>
+
+                {(newStatus === 'rescheduled' || newStatus === 'confirmed') && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">New Date</label>
+                      <input
+                        type="date"
+                        value={newDate}
+                        onChange={(e) => setNewDate(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">New Time</label>
+                      <input
+                        type="time"
+                        value={newTime}
+                        onChange={(e) => setNewTime(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Admin Notes</label>
+                  <textarea
+                    value={adminNotes}
+                    onChange={(e) => setAdminNotes(e.target.value)}
+                    rows={3}
+                    placeholder="Add notes about this status change..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={handleUpdateStatus}
+                  disabled={updatingStatus || !newStatus}
+                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {updatingStatus ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Status'
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowStatusUpdateModal(false);
+                    setNewStatus('');
+                    setNewDate('');
+                    setNewTime('');
+                    setAdminNotes('');
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Provider Modal */}
+      {showAssignProviderModal && selectedBooking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-2xl font-semibold mb-4">Assign Service Provider</h2>
+              
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600">Booking ID</p>
+                <p className="font-mono font-bold">{selectedBooking.bookingId}</p>
+                <p className="text-sm text-gray-600 mt-2">Service</p>
+                <p className="font-medium">{selectedBooking.serviceName}</p>
+                {selectedBooking.serviceProviderId && (
+                  <>
+                    <p className="text-sm text-gray-600 mt-2">Current Provider</p>
+                    <p className="font-medium text-green-600">Already Assigned</p>
+                  </>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Service Provider *</label>
+                  {loadingProviders ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+                    </div>
+                  ) : serviceProviders.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500 border border-gray-200 rounded-lg">
+                      No service providers available
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {serviceProviders.map(provider => (
+                        <button
+                          key={provider.id}
+                          onClick={() => setSelectedProviderForAssignment(provider.id)}
+                          className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                            selectedProviderForAssignment === provider.id
+                              ? 'border-green-600 bg-green-50'
+                              : 'border-gray-200 hover:border-green-300'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium">{provider.name}</div>
+                              <div className="text-sm text-gray-600">{provider.email}</div>
+                              {provider.phoneNumber && (
+                                <div className="text-xs text-gray-500 mt-1">{provider.phoneNumber}</div>
+                              )}
+                            </div>
+                            <div className="text-right ml-4">
+                              <div className="flex items-center gap-2 text-xs">
+                                <span className="text-yellow-600">★ {provider.rating}</span>
+                                <span className="text-gray-500">•</span>
+                                <span className="text-gray-600">{provider.completedTasks} tasks</span>
+                              </div>
+                              <div className={`text-xs mt-1 ${provider.isAvailable ? 'text-green-600' : 'text-red-600'}`}>
+                                {provider.isAvailable ? 'Available' : 'Busy'}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={handleAssignProvider}
+                  disabled={assigningProvider || !selectedProviderForAssignment}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {assigningProvider ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Assigning...
+                    </>
+                  ) : (
+                    'Assign Provider'
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAssignProviderModal(false);
+                    setSelectedProviderForAssignment('');
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+                >
+                  Cancel
                 </button>
               </div>
             </div>
