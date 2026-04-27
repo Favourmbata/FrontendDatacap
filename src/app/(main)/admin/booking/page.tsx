@@ -49,10 +49,7 @@ const AdminBookingsPage: React.FC = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<AdminBooking | null>(null);
   const [showStatusUpdateModal, setShowStatusUpdateModal] = useState(false);
-  const [showAssignProviderModal, setShowAssignProviderModal] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [assigningProvider, setAssigningProvider] = useState(false);
-  const [selectedProviderForAssignment, setSelectedProviderForAssignment] = useState<string>('');
   const [newStatus, setNewStatus] = useState('');
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
@@ -391,45 +388,6 @@ const AdminBookingsPage: React.FC = () => {
       alert(err.message || 'Failed to update booking status');
     } finally {
       setUpdatingStatus(false);
-    }
-  };
-
-  const handleAssignProvider = async () => {
-    try {
-      if (!selectedBooking || !selectedProviderForAssignment) {
-        alert('Please select a service provider');
-        return;
-      }
-
-      setAssigningProvider(true);
-      
-      const response = await BookingAdminService.assignServiceProvider(
-        selectedBooking.bookingId,
-        {
-          serviceProviderId: selectedProviderForAssignment
-        }
-      );
-
-      if (response.success) {
-        // Fetch updated booking details
-        const bookingResponse = await BookingAdminService.getAdminBooking(selectedBooking.bookingId);
-        if (bookingResponse.success) {
-          setSelectedBooking(bookingResponse.data.booking);
-        }
-        setShowAssignProviderModal(false);
-        // Refresh bookings list
-        fetchBookings();
-        // Reset form
-        setSelectedProviderForAssignment('');
-        alert(`Service provider "${response.data.provider.name}" assigned successfully!`);
-      } else {
-        alert(response.message || 'Failed to assign service provider');
-      }
-    } catch (err: any) {
-      console.error('Error assigning service provider:', err);
-      alert(err.message || 'Failed to assign service provider');
-    } finally {
-      setAssigningProvider(false);
     }
   };
 
@@ -1347,13 +1305,6 @@ const AdminBookingsPage: React.FC = () => {
             <p className="text-gray-600">View and manage all service bookings</p>
           </div>
           <div className="flex gap-3">
-            <a
-              href="/admin/booking/assign-provider"
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
-            >
-              <Users className="w-5 h-5" />
-              Assign Providers
-            </a>
             <button
               onClick={() => setViewMode('create')}
               className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
@@ -1655,15 +1606,6 @@ const AdminBookingsPage: React.FC = () => {
               <div className="flex gap-3">
                 <button
                   onClick={() => {
-                    setSelectedProviderForAssignment(selectedBooking.serviceProviderId || '');
-                    setShowAssignProviderModal(true);
-                  }}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                >
-                  Assign Provider
-                </button>
-                <button
-                  onClick={() => {
                     setNewStatus(selectedBooking.status);
                     setShowStatusUpdateModal(true);
                   }}
@@ -1778,105 +1720,6 @@ const AdminBookingsPage: React.FC = () => {
                     setNewDate('');
                     setNewTime('');
                     setAdminNotes('');
-                  }}
-                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Assign Provider Modal */}
-      {showAssignProviderModal && selectedBooking && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h2 className="text-2xl font-semibold mb-4">Assign Service Provider</h2>
-              
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Booking ID</p>
-                <p className="font-mono font-bold">{selectedBooking.bookingId}</p>
-                <p className="text-sm text-gray-600 mt-2">Service</p>
-                <p className="font-medium">{selectedBooking.serviceName}</p>
-                {selectedBooking.serviceProviderId && (
-                  <>
-                    <p className="text-sm text-gray-600 mt-2">Current Provider</p>
-                    <p className="font-medium text-green-600">Already Assigned</p>
-                  </>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Service Provider *</label>
-                  {loadingProviders ? (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
-                    </div>
-                  ) : serviceProviders.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500 border border-gray-200 rounded-lg">
-                      No service providers available
-                    </div>
-                  ) : (
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {serviceProviders.map(provider => (
-                        <button
-                          key={provider.id}
-                          onClick={() => setSelectedProviderForAssignment(provider.id)}
-                          className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-                            selectedProviderForAssignment === provider.id
-                              ? 'border-green-600 bg-green-50'
-                              : 'border-gray-200 hover:border-green-300'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="font-medium">{provider.name}</div>
-                              <div className="text-sm text-gray-600">{provider.email}</div>
-                              {provider.phoneNumber && (
-                                <div className="text-xs text-gray-500 mt-1">{provider.phoneNumber}</div>
-                              )}
-                            </div>
-                            <div className="text-right ml-4">
-                              <div className="flex items-center gap-2 text-xs">
-                                <span className="text-yellow-600">★ {provider.rating}</span>
-                                <span className="text-gray-500">•</span>
-                                <span className="text-gray-600">{provider.completedTasks} tasks</span>
-                              </div>
-                              <div className={`text-xs mt-1 ${provider.isAvailable ? 'text-green-600' : 'text-red-600'}`}>
-                                {provider.isAvailable ? 'Available' : 'Busy'}
-                              </div>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={handleAssignProvider}
-                  disabled={assigningProvider || !selectedProviderForAssignment}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {assigningProvider ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Assigning...
-                    </>
-                  ) : (
-                    'Assign Provider'
-                  )}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowAssignProviderModal(false);
-                    setSelectedProviderForAssignment('');
                   }}
                   className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
                 >

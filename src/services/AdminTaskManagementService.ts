@@ -4,21 +4,27 @@ import { HttpService } from './HttpService';
 
 export interface ServiceBooking {
   _id: string;
-  orderId: string;
+  orderId?: string;
   bookingId: string;
   serviceName: string;
   organizationName: string;
   customerName: string;
   customerEmail: string;
+  customerPhone?: string;
   bookingDate: string;
   bookingTime: string;
   duration: number;
+  productPrice: number;
   totalAmount: number;
   orderStatus: string;
-  taskStatus: string;
+  deliveryStatus?: string;
+  taskStatus?: string;
   serviceProviderName?: string;
+  assignedProviders?: any[];
   settlementStatus: string;
+  payments?: any[];
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface ServiceBookingsResponse {
@@ -91,6 +97,48 @@ export interface UpdateSettlementResponse {
   message?: string;
 }
 
+export interface ServiceProviderInfo {
+  providerId: string;
+  specialties: string[];
+  availabilityHours: string;
+  isAvailable: boolean;
+  maxConcurrentBookings: number;
+  status: string;
+  rating: number;
+  totalBookings: number;
+  completedBookings: number;
+  serviceProviderFeeName?: string;
+  serviceProviderFeeDescription?: string;
+  serviceProviderFee?: number;
+  serviceProviderFeeCurrency?: string;
+  serviceProviderFeeFrequency?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ServiceProvider {
+  id: string;
+  userId?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber?: string;
+  customUserId: string;
+  role: string;
+  status: string;
+  serviceProviderInfo: ServiceProviderInfo;
+}
+
+export interface ServiceProvidersResponse {
+  success: boolean;
+  data: {
+    serviceProviders: ServiceProvider[];
+    totalCount: number;
+    organizationId: string;
+  };
+  message?: string;
+}
+
 // ============ SERVICE CLASS ============
 
 class AdminTaskManagementService {
@@ -100,9 +148,48 @@ class AdminTaskManagementService {
    */
   static async getServiceBookings(date?: string): Promise<ServiceBookingsResponse> {
     const query = date ? `?date=${date}` : '';
-    return HttpService.get<ServiceBookingsResponse>(
+    const response = await HttpService.get<any>(
       `/api/orders/admin/service-bookings${query}`
     );
+    
+    // Transform API response to match ServiceBooking interface
+    if (response.success && response.data?.bookings) {
+      const transformedBookings = response.data.bookings.map((booking: any) => ({
+        _id: booking._id,
+        orderId: booking.orderId || booking._id,
+        bookingId: booking.serviceBooking?.bookingId || `BK${booking._id}`,
+        serviceName: booking.productName || 'Unknown Service',
+        organizationName: booking.organizationName || '',
+        customerName: booking.customerName || '',
+        customerEmail: booking.customerEmail || '',
+        customerPhone: booking.customerPhone || '',
+        bookingDate: booking.serviceBooking?.bookingDate || booking.createdAt,
+        bookingTime: booking.serviceBooking?.bookingTime || '',
+        duration: booking.serviceBooking?.duration || 0,
+        productPrice: booking.productPrice || 0,
+        totalAmount: booking.productPrice || 0,
+        orderStatus: booking.orderStatus || 'pending',
+        deliveryStatus: booking.deliveryStatus || 'pending',
+        taskStatus: booking.serviceBooking?.bookingStatus || 'pending',
+        serviceProviderName: booking.serviceProviderName || '',
+        assignedProviders: booking.serviceBooking?.assignedProviders || [],
+        settlementStatus: booking.settlementStatus || 'pending',
+        payments: booking.payments || [],
+        createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt
+      }));
+      
+      return {
+        success: true,
+        data: {
+          bookings: transformedBookings,
+          total: response.data.total || transformedBookings.length
+        },
+        message: response.message
+      };
+    }
+    
+    return response;
   }
 
   /**
@@ -161,6 +248,28 @@ class AdminTaskManagementService {
     return HttpService.patch<UpdateSettlementResponse>(
       `/api/service-provider-tasks/admin/tasks/${taskId}/settlement`,
       { status }
+    );
+  }
+
+  /**
+   * Get all service providers for assignment
+   */
+  static async getServiceProviders(): Promise<ServiceProvidersResponse> {
+    return HttpService.get<ServiceProvidersResponse>(
+      '/api/service-provider-assignment/detailed'
+    );
+  }
+
+  /**
+   * Assign service provider to a booking
+   */
+  static async assignServiceProvider(
+    bookingId: string,
+    data: { serviceProviderId: string }
+  ): Promise<any> {
+    return HttpService.post<any>(
+      `/api/admin/bookings/${bookingId}/assign-provider`,
+      data
     );
   }
 }

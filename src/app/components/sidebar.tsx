@@ -159,6 +159,11 @@ export const UserSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
           route: '/user/orders'
         },
         {
+          id: 'task-management',
+          name: 'Task Management',
+          route: '/user/body-care/task-management'
+        },
+        {
           id: 'delivery',
           name: 'Delivery',
           route: '/user/delivery'

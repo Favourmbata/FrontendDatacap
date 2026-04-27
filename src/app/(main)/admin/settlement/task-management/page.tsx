@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Download, Calendar, Filter, DollarSign, CheckCircle, XCircle, Clock, AlertCircle, Loader2 } from 'lucide-react';
+import { Download, Calendar, Filter, DollarSign, CheckCircle, XCircle, Clock, AlertCircle, Loader2, Users } from 'lucide-react';
 import AdminTaskManagementService, { 
   ServiceBooking, 
   ProviderReport, 
   TaskReport,
-  UpdateSettlementRequest 
+  UpdateSettlementRequest,
+  ServiceProvider
 } from '@/services/AdminTaskManagementService';
 
 type TabType = 'bookings' | 'providers' | 'accepted' | 'rejected' | 'completed';
@@ -31,6 +32,14 @@ const AdminTaskManagement: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<TaskReport | null>(null);
   const [newSettlementStatus, setNewSettlementStatus] = useState<'pending' | 'paid' | 'disputed'>('paid');
   const [updating, setUpdating] = useState(false);
+  
+  // Assign provider modal
+  const [showAssignProviderModal, setShowAssignProviderModal] = useState(false);
+  const [selectedBookingForAssignment, setSelectedBookingForAssignment] = useState<ServiceBooking | null>(null);
+  const [selectedProviderForAssignment, setSelectedProviderForAssignment] = useState<string>('');
+  const [serviceProviders, setServiceProviders] = useState<ServiceProvider[]>([]);
+  const [loadingProviders, setLoadingProviders] = useState(false);
+  const [assigningProvider, setAssigningProvider] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -115,6 +124,61 @@ const AdminTaskManagement: React.FC = () => {
       alert(err.message || 'Failed to update settlement status');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const loadServiceProviders = async () => {
+    try {
+      setLoadingProviders(true);
+      const response = await AdminTaskManagementService.getServiceProviders();
+      if (response.success) {
+        setServiceProviders(response.data.serviceProviders);
+      }
+    } catch (err: any) {
+      console.error('Error loading service providers:', err);
+      alert('Failed to load service providers');
+    } finally {
+      setLoadingProviders(false);
+    }
+  };
+
+  const handleAssignProviderClick = async (booking: ServiceBooking) => {
+    setSelectedBookingForAssignment(booking);
+    await loadServiceProviders();
+    setShowAssignProviderModal(true);
+  };
+
+  const handleAssignProvider = async () => {
+    try {
+      if (!selectedBookingForAssignment || !selectedProviderForAssignment) {
+        alert('Please select a service provider');
+        return;
+      }
+
+      setAssigningProvider(true);
+      
+      const response = await AdminTaskManagementService.assignServiceProvider(
+        selectedBookingForAssignment.bookingId,
+        {
+          serviceProviderId: selectedProviderForAssignment
+        }
+      );
+
+      if (response.success) {
+        const providerName = response.data?.provider?.name || 'Service Provider';
+        alert(`Service provider "${providerName}" assigned successfully!`);
+        setShowAssignProviderModal(false);
+        setSelectedBookingForAssignment(null);
+        setSelectedProviderForAssignment('');
+        fetchData();
+      } else {
+        alert(response.message || 'Failed to assign service provider');
+      }
+    } catch (err: any) {
+      console.error('Error assigning service provider:', err);
+      alert(err.message || 'Failed to assign service provider');
+    } finally {
+      setAssigningProvider(false);
     }
   };
 
@@ -260,6 +324,7 @@ const AdminTaskManagement: React.FC = () => {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Settlement</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 )}
                 {activeTab === 'providers' && (
@@ -290,7 +355,7 @@ const AdminTaskManagement: React.FC = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {activeTab === 'bookings' && bookings.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
                       No service bookings found
                     </td>
                   </tr>
@@ -341,6 +406,15 @@ const AdminTaskManagement: React.FC = () => {
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getSettlementBadge(booking.settlementStatus)}`}>
                         {booking.settlementStatus}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => handleAssignProviderClick(booking)}
+                        className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1 ml-auto"
+                      >
+                        <Users className="w-3 h-3" />
+                        Assign
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -481,6 +555,123 @@ const AdminTaskManagement: React.FC = () => {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Provider Modal */}
+      {showAssignProviderModal && selectedBookingForAssignment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-2xl font-semibold mb-4">Assign Service Provider</h2>
+              
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600">Booking ID</p>
+                <p className="font-mono font-bold">{selectedBookingForAssignment.bookingId}</p>
+                <p className="text-sm text-gray-600 mt-2">Service</p>
+                <p className="font-medium">{selectedBookingForAssignment.serviceName}</p>
+                {selectedBookingForAssignment.serviceProviderName && (
+                  <>
+                    <p className="text-sm text-gray-600 mt-2">Current Provider</p>
+                    <p className="font-medium text-green-600">{selectedBookingForAssignment.serviceProviderName}</p>
+                  </>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Service Provider *</label>
+                  {loadingProviders ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+                    </div>
+                  ) : serviceProviders.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500 border border-gray-200 rounded-lg">
+                      No service providers available
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {serviceProviders.map(provider => (
+                        <button
+                          key={provider.id}
+                          onClick={() => setSelectedProviderForAssignment(provider.id)}
+                          className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                            selectedProviderForAssignment === provider.id
+                              ? 'border-green-600 bg-green-50'
+                              : 'border-gray-200 hover:border-green-300'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium">{provider.firstName} {provider.lastName}</div>
+                              <div className="text-sm text-gray-600">{provider.email}</div>
+                              {provider.phoneNumber && (
+                                <div className="text-xs text-gray-500 mt-1">{provider.phoneNumber}</div>
+                              )}
+                              {provider.serviceProviderInfo.specialties && provider.serviceProviderInfo.specialties.length > 0 && (
+                                <div className="text-xs text-purple-600 mt-1">
+                                  {provider.serviceProviderInfo.specialties.join(', ')}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-right ml-4">
+                              {(provider.serviceProviderInfo.rating !== null && provider.serviceProviderInfo.rating !== undefined) && (
+                                <div className="flex items-center gap-2 text-xs mb-1">
+                                  <span className="text-yellow-600">★ {provider.serviceProviderInfo.rating}</span>
+                                  {provider.serviceProviderInfo.completedBookings > 0 && (
+                                    <>
+                                      <span className="text-gray-500">•</span>
+                                      <span className="text-gray-600">{provider.serviceProviderInfo.completedBookings} tasks</span>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                              {provider.serviceProviderInfo.status === 'active' && provider.serviceProviderInfo.isAvailable && (
+                                <div className="text-xs text-green-600">Available</div>
+                              )}
+                              {provider.serviceProviderInfo.status === 'pending' && (
+                                <div className="text-xs text-yellow-600">Pending</div>
+                              )}
+                              {provider.serviceProviderInfo.status === 'active' && !provider.serviceProviderInfo.isAvailable && (
+                                <div className="text-xs text-red-600">Busy</div>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={handleAssignProvider}
+                  disabled={assigningProvider || !selectedProviderForAssignment}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {assigningProvider ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Assigning...
+                    </>
+                  ) : (
+                    'Assign Provider'
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAssignProviderModal(false);
+                    setSelectedBookingForAssignment(null);
+                    setSelectedProviderForAssignment('');
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>
