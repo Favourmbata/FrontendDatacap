@@ -70,10 +70,10 @@ export class HttpService {
         throw new Error(errorData.message);
       }
       
-      // Handle 404 errors specifically
+      // Handle 404 errors - preserve backend message
       if (response.status === 404) {
         console.log('❌ 404 NOT FOUND');
-        throw new Error(`Endpoint not found (${response.url}). Please check if the backend API is running and the endpoint exists.`);
+        throw new Error(errorData.message || `Endpoint not found (${response.url}). Please check if the backend API is running and the endpoint exists.`);
       }
       
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);

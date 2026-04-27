@@ -120,6 +120,170 @@ export interface AdminBookingsResponse {
   message?: string;
 }
 
+// New interfaces for admin booking flow
+export interface AvailableDaysResponse {
+  success: boolean;
+  data: {
+    availableDays: string[];
+    month: number;
+    year: number;
+    total: number;
+  };
+  message?: string;
+}
+
+export interface AvailableSlot {
+  datetime: string;
+  time: string;
+  displayTime: string;
+}
+
+export interface AvailableSlotsResponse {
+  success: boolean;
+  data: {
+    date: string;
+    slots: AvailableSlot[];
+    total: number;
+  };
+  message?: string;
+}
+
+export interface OrganizationUser {
+  name: string;
+  email: string;
+  customUserId: string;
+  phoneNumber?: string;
+  status: string;
+}
+
+export interface OrganizationUsersResponse {
+  success: boolean;
+  data: {
+    users: OrganizationUser[];
+    total: number;
+    pagination: {
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  };
+  message?: string;
+}
+
+export interface ServiceProvider {
+  id: string;
+  providerId: string;
+  name: string;
+  email: string;
+  phoneNumber?: string;
+  specialties: string[];
+  rating: number;
+  completedTasks: number;
+  totalBookings: number;
+  isAvailable: boolean;
+  availabilityHours: string;
+  maxConcurrentBookings: number;
+  serviceProviderFee: number;
+  serviceProviderFeeCurrency: string;
+  serviceProviderFeeFrequency: string;
+}
+
+export interface ServiceProvidersResponse {
+  success: boolean;
+  data: {
+    providers: ServiceProvider[];
+    total: number;
+  };
+  message?: string;
+}
+
+export interface LocationOption {
+  type: string;
+  label: string;
+  address?: string;
+  organizationName?: string;
+  description?: string;
+  requiresInput: boolean;
+  inputType?: string;
+  placeholder?: string;
+}
+
+export interface LocationOptionsResponse {
+  success: boolean;
+  data: {
+    organizationName: string;
+    locationOptions: {
+      merchantLocation: LocationOption;
+      customerAddress: LocationOption;
+      newAddress: LocationOption;
+      whatsappLocation: LocationOption;
+    };
+    defaultOption: string;
+  };
+  message?: string;
+}
+
+export interface ValidateLocationRequest {
+  locationType: string;
+  address?: string;
+  whatsappLocationUrl?: string;
+  customerEmail?: string;
+}
+
+export interface ValidateLocationResponse {
+  success: boolean;
+  data?: any;
+  message?: string;
+}
+
+export interface AdminBookingGuest {
+  name: string;
+  email: string;
+  slotDateTime: string;
+  notes?: string;
+}
+
+export interface CreateAdminBookingRequest {
+  serviceId: string;
+  serviceName: string;
+  servicePrice: number;
+  customerType: 'existing' | 'external';
+  customerId?: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  primarySlot: string;
+  guests?: AdminBookingGuest[];
+  location: BookingLocation;
+  customerNotes?: string;
+  serviceProviderId?: string;
+  paymentType?: 'upfront' | 'full';
+  upfrontPercentage?: number;
+  processPayment?: boolean;
+}
+
+export interface CreateAdminBookingResponse {
+  success: boolean;
+  data: {
+    booking: {
+      orderId?: string;
+      paymentLink?: string;
+      transactionId?: string;
+      amount?: number;
+      paymentType?: string;
+      bookingId?: string;
+      taskId?: string;
+      status: string;
+      slotDateTime: string;
+      totalPersons: number;
+      fee: number;
+      location: BookingLocation;
+      assignedProvider?: string;
+    };
+  };
+  message?: string;
+}
+
 export interface ProviderTask {
   taskId: string;
   bookingId: string;
@@ -282,6 +446,120 @@ class BookingService {
     return HttpService.patch<TaskActionResponse>(
       `/api/booking/provider/${bookingId}/complete`,
       { providerNotes }
+    );
+  }
+
+  // ============ ADMIN BOOKING FLOW METHODS ============
+
+  /**
+   * Get available days for booking
+   */
+  static async getAvailableDays(
+    month: number,
+    year: number,
+    serviceId?: string
+  ): Promise<AvailableDaysResponse> {
+    const queryParams = new URLSearchParams({
+      month: month.toString(),
+      year: year.toString()
+    });
+    
+    if (serviceId) queryParams.append('serviceId', serviceId);
+
+    return HttpService.get<AvailableDaysResponse>(
+      `/api/admin/booking/available-days?${queryParams.toString()}`
+    );
+  }
+
+  /**
+   * Get available time slots for a specific date
+   */
+  static async getAvailableSlots(
+    date: string,
+    serviceId?: string
+  ): Promise<AvailableSlotsResponse> {
+    const queryParams = new URLSearchParams({ date });
+    
+    if (serviceId) queryParams.append('serviceId', serviceId);
+
+    return HttpService.get<AvailableSlotsResponse>(
+      `/api/admin/booking/available-slots?${queryParams.toString()}`
+    );
+  }
+
+  /**
+   * Get organization users for customer selection
+   */
+  static async getOrganizationUsers(
+    search?: string,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<OrganizationUsersResponse> {
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString()
+    });
+    
+    if (search) queryParams.append('search', search);
+
+    return HttpService.get<OrganizationUsersResponse>(
+      `/api/admin/booking/organization-users?${queryParams.toString()}`
+    );
+  }
+
+  /**
+   * Get service providers for manual assignment
+   */
+  static async getServiceProviders(
+    serviceId?: string
+  ): Promise<ServiceProvidersResponse> {
+    const queryParams = new URLSearchParams();
+    
+    if (serviceId) queryParams.append('serviceId', serviceId);
+
+    const queryString = queryParams.toString();
+    const url = `/api/admin/booking/service-providers${queryString ? `?${queryString}` : ''}`;
+
+    return HttpService.get<ServiceProvidersResponse>(url);
+  }
+
+  /**
+   * Get location options for booking
+   */
+  static async getLocationOptions(
+    serviceId?: string
+  ): Promise<LocationOptionsResponse> {
+    const queryParams = new URLSearchParams();
+    
+    if (serviceId) queryParams.append('serviceId', serviceId);
+
+    const queryString = queryParams.toString();
+    const url = `/api/admin/booking/location-options${queryString ? `?${queryString}` : ''}`;
+
+    return HttpService.get<LocationOptionsResponse>(url);
+  }
+
+  /**
+   * Validate location selection
+   */
+  static async validateLocation(
+    data: ValidateLocationRequest
+  ): Promise<ValidateLocationResponse> {
+    return HttpService.post<ValidateLocationResponse>(
+      '/api/admin/booking/validate-location',
+      data
+    );
+  }
+
+  /**
+   * Create admin booking with optional payment processing
+   */
+  static async createAdminBooking(
+    data: CreateAdminBookingRequest
+  ): Promise<CreateAdminBookingResponse> {
+    return HttpService.post<CreateAdminBookingResponse>(
+      '/api/admin/booking/create',
+      data
     );
   }
 }

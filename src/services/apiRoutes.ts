@@ -182,6 +182,17 @@ deleteService: (id: string) => `/api/services/${id}`,
     mediaUsage: '/api/admin/gallery/media-usage'
   },
   
+  // Admin booking management routes
+  adminBooking: {
+    availableDays: '/api/admin/booking/available-days',
+    availableSlots: '/api/admin/booking/available-slots',
+    organizationUsers: '/api/admin/booking/organization-users',
+    serviceProviders: '/api/admin/booking/service-providers',
+    locationOptions: '/api/admin/booking/location-options',
+    validateLocation: '/api/admin/booking/validate-location',
+    createBooking: '/api/admin/booking/create',
+  },
+  
     getDefaultPricing: (page?: number, limit?: number, country?: string, state?: string) => {
     let url = '/api/super-admin/default-pricing';
     const params = new URLSearchParams();
