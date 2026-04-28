@@ -51,6 +51,11 @@ export interface ServiceProviderInfo {
   rating: number;
   isAvailable: boolean;
   availabilityHours: string;
+  serviceProviderFeeName?: string | null;
+  serviceProviderFeeDescription?: string | null;
+  serviceProviderFee?: number | null;
+  serviceProviderFeeCurrency?: string | null;
+  serviceProviderFeeFrequency?: string | null;
   assignedDate: string;
 }
 
@@ -82,6 +87,11 @@ export interface UserAssignment {
   isServiceProvider: boolean;
   specialties?: string[];
   availabilityHours?: string;
+  serviceProviderFeeName?: string;
+  serviceProviderFeeDescription?: string;
+  serviceProviderFee?: number;
+  serviceProviderFeeCurrency?: string;
+  serviceProviderFeeFrequency?: string;
 }
 
 export interface BulkAssignRequest {
@@ -229,6 +239,25 @@ class ServiceProviderAssignmentService {
   static async getHistory(page: number = 1, limit: number = 20): Promise<HistoryResponse> {
     return HttpService.get<HistoryResponse>(
       `/api/service-provider-assignment/history?page=${page}&limit=${limit}`
+    );
+  }
+
+  /**
+   * Get supported currencies for service provider fees
+   */
+  static async getSupportedCurrencies(): Promise<{
+    success: boolean;
+    data: {
+      currencies: Array<{
+        code: string;
+        name: string;
+        symbol: string;
+      }>;
+    };
+    message?: string;
+  }> {
+    return HttpService.get(
+      '/api/service-provider-assignment/supported-currencies'
     );
   }
 }

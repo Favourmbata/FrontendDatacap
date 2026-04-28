@@ -1203,8 +1203,31 @@ const AdminBookingsPage: React.FC = () => {
 
             {currentStep === 'review' && createdBooking && (
               <div className="space-y-6 text-center">
-                <CheckCircle className="w-16 h-16 text-green-600 mx-auto" />
-                <h2 className="text-2xl font-semibold text-green-700">Booking Created Successfully!</h2>
+                {processPayment ? (
+                  <CheckCircle className="w-16 h-16 text-green-600 mx-auto" />
+                ) : (
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+                    <Calendar className="w-10 h-10 text-blue-600" />
+                  </div>
+                )}
+                
+                {processPayment ? (
+                  <h2 className="text-2xl font-semibold text-green-700">Booking Created Successfully!</h2>
+                ) : (
+                  <h2 className="text-2xl font-semibold text-blue-700">Booking Created Without Payment</h2>
+                )}
+                
+                {processPayment && createdBooking.paymentLink ? (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-green-800 font-medium">✓ Payment link has been sent to the customer</p>
+                    <p className="text-green-700 text-sm mt-1">Customer will receive payment instructions via email</p>
+                  </div>
+                ) : !processPayment ? (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-blue-800 font-medium">ℹ Booking created without payment</p>
+                    <p className="text-blue-700 text-sm mt-1">Contact customer directly to arrange payment</p>
+                  </div>
+                ) : null}
                 
                 <div className="p-6 bg-gray-50 rounded-lg text-left space-y-3">
                   {createdBooking.bookingId && (
@@ -1249,16 +1272,24 @@ const AdminBookingsPage: React.FC = () => {
                       <p className="font-medium">{getLocationLabel(createdBooking.location.type)}</p>
                     </div>
                   )}
-                  {createdBooking.paymentLink && (
+                  {processPayment && createdBooking.paymentLink && (
                     <div>
+                      <span className="text-gray-600">Payment:</span>
+                      <p className="font-medium text-green-600">Payment link sent to customer</p>
                       <a
                         href={createdBooking.paymentLink}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-block mt-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                       >
-                        Proceed to Payment
+                        View Payment Link
                       </a>
+                    </div>
+                  )}
+                  {!processPayment && (
+                    <div>
+                      <span className="text-gray-600">Payment:</span>
+                      <p className="font-medium text-blue-600">No payment required - Direct booking</p>
                     </div>
                   )}
                 </div>

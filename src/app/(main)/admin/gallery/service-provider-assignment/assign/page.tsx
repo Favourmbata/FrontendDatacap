@@ -17,10 +17,12 @@ const AssignServiceProvidersPage: React.FC = () => {
   const [newSpecialty, setNewSpecialty] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [currencies, setCurrencies] = useState<Array<{ code: string; name: string; symbol: string }>>([]);
 
   useEffect(() => {
     const preSelectedUsers = searchParams.get('users');
     fetchUsers(preSelectedUsers);
+    fetchCurrencies();
   }, []);
 
   const fetchUsers = async (preSelectedUsers: string | null) => {
@@ -46,7 +48,12 @@ const AssignServiceProvidersPage: React.FC = () => {
             userId: user.userId,
             isServiceProvider: user.isServiceProvider,
             specialties: user.serviceProviderInfo?.specialties || [],
-            availabilityHours: user.serviceProviderInfo?.availabilityHours || '9 AM - 5 PM'
+            availabilityHours: user.serviceProviderInfo?.availabilityHours || '9 AM - 5 PM',
+            serviceProviderFeeName: user.serviceProviderInfo?.serviceProviderFeeName || '',
+            serviceProviderFeeDescription: user.serviceProviderInfo?.serviceProviderFeeDescription || '',
+            serviceProviderFee: user.serviceProviderInfo?.serviceProviderFee || undefined,
+            serviceProviderFeeCurrency: user.serviceProviderInfo?.serviceProviderFeeCurrency || 'NGN',
+            serviceProviderFeeFrequency: user.serviceProviderInfo?.serviceProviderFeeFrequency || 'per_booking'
           });
         });
         setAssignments(initialAssignments);
@@ -56,6 +63,17 @@ const AssignServiceProvidersPage: React.FC = () => {
       setErrorMessage(err.message || 'Failed to load users');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCurrencies = async () => {
+    try {
+      const response = await ServiceProviderAssignmentService.getSupportedCurrencies();
+      if (response.success) {
+        setCurrencies(response.data.currencies || []);
+      }
+    } catch (err) {
+      console.error('Error fetching currencies:', err);
     }
   };
 
@@ -102,6 +120,16 @@ const AssignServiceProvidersPage: React.FC = () => {
     const assignment = updated.get(userId);
     if (assignment) {
       assignment.availabilityHours = hours;
+      updated.set(userId, assignment);
+      setAssignments(updated);
+    }
+  };
+
+  const handleFeeChange = (userId: string, field: string, value: any) => {
+    const updated = new Map(assignments);
+    const assignment = updated.get(userId);
+    if (assignment) {
+      (assignment as any)[field] = value;
       updated.set(userId, assignment);
       setAssignments(updated);
     }
@@ -290,6 +318,97 @@ const AssignServiceProvidersPage: React.FC = () => {
                         <p className="text-xs text-gray-500 mt-1">
                           Example: 9 AM - 5 PM, 10 AM - 7 PM
                         </p>
+                      </div>
+                    </div>
+
+                    {/* Service Provider Fee Configuration */}
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-4">Service Provider Fee Configuration</h4>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Fee Name */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Fee Name
+                          </label>
+                          <input
+                            type="text"
+                            value={(assignment as any).serviceProviderFeeName || ''}
+                            onChange={(e) => handleFeeChange(user.userId, 'serviceProviderFeeName', e.target.value)}
+                            placeholder="e.g., Service Fee, Booking Fee"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          />
+                        </div>
+
+                        {/* Fee Amount */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Fee Amount
+                          </label>
+                          <input
+                            type="number"
+                            value={(assignment as any).serviceProviderFee || ''}
+                            onChange={(e) => handleFeeChange(user.userId, 'serviceProviderFee', parseFloat(e.target.value) || undefined)}
+                            placeholder="0.00"
+                            min="0"
+                            step="0.01"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          />
+                        </div>
+
+                        {/* Currency */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Currency
+                          </label>
+                          <select
+                            value={(assignment as any).serviceProviderFeeCurrency || 'NGN'}
+                            onChange={(e) => handleFeeChange(user.userId, 'serviceProviderFeeCurrency', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          >
+                            {currencies.length > 0 ? (
+                              currencies.map(currency => (
+                                <option key={currency.code} value={currency.code}>
+                                  {currency.symbol} {currency.code} - {currency.name}
+                                </option>
+                              ))
+                            ) : (
+                              <option value="NGN">₦ NGN - Nigerian Naira</option>
+                            )}
+                          </select>
+                        </div>
+
+                        {/* Fee Frequency */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Fee Frequency
+                          </label>
+                          <select
+                            value={(assignment as any).serviceProviderFeeFrequency || 'per_booking'}
+                            onChange={(e) => handleFeeChange(user.userId, 'serviceProviderFeeFrequency', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          >
+                            <option value="per_booking">Per Booking</option>
+                            <option value="hourly">Hourly</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Fee Description */}
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Fee Description (Optional)
+                        </label>
+                        <textarea
+                          value={(assignment as any).serviceProviderFeeDescription || ''}
+                          onChange={(e) => handleFeeChange(user.userId, 'serviceProviderFeeDescription', e.target.value)}
+                          placeholder="Describe what this fee covers..."
+                          rows={2}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                        />
                       </div>
                     </div>
                   </div>

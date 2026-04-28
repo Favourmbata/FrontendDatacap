@@ -434,7 +434,7 @@ const ServiceProviderAssignmentPage: React.FC = () => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">User ID</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Provider Status</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Specialties</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bookings</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
@@ -466,8 +466,20 @@ const ServiceProviderAssignmentPage: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 text-sm">{user.email}</td>
                       <td className="px-4 py-3">
-                        {user.isServiceProvider ? (
+                        {user.serviceProviderInfo?.status === 'pending' ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Pending
+                          </span>
+                        ) : user.serviceProviderInfo?.status === 'active' ? (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Active
+                          </span>
+                        ) : user.serviceProviderInfo?.status === 'inactive' ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Inactive
+                          </span>
+                        ) : user.isServiceProvider ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             Service Provider
                           </span>
                         ) : (

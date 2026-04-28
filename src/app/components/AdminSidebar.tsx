@@ -217,11 +217,11 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
           name: 'Services',
           route: '/admin/gallery/services'
         },
-        {
-          id: 'service-provider',
-          name: 'Service Provider',
-          route: '/admin/gallery/service-provider'
-        },
+        // {
+        //   id: 'service-provider',
+        //   name: 'Service Provider',
+        //   route: '/admin/gallery/service-provider'
+        // },
         {
           id: 'service-provider-assignment',
           name: 'Service Provider Assignment',

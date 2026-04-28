@@ -95,7 +95,7 @@ export class ApkDownloadService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com';
+    this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_API || "";
   }
 
   async signupAndDownload(

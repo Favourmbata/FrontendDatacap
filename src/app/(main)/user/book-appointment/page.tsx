@@ -161,9 +161,9 @@ const BookAppointmentPage = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch service details on mount
+  // Load service details from localStorage (passed from body-care page)
   useEffect(() => {
-    const fetchService = async () => {
+    const loadService = () => {
       if (!organizationId) {
         setError("Organization ID is required");
         setLoading(false);
@@ -171,32 +171,55 @@ const BookAppointmentPage = () => {
       }
 
       try {
-        setLoading(true);
-        const response = await BookingService.getOrganizationServices(organizationId);
+        const appointmentDataStr = localStorage.getItem('appointmentProduct');
         
-        if (response.success && response.data.services.length > 0) {
-          // If serviceId is provided, find that specific service
-          const foundService = serviceId
-            ? response.data.services.find((s) => s.id === serviceId)
-            : response.data.services[0];
+        if (appointmentDataStr) {
+          const appointmentData = JSON.parse(appointmentDataStr);
           
-          if (foundService) {
-            setService(foundService);
+          let serviceData: ServiceItem;
+          
+          // Check if it's a sub-service or main service
+          if (appointmentData.isSubService && appointmentData.selectedSubService) {
+            const subService = appointmentData.selectedSubService;
+            serviceData = {
+              id: serviceId || subService.subPlatformUniqueCode || '',
+              name: subService.name || appointmentData.name || 'Service',
+              description: subService.description || appointmentData.description || '',
+              price: subService.price || appointmentData.price || 0,
+              duration: subService.duration || 60,
+              hasAvailability: true,
+              imageUrl: '',
+              hasSubServices: false,
+              subServices: [],
+            };
           } else {
-            setError("Service not found");
+            // Main service
+            serviceData = {
+              id: serviceId || appointmentData.productId || '',
+              name: appointmentData.name || 'Service',
+              description: appointmentData.description || '',
+              price: appointmentData.price || appointmentData.actualAmount || 0,
+              duration: appointmentData.duration || 60,
+              hasAvailability: true,
+              imageUrl: appointmentData.imageUrl || '',
+              hasSubServices: appointmentData.hasSubServices || false,
+              subServices: appointmentData.subServices || [],
+            };
           }
+          
+          setService(serviceData);
         } else {
-          setError("No services available");
+          setError('No service data found. Please select a service first.');
         }
       } catch (err: any) {
-        setError(err.message || "Failed to load services");
-        console.error("Error fetching services:", err);
+        console.error('Error loading service data:', err);
+        setError('Failed to load service details');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchService();
+    loadService();
   }, [organizationId, serviceId]);
 
   // Fetch location options
