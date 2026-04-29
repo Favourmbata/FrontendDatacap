@@ -5,6 +5,47 @@ import { routes } from './apiRoutes';
 
 console.log('GalleryService: Imported routes object:', routes);
 
+// Service-specific interfaces
+interface SubService {
+  name: string;
+  description: string;
+  price: number;
+}
+
+interface TimeWindow {
+  startTime: string;
+  endTime: string;
+}
+
+interface DayAvailability {
+  dayOfWeek: number;
+  isAvailable: boolean;
+  timeWindows: TimeWindow[];
+}
+
+interface AvailabilityPeriod {
+  type: 'unlimited' | 'dateRange' | 'rollingWeeks';
+  startDate?: string;
+  endDate?: string;
+  weeksAhead?: number;
+}
+
+interface BookingAvailability {
+  daysAvailable: DayAvailability[];
+  slotDurationMinutes: number;
+  concurrentProviders: number;
+  availabilityPeriod: AvailabilityPeriod;
+  timezone: string;
+}
+
+interface Availability {
+  type: 'unlimited' | 'dateRange';
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+}
+
 // Updated interface with all required fields
 interface GalleryItemCreateData {
    name: string; 
@@ -30,6 +71,14 @@ interface GalleryItemCreateData {
   visibilityToPublic?: boolean;
   notes?: string;
   locationIndex?: number;
+  // Service-specific fields
+  producer?: string;
+  totalAvailableServiceProviders?: number;
+  hasSubServices?: boolean;
+  subServiceCount?: number;
+  subServices?: SubService[];
+  availability?: Availability;
+  bookingAvailability?: BookingAvailability;
 }
 
 interface LocationUsage {
@@ -79,6 +128,14 @@ interface GalleryItemUpdateData {
   visibilityToPublic?: boolean;
   notes?: string;
   locationIndex?: number;
+  // Service-specific fields
+  producer?: string;
+  totalAvailableServiceProviders?: number;
+  hasSubServices?: boolean;
+  subServiceCount?: number;
+  subServices?: SubService[];
+  availability?: Availability;
+  bookingAvailability?: BookingAvailability;
 }
 
 interface GalleryItem {
@@ -110,6 +167,14 @@ interface GalleryItem {
   videos: string[];
   createdAt: string;
   updatedAt: string;
+  // Service-specific fields
+  producer?: string;
+  totalAvailableServiceProviders?: number;
+  hasSubServices?: boolean;
+  subServiceCount?: number;
+  subServices?: SubService[];
+  availability?: Availability;
+  bookingAvailability?: BookingAvailability;
 }
 
 interface Category {
@@ -162,8 +227,9 @@ export class GalleryService {
   // Create a new gallery item
   static async createGalleryItem(token: string, data: GalleryItemCreateData): Promise<{ success: boolean; data?: { galleryItem: GalleryItem }; message?: string }> {
     try {
-      console.log('GalleryService: Creating gallery item with data:', data);
+      console.log('GalleryService: Creating gallery item with data:', JSON.stringify(data, null, 2));
       const fullUrl = `${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}${routes.gallery.base}`;
+      console.log('GalleryService: POST request to:', fullUrl);
       const response = await fetch(fullUrl, {
         method: 'POST',
         headers: this.getHeaders(token),
@@ -182,7 +248,7 @@ export class GalleryService {
       }
 
       const result = await response.json();
-      console.log('GalleryService: Create result:', result);
+      console.log('GalleryService: Create result:', JSON.stringify(result, null, 2));
       return result;
     } catch (error) {
       console.error('Error creating gallery item:', error);

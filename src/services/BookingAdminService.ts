@@ -18,97 +18,38 @@ export interface BookingLocation {
   whatsappLocationUrl?: string;
 }
 
-export interface CreateBookingRequest {
-  organizationId: string;
-  galleryItemId: string;
-  customerName: string;
-  primarySlot: string;
-  guests?: BookingGuest[];
-  location: BookingLocation;
-  customerNotes?: string;
-}
-
-export interface CreateGuestBookingRequest {
-  organizationId: string;
-  galleryItemId: string;
-  customerName: string;
-  customerEmail: string;
-  primarySlot: string;
-  guests?: BookingGuest[];
-  location: BookingLocation;
-  customerNotes?: string;
-}
-
-export interface BookingResponse {
-  success: boolean;
-  data: {
-    booking: {
-      bookingId: string;
-      taskId: string;
-      status: string;
-      slotDateTime: string;
-      totalPersons: number;
-      fee: number;
-      location: BookingLocation;
-    };
-  };
-  message?: string;
-}
-
-export interface BookingStatus {
-  bookingId: string;
-  taskId: string;
-  status: string;
-  slotDateTime: string;
-  customerName: string;
-  customerEmail: string;
-  totalPersons: number;
-  location: BookingLocation;
-  fee: number;
-  acceptedAt?: string;
-  providerNotes?: string;
-  createdAt: string;
-}
-
-export interface BookingServiceInfo {
-  name: string;
-  description: string;
-  producer: string;
-}
-
-export interface BookingStatusResponse {
-  success: boolean;
-  data: {
-    booking: BookingStatus;
-    service: BookingServiceInfo;
-    message: string;
-  };
-}
-
 export interface AdminBooking {
   _id: string;
   bookingId: string;
+  orderId: string;
   taskId: string;
-  organizationId: string;
-  organizationName: string;
-  galleryItemId: string;
   serviceName: string;
-  customerName: string;
-  customerEmail: string;
-  status: string;
-  slotDateTime: string;
-  totalPersons: number;
-  fee: number;
+  serviceId: string;
+  serviceImage?: string;
+  customer: {
+    name: string;
+    email: string;
+    phone: string;
+    customUserId: string | null;
+  };
+  bookingDate: string;
+  bookingTime: string;
+  duration: number;
   location: BookingLocation;
-  customerNotes?: string;
-  providerNotes?: string;
-  serviceProviderId?: string;
-  assignedProvider?: string;
-  acceptedAt?: string;
-  completedAt?: string;
-  rejectedAt?: string;
+  bookedForPersons: BookingGuest[];
+  totalPersons: number;
+  notes: string;
+  bookingStatus: string;
+  orderStatus: string;
+  paymentStatus: string;
+  totalAmount: number;
+  amountPaid: number;
+  assignedProviders: string[];
+  hasAssignedProvider: boolean;
   createdAt: string;
   updatedAt: string;
+  bookedByAdmin: boolean;
+  itemType: string;
 }
 
 export interface AdminBookingsResponse {
@@ -125,49 +66,25 @@ export interface AdminBookingsResponse {
   message?: string;
 }
 
-export interface UpdateBookingStatusRequest {
-  status: string;
-  newDate?: string;
-  newTime?: string;
-  adminNotes?: string;
+export interface AcceptedTask {
+  sn: number;
+  taskId: string;
+  serviceName: string;
+  serviceProvider: string;
+  providerId: string;
+  customerFullName: string;
+  customerId: string;
+  date: string;
+  time: string;
+  duration: number;
+  fee: number;
+  acceptedAt: string;
 }
 
-export interface UpdateBookingStatusResponse {
+export interface AcceptedTasksResponse {
   success: boolean;
   data: {
-    booking: AdminBooking;
-  };
-  message?: string;
-}
-
-export interface AssignServiceProviderRequest {
-  serviceProviderId: string;
-}
-
-export interface AssignServiceProviderResponse {
-  success: boolean;
-  data: {
-    booking: {
-      bookingId: string;
-      serviceProviderId: string;
-      status: string;
-    };
-    provider: {
-      id: string;
-      name: string;
-      email: string;
-    };
-  };
-  message?: string;
-}
-
-// New interfaces for admin booking flow
-export interface AvailableDaysResponse {
-  success: boolean;
-  data: {
-    availableDays: string[];
-    month: number;
-    year: number;
+    tasks: AcceptedTask[];
     total: number;
   };
   message?: string;
@@ -264,26 +181,6 @@ export interface LocationOptionsResponse {
   message?: string;
 }
 
-export interface ValidateLocationRequest {
-  locationType: string;
-  address?: string;
-  whatsappLocationUrl?: string;
-  customerEmail?: string;
-}
-
-export interface ValidateLocationResponse {
-  success: boolean;
-  data?: any;
-  message?: string;
-}
-
-export interface AdminBookingGuest {
-  name: string;
-  email: string;
-  slotDateTime: string;
-  notes?: string;
-}
-
 export interface CreateAdminBookingRequest {
   serviceId: string;
   serviceName: string;
@@ -294,7 +191,7 @@ export interface CreateAdminBookingRequest {
   customerEmail?: string;
   customerPhone?: string;
   primarySlot: string;
-  guests?: AdminBookingGuest[];
+  guests?: Array<{ name: string; email: string; slotDateTime: string; notes?: string }>;
   location: BookingLocation;
   customerNotes?: string;
   serviceProviderId?: string;
@@ -325,146 +222,78 @@ export interface CreateAdminBookingResponse {
   message?: string;
 }
 
-export interface ProviderTask {
-  taskId: string;
-  bookingId: string;
-  serviceName: string;
-  customerName: string;
-  customerEmail: string;
-  status: 'assigned' | 'accepted' | 'rejected' | 'completed';
-  slotDateTime: string;
-  fee: number;
-  location: BookingLocation;
-  customerNotes?: string;
-  providerNotes?: string;
-  acceptedAt?: string;
-  completedAt?: string;
-  rejectedAt?: string;
-  rejectionReason?: string;
-  createdAt: string;
+export interface UpdateBookingStatusRequest {
+  status: string;
+  newDate?: string;
+  newTime?: string;
+  adminNotes?: string;
 }
 
-export interface ProviderTasksResponse {
+export interface UpdateBookingStatusResponse {
   success: boolean;
   data: {
-    tasks: ProviderTask[];
-    total: number;
-  };
-  message?: string;
-}
-
-export interface TaskActionResponse {
-  success: boolean;
-  data: {
-    taskId: string;
-    bookingId: string;
-    status: string;
-    updatedAt: string;
+    booking: AdminBooking;
   };
   message?: string;
 }
 
 // ============ SERVICE CLASS ============
 
-class BookingService {
+class BookingAdminService {
   /**
-   * Create a customer booking (requires customer token)
+   * Get all admin bookings with pagination and filters
    */
-  static async createBooking(
-    data: CreateBookingRequest
-  ): Promise<BookingResponse> {
-    return HttpService.post<BookingResponse>(
-      '/api/booking/book',
+  static async getAdminBookings(
+    page: number = 1,
+    limit: number = 20,
+    status?: string,
+    dateFrom?: string,
+    dateTo?: string
+  ): Promise<AdminBookingsResponse> {
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString()
+    });
+
+    if (status) queryParams.append('status', status);
+    if (dateFrom) queryParams.append('dateFrom', dateFrom);
+    if (dateTo) queryParams.append('dateTo', dateTo);
+
+    return HttpService.get<AdminBookingsResponse>(
+      `/api/admin/bookings?${queryParams.toString()}`
+    );
+  }
+
+  /**
+   * Get accepted tasks from service provider tasks
+   */
+  static async getAcceptedTasks(): Promise<AcceptedTasksResponse> {
+    return HttpService.get<AcceptedTasksResponse>(
+      '/api/service-provider-tasks/admin/report/accepted'
+    );
+  }
+
+  /**
+   * Get single booking details
+   */
+  static async getAdminBooking(bookingId: string): Promise<{ success: boolean; data: { booking: AdminBooking }; message?: string }> {
+    return HttpService.get<{ success: boolean; data: { booking: AdminBooking }; message?: string }>(
+      `/api/admin/bookings/${bookingId}`
+    );
+  }
+
+  /**
+   * Update booking status
+   */
+  static async updateBookingStatus(
+    bookingId: string,
+    data: UpdateBookingStatusRequest
+  ): Promise<UpdateBookingStatusResponse> {
+    return HttpService.put<UpdateBookingStatusResponse>(
+      `/api/admin/bookings/${bookingId}/status`,
       data
     );
   }
-
-  /**
-   * Create a guest booking (public endpoint)
-   */
-  static async createGuestBooking(data: CreateGuestBookingRequest): Promise<BookingResponse> {
-    return HttpService.post<BookingResponse>(
-      '/api/booking/book-guest',
-      data
-    );
-  }
-
-  /**
-   * Get booking status by booking ID (public endpoint)
-   */
-  static async getBookingStatus(bookingId: string): Promise<BookingStatusResponse> {
-    return HttpService.get<BookingStatusResponse>(
-      `/api/booking/booking/${bookingId}/status`
-    );
-  }
-
-  /**
-   * Service Provider: Get assigned tasks
-   */
-  static async getProviderAssignedTasks(): Promise<ProviderTasksResponse> {
-    return HttpService.get<ProviderTasksResponse>(
-      '/api/booking/provider/tasks/assigned'
-    );
-  }
-
-  /**
-   * Service Provider: Get accepted tasks
-   */
-  static async getProviderAcceptedTasks(): Promise<ProviderTasksResponse> {
-    return HttpService.get<ProviderTasksResponse>(
-      '/api/booking/provider/tasks/accepted'
-    );
-  }
-
-  /**
-   * Service Provider: Get completed tasks
-   */
-  static async getProviderCompletedTasks(): Promise<ProviderTasksResponse> {
-    return HttpService.get<ProviderTasksResponse>(
-      '/api/booking/provider/tasks/completed'
-    );
-  }
-
-  /**
-   * Service Provider: Accept a booking
-   */
-  static async acceptBooking(
-    bookingId: string,
-    providerNotes?: string
-  ): Promise<TaskActionResponse> {
-    return HttpService.patch<TaskActionResponse>(
-      `/api/booking/provider/${bookingId}/accept`,
-      { providerNotes }
-    );
-  }
-
-  /**
-   * Service Provider: Reject a booking
-   */
-  static async rejectBooking(
-    bookingId: string,
-    rejectionReason: string
-  ): Promise<TaskActionResponse> {
-    return HttpService.patch<TaskActionResponse>(
-      `/api/booking/provider/${bookingId}/reject`,
-      { rejectionReason }
-    );
-  }
-
-  /**
-   * Service Provider: Complete a booking
-   */
-  static async completeBooking(
-    bookingId: string,
-    providerNotes?: string
-  ): Promise<TaskActionResponse> {
-    return HttpService.patch<TaskActionResponse>(
-      `/api/booking/provider/${bookingId}/complete`,
-      { providerNotes }
-    );
-  }
-
-  // ============ ADMIN BOOKING FLOW METHODS ============
 
   /**
    * Get available days for booking
@@ -473,7 +302,7 @@ class BookingService {
     month: number,
     year: number,
     serviceId?: string
-  ): Promise<AvailableDaysResponse> {
+  ): Promise<{ success: boolean; data: { availableDays: string[] }; message?: string }> {
     const queryParams = new URLSearchParams({
       month: month.toString(),
       year: year.toString()
@@ -481,7 +310,7 @@ class BookingService {
     
     if (serviceId) queryParams.append('serviceId', serviceId);
 
-    return HttpService.get<AvailableDaysResponse>(
+    return HttpService.get<{ success: boolean; data: { availableDays: string[] }; message?: string }>(
       `/api/admin/booking/available-days?${queryParams.toString()}`
     );
   }
@@ -555,18 +384,6 @@ class BookingService {
   }
 
   /**
-   * Validate location selection
-   */
-  static async validateLocation(
-    data: ValidateLocationRequest
-  ): Promise<ValidateLocationResponse> {
-    return HttpService.post<ValidateLocationResponse>(
-      '/api/admin/booking/validate-location',
-      data
-    );
-  }
-
-  /**
    * Create admin booking with optional payment processing
    */
   static async createAdminBooking(
@@ -577,69 +394,6 @@ class BookingService {
       data
     );
   }
-
-  /**
-   * Get all admin bookings with pagination and filters
-   * GET /api/admin/bookings
-   */
-  static async getAdminBookings(
-    page: number = 1,
-    limit: number = 20,
-    status?: string,
-    dateFrom?: string,
-    dateTo?: string
-  ): Promise<AdminBookingsResponse> {
-    const queryParams = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString()
-    });
-
-    if (status) queryParams.append('status', status);
-    if (dateFrom) queryParams.append('dateFrom', dateFrom);
-    if (dateTo) queryParams.append('dateTo', dateTo);
-
-    return HttpService.get<AdminBookingsResponse>(
-      `/api/admin/bookings?${queryParams.toString()}`
-    );
-  }
-
-  /**
-   * Get single booking details
-   * GET /api/admin/bookings/{bookingId}
-   */
-  static async getAdminBooking(bookingId: string): Promise<{ success: boolean; data: { booking: AdminBooking }; message?: string }> {
-    return HttpService.get<{ success: boolean; data: { booking: AdminBooking }; message?: string }>(
-      `/api/admin/bookings/${bookingId}`
-    );
-  }
-
-  /**
-   * Update booking status
-   * PUT /api/admin/bookings/{bookingId}/status
-   */
-  static async updateBookingStatus(
-    bookingId: string,
-    data: UpdateBookingStatusRequest
-  ): Promise<UpdateBookingStatusResponse> {
-    return HttpService.put<UpdateBookingStatusResponse>(
-      `/api/admin/bookings/${bookingId}/status`,
-      data
-    );
-  }
-
-  /**
-   * Assign service provider to booking
-   * POST /api/admin/bookings/{bookingId}/assign-provider
-   */
-  static async assignServiceProvider(
-    bookingId: string,
-    data: AssignServiceProviderRequest
-  ): Promise<AssignServiceProviderResponse> {
-    return HttpService.post<AssignServiceProviderResponse>(
-      `/api/admin/bookings/${bookingId}/assign-provider`,
-      data
-    );
-  }
 }
 
-export default BookingService;
+export default BookingAdminService;

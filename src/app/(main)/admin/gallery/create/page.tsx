@@ -554,7 +554,16 @@ useEffect(() => {
           }));
         }
 
-       
+        // Add availability for services (simple date range)
+        galleryData.availability = {
+          type: formData.bookingAvailability.availabilityPeriod.type === 'dateRange' ? 'dateRange' : 'unlimited',
+          startDate: formData.startDate,
+          startTime: formData.startTime || '00:00',
+          endDate: formData.endDate,
+          endTime: formData.endTime || '23:59'
+        };
+
+        // Add booking availability for services (detailed booking config)
         galleryData.bookingAvailability = {
           daysAvailable: formData.bookingAvailability.daysAvailable,
           slotDurationMinutes: Number(formData.bookingAvailability.slotDurationMinutes),
@@ -573,6 +582,15 @@ useEffect(() => {
           },
           timezone: formData.bookingAvailability.timezone
         };
+        
+        console.log('Service-specific data being sent:', {
+          producer: galleryData.producer,
+          totalAvailableServiceProviders: galleryData.totalAvailableServiceProviders,
+          hasSubServices: galleryData.hasSubServices,
+          subServices: galleryData.subServices,
+          availability: galleryData.availability,
+          bookingAvailability: galleryData.bookingAvailability
+        });
       }
       
       const result = await GalleryService.createGalleryItem(token, galleryData);
