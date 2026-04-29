@@ -3,14 +3,29 @@ import React, { useState, useEffect, useMemo } from "react";
 import { ChevronUp, ChevronDown, Eye, CheckCircle, XCircle } from "lucide-react";
 import AdminTaskManagementService, { TaskReport } from "@/services/AdminTaskManagementService";
 
+interface AcceptedTask {
+  sn: number;
+  taskId: string;
+  serviceName: string;
+  serviceProvider: string;
+  providerId: string;
+  customerFullName: string;
+  customerId: string;
+  date: string;
+  time: string;
+  duration: number;
+  fee: number;
+  acceptedAt: string;
+}
+
 interface AcceptedTasksTableProps {
-  onTaskClick?: (task: TaskReport) => void;
+  onTaskClick?: (task: AcceptedTask) => void;
 }
 
 const AcceptedTasksTable: React.FC<AcceptedTasksTableProps> = ({ onTaskClick }) => {
-  const [acceptedTasks, setAcceptedTasks] = useState<TaskReport[]>([]);
+  const [acceptedTasks, setAcceptedTasks] = useState<AcceptedTask[]>([]);
   const [loadingAcceptedTasks, setLoadingAcceptedTasks] = useState(false);
-  const [sortColumn, setSortColumn] = useState<keyof TaskReport>('acceptedAt');
+  const [sortColumn, setSortColumn] = useState<keyof AcceptedTask>('acceptedAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const formatCurrency = (amount: number): string => {
@@ -124,10 +139,10 @@ const AcceptedTasksTable: React.FC<AcceptedTasksTableProps> = ({ onTaskClick }) 
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Task ID
+                S/N
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Booking ID
+                Task ID
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('serviceName')}>
@@ -137,25 +152,28 @@ const AcceptedTasksTable: React.FC<AcceptedTasksTableProps> = ({ onTaskClick }) 
                 </div>
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('providerName')}>
+                onClick={() => handleSort('serviceProvider')}>
                 <div className="flex items-center gap-1">
                   Provider
-                  <SortIcon column="providerName" />
+                  <SortIcon column="serviceProvider" />
                 </div>
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('customerName')}>
+                onClick={() => handleSort('customerFullName')}>
                 <div className="flex items-center gap-1">
                   Customer
-                  <SortIcon column="customerName" />
+                  <SortIcon column="customerFullName" />
                 </div>
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('bookingDate')}>
+                onClick={() => handleSort('date')}>
                 <div className="flex items-center gap-1">
-                  Date
-                  <SortIcon column="bookingDate" />
+                  Date & Time
+                  <SortIcon column="date" />
                 </div>
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Duration
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('fee')}>
@@ -165,63 +183,48 @@ const AcceptedTasksTable: React.FC<AcceptedTasksTableProps> = ({ onTaskClick }) 
                 </div>
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Settlement
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {sortedAcceptedTasks.map((task, index) => (
+            {sortedAcceptedTasks.map((task) => (
               <tr key={task.taskId} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 text-sm">
-                  <div>
-                    <p className="font-mono text-xs">{task.taskId}</p>
-                    {task.acceptedAt && (
-                      <p className="text-xs text-gray-500">
-                        {new Date(task.acceptedAt).toLocaleDateString('en-NG', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
-                      </p>
-                    )}
-                  </div>
+                <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                  {task.sn}
                 </td>
-                <td className="px-4 py-3 text-sm font-mono text-xs">{task.bookingId}</td>
+                <td className="px-4 py-3 text-sm">
+                  <div className="font-mono text-xs">{task.taskId}</div>
+                </td>
                 <td className="px-4 py-3 text-sm">
                   <div className="font-medium text-gray-900">{task.serviceName}</div>
                 </td>
                 <td className="px-4 py-3 text-sm">
-                  <div>
-                    <p className="font-medium text-gray-900">{task.providerName}</p>
-                  </div>
+                  <div className="font-medium text-gray-900">{task.serviceProvider}</div>
+                </td>
+                <td className="px-4 py-3 text-sm">
+                  <div className="font-medium text-gray-900">{task.customerFullName}</div>
+                  <p className="text-xs text-gray-500">{task.customerId}</p>
                 </td>
                 <td className="px-4 py-3 text-sm">
                   <div>
-                    <p className="font-medium text-gray-900">{task.customerName}</p>
+                    <p className="font-medium">
+                      {new Date(task.date).toLocaleDateString('en-NG', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </p>
+                    <p className="text-xs text-gray-500">{task.time}</p>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-sm">
-                  {new Date(task.bookingDate).toLocaleDateString('en-NG', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                  })}
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {task.duration} min
+                  </span>
                 </td>
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">
                   {formatCurrency(task.fee)}
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    task.settlementStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                    task.settlementStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    task.settlementStatus === 'disputed' ? 'bg-red-100 text-red-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {task.settlementStatus}
-                  </span>
                 </td>
                 <td className="px-4 py-3 text-sm">
                   {onTaskClick && (

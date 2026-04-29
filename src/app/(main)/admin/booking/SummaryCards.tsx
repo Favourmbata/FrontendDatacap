@@ -6,18 +6,16 @@ import { AdminBooking } from "@/services/BookingAdminService";
 interface SummaryCardsProps {
   bookings: AdminBooking[];
   totalBookings: number;
-  showAcceptedTasks: boolean;
-  onToggleAcceptedTasks: () => void;
+  acceptedTasksCount: number;
 }
 
 const SummaryCards: React.FC<SummaryCardsProps> = ({
   bookings,
   totalBookings,
-  showAcceptedTasks,
-  onToggleAcceptedTasks
+  acceptedTasksCount
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
       <div className="bg-white rounded-lg shadow p-4">
         <div className="flex items-center justify-between">
           <div>
@@ -43,7 +41,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
           <div>
             <p className="text-sm text-gray-600">Accepted</p>
             <p className="text-2xl font-bold text-green-600">
-              {bookings.filter(b => b.bookingStatus === 'accepted').length}
+              {acceptedTasksCount}
             </p>
           </div>
           <CheckCircle className="w-8 h-8 text-green-600" />
@@ -59,15 +57,6 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
           </div>
           <DollarSign className="w-8 h-8 text-purple-600" />
         </div>
-      </div>
-      <div className="bg-white rounded-lg shadow p-4">
-        <button
-          onClick={onToggleAcceptedTasks}
-          className="w-full h-full flex items-center justify-center gap-2 text-purple-600 hover:text-purple-700 font-medium"
-        >
-          <Users className="w-8 h-8" />
-          <span>{showAcceptedTasks ? 'Hide' : 'Show'} Accepted Tasks</span>
-        </button>
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ import BookingAdminService, {
   LocationOption, CreateAdminBookingRequest
 } from '@/services/BookingAdminService';
 import { GalleryService } from '@/services/GalleryService';
+import AdminTaskManagementService from '@/services/AdminTaskManagementService';
 import { useAuthContext } from '@/AuthContext';
 import AcceptedTasksTable from './AcceptedTasksTable';
 import BookingDetailsModal from './BookingDetailsModal';
@@ -61,8 +62,8 @@ const AdminBookingsPage: React.FC = () => {
   const [adminNotes, setAdminNotes] = useState('');
 
   // Accepted tasks states
-  const [showAcceptedTasks, setShowAcceptedTasks] = useState(false);
   const [acceptSuccessMessage, setAcceptSuccessMessage] = useState<string | null>(null);
+  const [acceptedTasksCount, setAcceptedTasksCount] = useState<number>(0);
 
   // Create booking flow states
   const [currentStep, setCurrentStep] = useState<BookingStep>('service-date');
@@ -118,6 +119,24 @@ const AdminBookingsPage: React.FC = () => {
   const [paymentType, setPaymentType] = useState<'upfront' | 'full'>('upfront');
   const [upfrontPercentage, setUpfrontPercentage] = useState(50);
   const [createdBooking, setCreatedBooking] = useState<any>(null);
+
+  // Load accepted tasks count
+  useEffect(() => {
+    const fetchAcceptedCount = async () => {
+      try {
+        const response = await AdminTaskManagementService.getAcceptedTasksReport();
+        if (response.success) {
+          setAcceptedTasksCount(response.data.total);
+        }
+      } catch (err) {
+        console.error('Error fetching accepted count:', err);
+      }
+    };
+    
+    if (viewMode === 'list') {
+      fetchAcceptedCount();
+    }
+  }, [viewMode]);
 
   // Load bookings list
   const fetchBookings = useCallback(async () => {
@@ -659,21 +678,11 @@ const AdminBookingsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Accepted Tasks Table */}
-        {showAcceptedTasks && (
-          <div className="mb-6">
-            <AcceptedTasksTable />
-          </div>
-        )}
-
         {/* Summary Cards */}
         <SummaryCards
           bookings={bookings}
           totalBookings={totalBookings}
-          showAcceptedTasks={showAcceptedTasks}
-          onToggleAcceptedTasks={() => {
-            setShowAcceptedTasks(!showAcceptedTasks);
-          }}
+          acceptedTasksCount={acceptedTasksCount}
         />
 
         {/* Tab Navigation */}
@@ -769,7 +778,7 @@ const AdminBookingsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {bookings.length === 0 && (
+                {bookings.length === 0 && activeTab !== 'accepted' && (
                   <tr>
                     <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
                       No bookings found
@@ -777,7 +786,7 @@ const AdminBookingsPage: React.FC = () => {
                   </tr>
                 )}
 
-                {bookings.map((booking) => (
+                {activeTab !== 'accepted' && bookings.map((booking) => (
                   <tr key={booking._id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm font-mono text-xs">{booking.bookingId}</td>
                     <td className="px-4 py-3 text-sm">{booking.serviceName}</td>
@@ -816,7 +825,7 @@ const AdminBookingsPage: React.FC = () => {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {totalPages > 1 && activeTab !== 'accepted' && (
             <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
               <p className="text-sm text-gray-600">
                 Showing {((currentPage - 1) * 20) + 1} to {Math.min(currentPage * 20, totalBookings)} of {totalBookings} results
@@ -840,6 +849,13 @@ const AdminBookingsPage: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Accepted Tasks Table - Below the bookings table when accepted tab is active */}
+        {activeTab === 'accepted' && (
+          <div className="mt-6">
+            <AcceptedTasksTable />
+          </div>
+        )}
       </div>
 
       {/* Booking Details Modal */}

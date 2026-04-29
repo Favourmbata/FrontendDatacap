@@ -59,19 +59,18 @@ export interface ProviderReportResponse {
 }
 
 export interface TaskReport {
+  sn: number;
   taskId: string;
-  bookingId: string;
   serviceName: string;
-  providerName: string;
-  customerName: string;
-  bookingDate: string;
+  serviceProvider: string;
+  providerId: string;
+  customerFullName: string;
+  customerId: string;
+  date: string;
+  time: string;
+  duration: number;
   fee: number;
-  status: string;
-  settlementStatus: string;
-  acceptedAt?: string;
-  completedAt?: string;
-  rejectedAt?: string;
-  rejectionReason?: string;
+  acceptedAt: string;
 }
 
 export interface TaskReportResponse {

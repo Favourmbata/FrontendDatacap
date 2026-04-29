@@ -341,13 +341,14 @@ const AdminTaskManagement: React.FC = () => {
                 )}
                 {(activeTab === 'accepted' || activeTab === 'rejected' || activeTab === 'completed') && (
                   <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">S/N</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task ID</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Provider</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fee</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Settlement</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 )}
@@ -369,21 +370,21 @@ const AdminTaskManagement: React.FC = () => {
                 )}
                 {activeTab === 'accepted' && acceptedTasks.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
                       No accepted tasks
                     </td>
                   </tr>
                 )}
                 {activeTab === 'rejected' && rejectedTasks.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
                       No rejected tasks
                     </td>
                   </tr>
                 )}
                 {activeTab === 'completed' && completedTasks.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
                       No completed tasks
                     </td>
                   </tr>
@@ -436,68 +437,97 @@ const AdminTaskManagement: React.FC = () => {
                   <>
                     {activeTab === 'accepted' && acceptedTasks.map((task) => (
                       <tr key={task.taskId} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{task.sn}</td>
                         <td className="px-4 py-3 text-sm font-mono text-xs">{task.taskId}</td>
                         <td className="px-4 py-3 text-sm">{task.serviceName}</td>
-                        <td className="px-4 py-3 text-sm">{task.providerName}</td>
-                        <td className="px-4 py-3 text-sm">{task.customerName}</td>
-                        <td className="px-4 py-3 text-sm">{formatDate(task.bookingDate)}</td>
-                        <td className="px-4 py-3 text-sm font-medium">{formatCurrency(task.fee)}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getSettlementBadge(task.settlementStatus)}`}>
-                            {task.settlementStatus}
+                        <td className="px-4 py-3 text-sm">{task.serviceProvider}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <div>
+                            <p className="font-medium">{task.customerFullName}</p>
+                            <p className="text-xs text-gray-500">{task.customerId}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <div>
+                            <p className="font-medium">{formatDate(task.date)}</p>
+                            <p className="text-xs text-gray-500">{task.time}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {task.duration} min
                           </span>
                         </td>
+                        <td className="px-4 py-3 text-sm font-medium">{formatCurrency(task.fee)}</td>
                         <td className="px-4 py-3 text-right">
                           <button
                             onClick={() => handleUpdateSettlement(task)}
                             className="px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
                           >
-                            Update Settlement
+                            View Details
                           </button>
                         </td>
                       </tr>
                     ))}
                     {activeTab === 'rejected' && rejectedTasks.map((task) => (
                       <tr key={task.taskId} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{task.sn}</td>
                         <td className="px-4 py-3 text-sm font-mono text-xs">{task.taskId}</td>
                         <td className="px-4 py-3 text-sm">{task.serviceName}</td>
-                        <td className="px-4 py-3 text-sm">{task.providerName}</td>
-                        <td className="px-4 py-3 text-sm">{task.customerName}</td>
-                        <td className="px-4 py-3 text-sm">{formatDate(task.bookingDate)}</td>
-                        <td className="px-4 py-3 text-sm font-medium">{formatCurrency(task.fee)}</td>
-                        <td className="px-4 py-3">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                            N/A
+                        <td className="px-4 py-3 text-sm">{task.serviceProvider}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <div>
+                            <p className="font-medium">{task.customerFullName}</p>
+                            <p className="text-xs text-gray-500">{task.customerId}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <div>
+                            <p className="font-medium">{formatDate(task.date)}</p>
+                            <p className="text-xs text-gray-500">{task.time}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {task.duration} min
                           </span>
                         </td>
+                        <td className="px-4 py-3 text-sm font-medium">{formatCurrency(task.fee)}</td>
                         <td className="px-4 py-3 text-right">
-                          {task.rejectionReason && (
-                            <span className="text-xs text-gray-500" title={task.rejectionReason}>
-                              View Reason
-                            </span>
-                          )}
+                          <span className="text-xs text-gray-500">-</span>
                         </td>
                       </tr>
                     ))}
                     {activeTab === 'completed' && completedTasks.map((task) => (
                       <tr key={task.taskId} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{task.sn}</td>
                         <td className="px-4 py-3 text-sm font-mono text-xs">{task.taskId}</td>
                         <td className="px-4 py-3 text-sm">{task.serviceName}</td>
-                        <td className="px-4 py-3 text-sm">{task.providerName}</td>
-                        <td className="px-4 py-3 text-sm">{task.customerName}</td>
-                        <td className="px-4 py-3 text-sm">{formatDate(task.bookingDate)}</td>
-                        <td className="px-4 py-3 text-sm font-medium">{formatCurrency(task.fee)}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getSettlementBadge(task.settlementStatus)}`}>
-                            {task.settlementStatus}
+                        <td className="px-4 py-3 text-sm">{task.serviceProvider}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <div>
+                            <p className="font-medium">{task.customerFullName}</p>
+                            <p className="text-xs text-gray-500">{task.customerId}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <div>
+                            <p className="font-medium">{formatDate(task.date)}</p>
+                            <p className="text-xs text-gray-500">{task.time}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {task.duration} min
                           </span>
                         </td>
+                        <td className="px-4 py-3 text-sm font-medium">{formatCurrency(task.fee)}</td>
                         <td className="px-4 py-3 text-right">
                           <button
                             onClick={() => handleUpdateSettlement(task)}
                             className="px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
                           >
-                            Update Settlement
+                            View Details
                           </button>
                         </td>
                       </tr>
@@ -519,13 +549,13 @@ const AdminTaskManagement: React.FC = () => {
               Task: <strong>{selectedTask.serviceName}</strong>
             </p>
             <p className="text-sm text-gray-500 mb-4">
-              Provider: {selectedTask.providerName} | Fee: {formatCurrency(selectedTask.fee)}
+              Provider: {selectedTask.serviceProvider} | Fee: {formatCurrency(selectedTask.fee)}
             </p>
             
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              {/* <label className="block text-sm font-medium text-gray-700 mb-2">
                 Settlement Status
-              </label>
+              </label> */}
               <select
                 value={newSettlementStatus}
                 onChange={(e) => setNewSettlementStatus(e.target.value as 'pending' | 'paid' | 'disputed')}
