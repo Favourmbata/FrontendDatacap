@@ -39,6 +39,45 @@ export interface RejectedTask {
   status: 'rejected';
 }
 
+export interface CompletionField {
+  type: 'textarea' | 'file[]' | 'file' | 'url';
+  required: boolean;
+  placeholder?: string;
+  maxLength?: number;
+  accept?: string;
+  maxFiles?: number;
+  maxDuration?: number;
+  description?: string;
+}
+
+export interface CompletionTemplate {
+  taskId: string;
+  serviceName: string;
+  customerName: string;
+  serviceDate: string;
+  serviceTime: string;
+  location: { type: string; address?: string };
+  completionFields: Record<string, CompletionField>;
+}
+
+export interface CompletionTemplateResponse {
+  success: boolean;
+  data: {
+    template: CompletionTemplate;
+  };
+  message?: string;
+}
+
+export interface ConfirmationDetails {
+  serviceCompletionDeclaration: string;
+  serviceComment?: string;
+  serviceImages?: string[];
+  serviceVideoUrl?: string;
+  videoUrl?: string;
+  confirmedAt: string;
+  confirmedBy: string;
+}
+
 export interface CompletedTask {
   taskId: string;
   serviceName: string;
@@ -53,6 +92,7 @@ export interface CompletedTask {
   completedAt: string;
   settlementStatus: 'pending' | 'paid' | 'disputed';
   status: 'completed';
+  confirmationDetails?: ConfirmationDetails;
 }
 
 export interface TaskStatistics {
@@ -224,6 +264,40 @@ class ServiceProviderTaskService {
     return HttpService.post<CompleteTaskResponse>(
       `/api/service-provider-tasks/tasks/${taskId}/complete`,
       {}
+    );
+  }
+
+  /**
+   * Get completion template for a task
+   */
+  static async getCompletionTemplate(taskId: string): Promise<CompletionTemplateResponse> {
+    return HttpService.get<CompletionTemplateResponse>(
+      `/api/service-provider-tasks/tasks/${taskId}/completion-template`
+    );
+  }
+
+  /**
+   * Complete a task with confirmation details
+   */
+  static async completeTaskWithDetails(taskId: string, data: {
+    serviceCompletionDeclaration: string;
+    serviceComment?: string;
+    serviceImages?: string[];
+    serviceVideoUrl?: string;
+    videoUrl?: string;
+  }): Promise<CompleteTaskResponse> {
+    return HttpService.post<CompleteTaskResponse>(
+      `/api/service-provider-tasks/tasks/${taskId}/complete`,
+      data
+    );
+  }
+
+  /**
+   * Get completed tasks with details
+   */
+  static async getCompletedTasksWithDetails(): Promise<CompletedTasksResponse> {
+    return HttpService.get<CompletedTasksResponse>(
+      '/api/service-provider-tasks/tasks/completed-with-details'
     );
   }
 }

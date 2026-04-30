@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, DollarSign, CheckCircle, XCircle, AlertCircle, Loader2, MessageSquare } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Calendar, Clock, MapPin, DollarSign, CheckCircle, XCircle, AlertCircle, Loader2, MessageSquare, FileText, Upload, Video, Link } from 'lucide-react';
 import ServiceProviderTaskService, { 
   AssignedTask, 
   AcceptedTask, 
   RejectedTask,
   CompletedTask,
-  TaskStatistics
+  CompletionTemplate,
+  CompletionTemplateResponse
 } from '@/services/ServiceProviderTaskService';
 
 type TabType = 'assigned' | 'accepted' | 'rejected' | 'completed';
@@ -22,14 +23,19 @@ const TaskManagementPage: React.FC = () => {
   const [acceptedTasks, setAcceptedTasks] = useState<AcceptedTask[]>([]);
   const [rejectedTasks, setRejectedTasks] = useState<RejectedTask[]>([]);
   const [completedTasks, setCompletedTasks] = useState<CompletedTask[]>([]);
-  const [statistics, setStatistics] = useState<TaskStatistics | null>(null);
+  
+  // Completion flow states
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [completionTemplate, setCompletionTemplate] = useState<CompletionTemplate | null>(null);
+  const [completionFormData, setCompletionFormData] = useState<Record<string, string | string[] | Array<{ url: string; type: string }>>>({ });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Action states
   const [processingTask, setProcessingTask] = useState<string | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
-
+  
   useEffect(() => {
     fetchData();
   }, [activeTab]);
@@ -38,12 +44,6 @@ const TaskManagementPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-
-      // Fetch statistics
-      const statsRes = await ServiceProviderTaskService.getTaskStatistics();
-      if (statsRes.success) {
-        setStatistics(statsRes.data.statistics);
-      }
 
       // Fetch tasks based on active tab
       switch (activeTab) {
@@ -60,7 +60,7 @@ const TaskManagementPage: React.FC = () => {
           if (rejectedRes.success) setRejectedTasks(rejectedRes.data.tasks);
           break;
         case 'completed':
-          const completedRes = await ServiceProviderTaskService.getCompletedTasks();
+          const completedRes = await ServiceProviderTaskService.getCompletedTasksWithDetails();
           if (completedRes.success) setCompletedTasks(completedRes.data.tasks);
           break;
       }
@@ -84,6 +84,33 @@ const TaskManagementPage: React.FC = () => {
     } catch (err: any) {
       console.error('Error accepting task:', err);
       alert(err.message || 'Failed to accept task');
+    } finally {
+      setProcessingTask(null);
+    }
+  };
+
+  const handleShowCompletionModal = async (taskId: string) => {
+    try {
+      setProcessingTask(taskId);
+      const templateRes = await ServiceProviderTaskService.getCompletionTemplate(taskId);
+      if (templateRes.success) {
+        setCompletionTemplate(templateRes.data.template);
+        setSelectedTaskId(taskId);
+        setShowCompletionModal(true);
+        // Initialize form data with empty values for required fields
+        const initialFormData: Record<string, string | string[]> = {};
+        Object.entries(templateRes.data.template.completionFields).forEach(([key, field]) => {
+          if (field.required && field.type === 'textarea') {
+            initialFormData[key] = '';
+          } else if (field.required && field.type === 'file[]') {
+            initialFormData[key] = [];
+          }
+        });
+        setCompletionFormData(initialFormData);
+      }
+    } catch (err: any) {
+      console.error('Error fetching completion template:', err);
+      alert(err.message || 'Failed to load completion template');
     } finally {
       setProcessingTask(null);
     }
@@ -134,6 +161,57 @@ const TaskManagementPage: React.FC = () => {
       alert(err.message || 'Failed to complete task');
     } finally {
       setProcessingTask(null);
+    }
+  };
+
+  const handleCompleteTaskWithDetails = async () => {
+    if (!selectedTaskId || !completionTemplate) return;
+    
+    try {
+      setIsSubmitting(true);
+      
+      // Prepare the data for submission
+      const submissionData: {
+        serviceCompletionDeclaration: string;
+        serviceComment?: string;
+        serviceImages?: string[];
+        serviceVideoUrl?: string;
+        videoUrl?: string;
+      } = {
+        serviceCompletionDeclaration: completionFormData.serviceCompletionDeclaration as string || '',
+      };
+      
+      // Add optional fields if they exist in the form data
+      if (completionFormData.serviceComment) {
+        submissionData.serviceComment = completionFormData.serviceComment as string;
+      }
+      if (Array.isArray(completionFormData.serviceImages)) {
+        // Extract only the 'url' strings from preview objects
+        submissionData.serviceImages = (completionFormData.serviceImages as Array<{ url: string }>)
+          .map(item => item.url);
+      }
+      if (completionFormData.serviceVideoUrl) {
+        submissionData.serviceVideoUrl = completionFormData.serviceVideoUrl as string;
+      }
+      if (completionFormData.videoUrl) {
+        submissionData.videoUrl = completionFormData.videoUrl as string;
+      }
+      
+      const response = await ServiceProviderTaskService.completeTaskWithDetails(selectedTaskId, submissionData);
+      
+      if (response.success) {
+        alert('Task completed successfully with confirmation details! Settlement process has begun.');
+        setShowCompletionModal(false);
+        setSelectedTaskId(null);
+        setCompletionTemplate(null);
+        setCompletionFormData({});
+        fetchData();
+      }
+    } catch (err: any) {
+      console.error('Error completing task with details:', err);
+      alert(err.message || 'Failed to complete task with confirmation details');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -208,53 +286,13 @@ const TaskManagementPage: React.FC = () => {
           <p className="text-gray-600">Manage your service provider tasks and appointments</p>
         </div>
 
-        {/* Statistics Cards */}
-        {statistics && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Assigned</p>
-                  <p className="text-2xl font-bold text-gray-900">{statistics.assigned}</p>
-                </div>
-                <Calendar className="w-8 h-8 text-blue-500" />
-              </div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Accepted</p>
-                  <p className="text-2xl font-bold text-gray-900">{statistics.accepted}</p>
-                </div>
-                <CheckCircle className="w-8 h-8 text-green-500" />
-              </div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4 border-l-4 border-red-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Rejected</p>
-                  <p className="text-2xl font-bold text-gray-900">{statistics.rejected}</p>
-                </div>
-                <XCircle className="w-8 h-8 text-red-500" />
-              </div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4 border-l-4 border-purple-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Completed</p>
-                  <p className="text-2xl font-bold text-gray-900">{statistics.completed}</p>
-                </div>
-                <Clock className="w-8 h-8 text-purple-500" />
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* Tab Navigation */}
         <div className="bg-white rounded-lg shadow mb-6">
           <div className="border-b border-gray-200">
             <nav className="flex -mb-px overflow-x-auto">
-              {[
+              {[ 
                 { id: 'assigned' as TabType, label: 'Assigned Tasks', icon: Calendar, count: assignedTasks.length },
                 { id: 'accepted' as TabType, label: 'Accepted', icon: CheckCircle, count: acceptedTasks.length },
                 { id: 'rejected' as TabType, label: 'Rejected', icon: XCircle, count: rejectedTasks.length },
@@ -438,16 +476,12 @@ const TaskManagementPage: React.FC = () => {
 
                 <div className="flex md:flex-col gap-2 md:items-end">
                   <button
-                    onClick={() => handleCompleteTask(task.taskId)}
+                    onClick={() => handleShowCompletionModal(task.taskId)}
                     disabled={processingTask === task.taskId}
                     className="flex-1 md:flex-none px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    {processingTask === task.taskId ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Clock className="w-4 h-4" />
-                    )}
-                    Complete
+                    <FileText className="w-4 h-4" />
+                    Complete Task
                   </button>
                 </div>
               </div>
@@ -534,6 +568,57 @@ const TaskManagementPage: React.FC = () => {
                   </span>
                 </div>
               </div>
+              
+              {task.confirmationDetails && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg ml-13">
+                  <h4 className="font-semibold text-gray-900 mb-2">Confirmation Details</h4>
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700">Completion Declaration:</span>
+                      <p className="text-gray-600 mt-1">{task.confirmationDetails.serviceCompletionDeclaration}</p>
+                    </div>
+                    {task.confirmationDetails.serviceComment && (
+                      <div>
+                        <span className="font-medium text-gray-700">Comments:</span>
+                        <p className="text-gray-600 mt-1">{task.confirmationDetails.serviceComment}</p>
+                      </div>
+                    )}
+                    {task.confirmationDetails.serviceImages && task.confirmationDetails.serviceImages.length > 0 && (
+                      <div>
+                        <span className="font-medium text-gray-700">Images:</span>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {task.confirmationDetails.serviceImages.map((imgUrl, idx) => (
+                            <div key={idx} className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center overflow-hidden">
+                              <img src={imgUrl} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {task.confirmationDetails.serviceVideoUrl && (
+                      <div>
+                        <span className="font-medium text-gray-700">Video:</span>
+                        <div className="mt-1 flex items-center gap-2">
+                          <Video className="w-4 h-4 text-gray-600" />
+                          <span className="text-blue-600 hover:underline cursor-pointer">View Video</span>
+                        </div>
+                      </div>
+                    )}
+                    {task.confirmationDetails.videoUrl && (
+                      <div>
+                        <span className="font-medium text-gray-700">Video URL:</span>
+                        <a href={task.confirmationDetails.videoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline ml-1">
+                          {task.confirmationDetails.videoUrl}
+                        </a>
+                      </div>
+                    )}
+                    <div>
+                      <span className="font-medium text-gray-700">Confirmed At:</span>
+                      <span className="text-gray-600 ml-2">{formatDate(task.confirmationDetails.confirmedAt)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -576,6 +661,194 @@ const TaskManagementPage: React.FC = () => {
                   setShowRejectModal(false);
                   setSelectedTaskId(null);
                   setRejectionReason('');
+                }}
+                className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Completion Modal */}
+      {showCompletionModal && completionTemplate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Complete Task: {completionTemplate.serviceName}</h2>
+              <button 
+                onClick={() => {
+                  setShowCompletionModal(false);
+                  setSelectedTaskId(null);
+                  setCompletionTemplate(null);
+                  setCompletionFormData({});
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+              <h3 className="font-medium text-blue-900 mb-2">Task Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                <div><span className="font-medium">Customer:</span> {completionTemplate.customerName}</div>
+                <div><span className="font-medium">Date:</span> {formatDate(completionTemplate.serviceDate)}</div>
+                <div><span className="font-medium">Time:</span> {completionTemplate.serviceTime}</div>
+                <div><span className="font-medium">Location:</span> {getLocationText(completionTemplate.location)}</div>
+              </div>
+            </div>
+
+            <h3 className="font-semibold mb-4">Please provide confirmation details</h3>
+            
+            <div className="space-y-6">
+              {Object.entries(completionTemplate.completionFields).map(([key, field]) => (
+                <div key={key}>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                    {field.required && <span className="text-red-500 ml-1">*</span>}
+                    {field.description && <span className="block text-xs text-gray-500 mt-1">{field.description}</span>}
+                  </label>
+                  
+                  {field.type === 'textarea' && (
+                    <textarea
+                      value={completionFormData[key] as string || ''}
+                      onChange={(e) => setCompletionFormData(prev => ({ ...prev, [key]: e.target.value }))}
+                      placeholder={field.placeholder}
+                      rows={field.maxLength && field.maxLength > 500 ? 6 : 4}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${field.required && !(completionFormData[key] as string) ? 'border-red-500' : 'border-gray-300'}`}
+                      required={field.required}
+                    />
+                  )}
+                  
+                  {field.type === 'file[]' && (
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600 mb-2">Upload up to {field.maxFiles} files</p>
+                      <p className="text-xs text-gray-500 mb-2">Accepts: {field.accept}</p>
+                      <label className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 cursor-pointer inline-block">
+                        Choose Files
+                        <input
+                          type="file"
+                          multiple
+                          accept={field.accept}
+                          onChange={(e) => {
+                            const fileList = e.target.files;
+                            if (!fileList || fileList.length === 0) return;
+                            const files = Array.from(fileList);
+                            // Store preview objects with type for conditional rendering
+                            const previewItems = files.map(file => ({
+                              url: URL.createObjectURL(file),
+                              type: file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'other',
+                            }));
+                            setCompletionFormData(prev => ({
+                              ...prev,
+                              [key]: previewItems,
+                            } as Record<string, string | string[] | Array<{ url: string; type: string }>>));
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  )}
+                  {/* Preview section */}
+                  {Array.isArray(completionFormData[key]) && completionFormData[key].length > 0 && (
+                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {(Array.isArray(completionFormData[key]) && 'url' in (completionFormData[key] as any)[0]
+                        ? (completionFormData[key] as Array<{ url: string; type: string }>)
+                        : []
+                      ).map((item, idx) => (
+                        <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200">
+                          {item.type === 'image' ? (
+                            <img
+                              src={item.url}
+                              alt={`Preview ${idx + 1}`}
+                              className="w-full h-24 object-cover"
+                            />
+                          ) : item.type === 'video' ? (
+                            <video
+                              src={item.url}
+                              className="w-full h-24 object-cover"
+                              muted
+                            />
+                          ) : (
+                            <div className="w-full h-24 flex items-center justify-center bg-gray-100 text-gray-500 text-xs">
+                              Unsupported
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Revoke object URL
+                              URL.revokeObjectURL(item.url);
+                              // Remove from array
+                              setCompletionFormData(prev => ({
+                                ...prev,
+                                [key]: (Array.isArray(prev[key]) && 'url' in (prev[key] as any)[0]
+                                  ? (prev[key] as Array<{ url: string; type: string }>)
+                                  : []
+                                ).filter((_, i) => i !== idx),
+                              } as Record<string, string | string[] | Array<{ url: string; type: string }>>));
+                            }}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {field.type === 'file' && field.accept?.includes('video') && (
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                      <Video className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600 mb-2">Upload video (max {field.maxDuration} seconds)</p>
+                      <p className="text-xs text-gray-500 mb-2">Accepts: {field.accept}</p>
+                      <button 
+                        type="button"
+                        className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700"
+                      >
+                        Choose Video
+                      </button>
+                    </div>
+                  )}
+                  
+                  {field.type === 'url' && (
+                    <div className="flex gap-2">
+                      <Link className="w-5 h-5 text-gray-400 mt-2" />
+                      <input
+                        type="url"
+                        value={completionFormData[key] as string || ''}
+                        onChange={(e) => setCompletionFormData(prev => ({ ...prev, [key]: e.target.value }))}
+                        placeholder={field.placeholder}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 flex gap-3">
+              <button
+                onClick={handleCompleteTaskWithDetails}
+                disabled={isSubmitting}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CheckCircle className="w-4 h-4" />
+                )}
+                Submit Completion
+              </button>
+              <button
+                onClick={() => {
+                  setShowCompletionModal(false);
+                  setSelectedTaskId(null);
+                  setCompletionTemplate(null);
+                  setCompletionFormData({});
                 }}
                 className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
               >
