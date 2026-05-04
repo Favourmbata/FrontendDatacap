@@ -18,6 +18,7 @@ const PaymentPage = () => {
 
   // Get order data from localStorage
   const [orderData, setOrderData] = useState<any>(null);
+  const [bookingLocation, setBookingLocation] = useState<any>(null);
 
   useEffect(() => {
     const savedProduct = localStorage.getItem('selectedProduct');
@@ -48,6 +49,11 @@ const PaymentPage = () => {
         }
         if (productData.bookingTime) {
           setBookingTime(productData.bookingTime);
+        }
+        
+        // Set booking location if it exists
+        if (productData.bookingLocation) {
+          setBookingLocation(productData.bookingLocation);
         }
       } catch (err) {
         setError('Failed to load order data');
@@ -112,6 +118,7 @@ const PaymentPage = () => {
         itemType: orderData.itemType,
         bookingDate: bookingDate,
         bookingTime: bookingTime,
+        bookingLocation: bookingLocation || { type: "merchant_location" },
         redirectUrl: `${window.location.origin}/user/payment/callback`
       };
 

@@ -205,7 +205,8 @@ const BodyCarePage = () => {
       upfrontPercentage: product.product.pricing.upfrontPaymentPercentage || 10,
       itemType: 'service',
       isSubService: true,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      bookingLocation: { type: "merchant_location" }
     } : {
       productId: product.product.id,
       name: product.product.name,
@@ -215,7 +216,8 @@ const BodyCarePage = () => {
       organizationName: product.serviceProvider.producer,
       upfrontPercentage: product.product.pricing.upfrontPaymentPercentage || 10,
       itemType: product.product.itemType,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      bookingLocation: { type: "merchant_location" }
     };
     
     localStorage.setItem('selectedProduct', JSON.stringify(paymentData));

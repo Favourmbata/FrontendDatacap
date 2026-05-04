@@ -21,6 +21,7 @@ import {
   Mail,
   CheckCircle,
   Loader2,
+  Check,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import BookingService, {
@@ -44,6 +45,15 @@ interface Guest {
   email: string;
 }
 
+interface SubService {
+  subServiceId: string;
+  name: string;
+  description: string;
+  code: string;
+  price: number;
+  imageUrl?: string;
+}
+
 interface GuestWithPhone {
   name: string;
   firstName: string;
@@ -51,6 +61,13 @@ interface GuestWithPhone {
   email: string;
   phone?: string;
   slotDateTime: string;
+  selectedSubServices?: {
+    subServiceId: string;
+    name: string;
+    code: string;
+    price: number;
+  }[];
+  individualTotal?: number;
 }
 
 type LocationType = "merchant_location" | "customer_address" | "new_address" | "whatsapp_location";
@@ -161,6 +178,11 @@ const BookAppointmentPage = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Sub-service state
+  const [subServices, setSubServices] = useState<SubService[]>([]);
+  const [selectedSubServices, setSelectedSubServices] = useState<Record<number, SubService[]>>({ });
+  const [pricingBreakdown, setPricingBreakdown] = useState<any>(null);
+
   // Load service details from localStorage (passed from body-care page)
   useEffect(() => {
     const loadService = () => {
@@ -252,6 +274,27 @@ const BookAppointmentPage = () => {
       fetchLocationOptions();
     }
   }, [organizationId, serviceId, service]);
+
+  // Fetch sub-services when service is loaded
+  useEffect(() => {
+    const fetchSubServices = async () => {
+      if (!service || !organizationId) return;
+      
+      try {
+        const response = await fetch(`https://datacapture-backend.onrender.com/api/orders/public/services/${service.id}/sub-services`);
+        const result = await response.json();
+        if (result.success) {
+          setSubServices(result.data.subServices);
+        }
+      } catch (err) {
+        console.error('Error fetching sub-services:', err);
+      }
+    };
+    
+    if (service) {
+      fetchSubServices();
+    }
+  }, [service, organizationId]);
 
   // Fetch available days when month/year changes
   const [availableDays, setAvailableDays] = useState<Set<string>>(new Set());
@@ -369,6 +412,59 @@ const BookAppointmentPage = () => {
   const balance = serviceAmount - depositAmount;
   const discountOnBalance = 0.05;
 
+  // Real-time pricing calculation
+  const calculatePricing = async () => {
+    if (!service || !organizationId || !selectedDate || !selectedSlot) return;
+    
+    try {
+      // Ensure at least the primary guest is included
+      const bookedForPersons = [
+        {
+          name: primaryGuest.name || 'Primary Guest',
+          selectedSubServices: selectedSubServices[0] || []
+        },
+        ...extraGuests.filter(guest => guest.name && guest.name.trim()).map((guest, index) => ({
+          name: guest.name || `Guest ${index + 1}`,
+          selectedSubServices: selectedSubServices[guest.id] || []
+        }))
+      ];
+      
+      // Ensure at least one person is booked
+      if (bookedForPersons.length === 0) {
+        bookedForPersons.push({
+          name: primaryGuest.name || 'Primary Guest',
+          selectedSubServices: selectedSubServices[0] || []
+        });
+      }
+      
+      const response = await fetch('https://datacapture-backend.onrender.com/api/orders/public/calculate-pricing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serviceId: service.id,
+          organizationId,
+          paymentType: 'full',
+          bookedForPersons
+        })
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        setPricingBreakdown(result.data);
+        // Update UI with pricing breakdown
+        updatePricingUI(result.data);
+      }
+    } catch (err) {
+      console.error('Error calculating pricing:', err);
+      setError('Failed to calculate pricing. Please try again.');
+    }
+  };
+
+  const updatePricingUI = (pricingData: any) => {
+    // Update UI with pricing breakdown
+    // This will be called when pricing calculation completes
+  };
+
   async function handleConfirm() {
     if (!service || !selectedDate || !selectedSlot) {
       alert("Please complete all required fields");
@@ -390,17 +486,22 @@ const BookAppointmentPage = () => {
         case "new_address":
           bookingLocation = {
             type: "new_address",
-            address: newAddress,
+            address: newAddress || "",
           };
           break;
         case "whatsapp_location":
           bookingLocation = {
             type: "whatsapp_location",
-            whatsappLocationUrl: whatsappLink,
+            whatsappLocationUrl: whatsappLink || "",
           };
           break;
         default:
           bookingLocation = { type: "merchant_location" };
+      }
+      
+      // Ensure booking location is properly defined
+      if (!bookingLocation || typeof bookingLocation !== 'object') {
+        bookingLocation = { type: "merchant_location" };
       }
 
       // Parse name into first/last
@@ -417,8 +518,10 @@ const BookAppointmentPage = () => {
           email: primaryGuest.email,
           phone: primaryGuest.phone,
           slotDateTime: selectedSlot.datetime,
+          selectedSubServices: selectedSubServices[0] || [],
+          individualTotal: pricingBreakdown?.individualBreakdowns?.[0]?.individualTotal
         },
-        ...extraGuests.map((guest) => {
+        ...extraGuests.map((guest, index) => {
           const guestNameParts = guest.name.trim().split(" ");
           return {
             name: guest.name,
@@ -426,6 +529,8 @@ const BookAppointmentPage = () => {
             lastName: guestNameParts.slice(1).join(" ") || "Guest",
             email: guest.email,
             slotDateTime: selectedSlot.datetime,
+            selectedSubServices: selectedSubServices[guest.id] || [],
+            individualTotal: pricingBreakdown?.individualBreakdowns?.[index + 1]?.individualTotal
           };
         }),
       ];
@@ -1137,6 +1242,155 @@ const BookAppointmentPage = () => {
                   <div
                     style={{ fontWeight: 500, fontSize: 14, marginBottom: 12 }}
                   >
+                    Sub-service selection
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {/* Primary guest sub-service selection */}
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>
+                        {primaryGuest.name || "You"}
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {subServices.map((subService) => {
+                          const isSelected = selectedSubServices[0]?.some(
+                            (s) => s.subServiceId === subService.subServiceId
+                          );
+                          return (
+                            <label
+                              key={subService.subServiceId}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                padding: "8px 12px",
+                                borderRadius: 8,
+                                background: isSelected ? "#f0e6ff" : "#fff",
+                                border: isSelected ? "1px solid #5d2a8b" : "1px solid #e0d6f5",
+                                cursor: "pointer",
+                              }}
+                              onClick={() => {
+                                if (isSelected) {
+                                  setSelectedSubServices((prev) => ({
+                                    ...prev,
+                                    0: prev[0]?.filter((s) => s.subServiceId !== subService.subServiceId) || [],
+                                  }));
+                                } else {
+                                  setSelectedSubServices((prev) => ({
+                                    ...prev,
+                                    0: [...(prev[0] || []), subService],
+                                  }));
+                                }
+                                calculatePricing();
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: 18,
+                                  height: 18,
+                                  borderRadius: "50%",
+                                  border: "2px solid #5d2a8b",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                {isSelected && <Check size={12} style={{ color: "#5d2a8b" }} />}
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 14, fontWeight: 500 }}>
+                                  {subService.name}
+                                </div>
+                                <div style={{ fontSize: 12, color: "#888" }}>
+                                  {subService.description}
+                                </div>
+                                <div style={{ fontSize: 13, color: "#5d2a8b", fontWeight: 600 }}>
+                                  {formatCurrency(subService.price)}
+                                </div>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Additional guests sub-service selection */}
+                    {extraGuests.map((guest, index) => (
+                      <div key={guest.id}>
+                        <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>
+                          {guest.name || `Guest ${index + 1}`}
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {subServices.map((subService) => {
+                            const isSelected = selectedSubServices[guest.id]?.some(
+                              (s) => s.subServiceId === subService.subServiceId
+                            );
+                            return (
+                              <label
+                                key={subService.subServiceId}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 8,
+                                  padding: "8px 12px",
+                                  borderRadius: 8,
+                                  background: isSelected ? "#f0e6ff" : "#fff",
+                                  border: isSelected ? "1px solid #5d2a8b" : "1px solid #e0d6f5",
+                                  cursor: "pointer",
+                                }}
+                                onClick={() => {
+                                  if (isSelected) {
+                                    setSelectedSubServices((prev) => ({
+                                      ...prev,
+                                      [guest.id]: prev[guest.id]?.filter(
+                                        (s) => s.subServiceId !== subService.subServiceId
+                                      ) || [],
+                                    }));
+                                  } else {
+                                    setSelectedSubServices((prev) => ({
+                                      ...prev,
+                                      [guest.id]: [...(prev[guest.id] || []), subService],
+                                    }));
+                                  }
+                                  calculatePricing();
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: 18,
+                                    height: 18,
+                                    borderRadius: "50%",
+                                    border: "2px solid #5d2a8b",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                >
+                                  {isSelected && <Check size={12} style={{ color: "#5d2a8b" }} />}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontSize: 14, fontWeight: 500 }}>
+                                    {subService.name}
+                                  </div>
+                                  <div style={{ fontSize: 12, color: "#888" }}>
+                                    {subService.description}
+                                  </div>
+                                  <div style={{ fontSize: 13, color: "#5d2a8b", fontWeight: 600 }}>
+                                    {formatCurrency(subService.price)}
+                                  </div>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ ...sectionPad, ...divider }}>
+                  <div
+                    style={{ fontWeight: 500, fontSize: 14, marginBottom: 12 }}
+                  >
                     Service location *
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1337,6 +1591,39 @@ const BookAppointmentPage = () => {
                       </span>
                     </div>
                   ))}
+
+                  {pricingBreakdown && pricingBreakdown.individualBreakdowns && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 8, color: "#1a1a2e" }}>
+                        Sub-services
+                      </div>
+                      {pricingBreakdown.individualBreakdowns.map((breakdown: any, index: number) => (
+                        <div key={index} style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "#5d2a8b", marginBottom: 4 }}>
+                            {breakdown.personName}
+                          </div>
+                          {breakdown.subServices.map((subService: any, subIndex: number) => (
+                            <div key={subIndex} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "2px 0" }}>
+                              <span style={{ color: "#888" }}>
+                                {subService.name}
+                              </span>
+                              <span style={{ color: "#5d2a8b", fontWeight: 500 }}>
+                                {formatCurrency(subService.price)}
+                              </span>
+                            </div>
+                          ))}
+                          {breakdown.subServices.length > 0 && (
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 500, paddingTop: 4, borderTop: "1px solid #e0d6f5" }}>
+                              <span style={{ color: "#888" }}>Sub-services total</span>
+                              <span style={{ color: "#5d2a8b" }}>
+                                {formatCurrency(breakdown.subServicesTotal)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   <div
                     style={{

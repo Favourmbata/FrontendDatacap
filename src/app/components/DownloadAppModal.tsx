@@ -232,7 +232,7 @@ export default function DownloadAppModal({ isOpen, onClose }: DownloadAppModalPr
           >
             Sign Up
           </button>
-          <button
+          {/* <button
             type="button"
             onClick={() => setMode("login")}
             className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
@@ -242,7 +242,7 @@ export default function DownloadAppModal({ isOpen, onClose }: DownloadAppModalPr
             }`}
           >
             Login
-          </button>
+          </button> */}
         </div>
 
         {error && (
@@ -272,8 +272,8 @@ export default function DownloadAppModal({ isOpen, onClose }: DownloadAppModalPr
               >
                 <option value="CUSTOMER">Customer (Individual User)</option>
                 <option value="ORGANIZATION">Organization</option>
-                <option value="SERVICE_PROVIDER">Service Provider</option>
-                <option value="TAILOR">Tailor</option>
+                {/* <option value="SERVICE_PROVIDER">Service Provider</option>
+                <option value="TAILOR">Tailor</option> */}
               </select>
             </div>
           )}
