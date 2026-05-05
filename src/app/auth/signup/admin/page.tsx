@@ -111,7 +111,7 @@ export default function OrganizationSignupPage() {
       
       console.log('🚀 Sending ORGANIZATION registration to backend:', payload);
 
-      const { data } = await client.post('/api/auth/register', payload);
+      const { data } = await client.post('https://datacapture-backend.onrender.com/api/auth/register', payload);
       return data;
     },
     onSuccess: (response) => {
@@ -216,7 +216,7 @@ export default function OrganizationSignupPage() {
     if (!formValues.confirmPassword) newErrors.confirmPassword = 'Please confirm your password';
     else if (formValues.password !== formValues.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
     if (!formValues.organizationName.trim()) newErrors.organizationName = 'Organization name is required';
-    if (!formValues.country.trim()) newErrors.country = 'Country is required';
+    if (!formValues.country) newErrors.country = 'Country is required';
     if (!formValues.industry.trim()) newErrors.industry = 'Industry is required';
     if (!formValues.category.trim()) newErrors.category = 'Category is required';
     
@@ -276,7 +276,7 @@ export default function OrganizationSignupPage() {
     const fetchIndustries = async () => {
       try {
         setLoadingIndustries(true);
-        const response = await client.get('/api/auth/industries');
+        const response = await client.get('https://datacapture-backend.onrender.com/api/auth/industries');
         if (response.data && response.data.success) {
           // Handle response format: { success: true, data: { industries: [...] } }
           const industriesData = response.data.data?.industries || response.data.data || [];
