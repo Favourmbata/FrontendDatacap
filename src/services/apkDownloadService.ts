@@ -331,12 +331,12 @@ export class ApkDownloadService {
 
   constructor() {
     // Use environment variable with fallback
-    this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_API || "https://datacapture-backend.onrender.com";
+    this.baseUrl =  "https://datacapture-backend.onrender.com";
     
     // Log the base URL for debugging (only in development)
-    if (process.env.NODE_ENV === 'development') {
+  
       console.log('[ApkDownloadService] Base URL:', this.baseUrl);
-    }
+    
   }
 
   private async request<T>(url: string, options: RequestInit = {}): Promise<T> {
