@@ -78,7 +78,17 @@ export interface BookedPerson {
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string;
+  age?: string | number;
+  notes?: string;
   slotDateTime: string;
+  selectedSubServices?: {
+    subServiceId: string;
+    name: string;
+    code: string;
+    price: number;
+  }[];
+  individualTotal?: number;
 }
 
 export interface BookingLocation {

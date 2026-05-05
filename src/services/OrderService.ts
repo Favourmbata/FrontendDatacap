@@ -1,3 +1,20 @@
+interface BookedPerson {
+  name: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  age?: string;
+  notes?: string;
+  slotDateTime: string;
+  selectedSubServices?: {
+    subServiceId: string;
+    name: string;
+    code: string;
+    price: number;
+  }[];
+}
+
 interface InitiatePaymentData {
   productId: string;
   productName: string;
@@ -11,8 +28,13 @@ interface InitiatePaymentData {
   customerPhone?: string;
   paymentType: 'upfront' | 'remaining' | 'full';
   itemType: 'product' | 'service';
+  platform?: 'web' | 'mobile';
   bookingDate?: string | null;
   bookingTime?: string | null;
+  bookingDuration?: number;
+  bookingLocation?: { type: string; address?: string; whatsappLocationUrl?: string };
+  bookedForPersons?: BookedPerson[];
+  bookingNotes?: string;
   redirectUrl?: string;
 }
 

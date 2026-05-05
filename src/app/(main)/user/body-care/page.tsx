@@ -234,7 +234,9 @@ const BodyCarePage = () => {
     
     // Pass organizationId and serviceId as URL params
     const organizationId = product.product.productInfo.platformUniqueCode;
-    const serviceId = subService?.subPlatformUniqueCode || product.product.id;
+    // Use parent service ID for availability endpoints.
+    // Sub-service ID is only used in payment payload and /sub-services fetch.
+    const serviceId = product.product.id;
     
     router.push(`/user/book-appointment?organizationId=${organizationId}&serviceId=${serviceId}`);
   };
