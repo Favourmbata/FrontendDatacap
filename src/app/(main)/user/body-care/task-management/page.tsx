@@ -215,8 +215,9 @@ const TaskManagementPage: React.FC = () => {
     }
   };
 
-  const formatCurrency = (amount: number): string => {
-    return `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatCurrency = (amount: number | undefined | null): string => {
+    const safeAmount = amount ?? 0;
+    return `₦${safeAmount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const formatDate = (dateStr: string): string => {

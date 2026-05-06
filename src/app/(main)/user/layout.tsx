@@ -2,10 +2,9 @@
 "use client";
 
 
-import { UserSidebar } from "@/app/components/sidebar";
-import { useState } from "react";
-import SubscriptionGuard from "@/components/SubscriptionGuard";
-import { NotificationProvider } from "@/contexts/NotificationContext";
+import { UserSidebar } from '@/app/components/sidebar';
+import { useState } from 'react';
+import SubscriptionGuard from '@/components/SubscriptionGuard';
 
 export default function RootLayout({
   children,
@@ -16,17 +15,15 @@ export default function RootLayout({
 
   return (
     <SubscriptionGuard>
-      <NotificationProvider>
-        <div className="min-h-screen bg-[#F7F0FE] relative">
-          
-          <UserSidebar onShow={showSidebar} setShow={setShowSidebar} />
-          
-          
-          <div className="relative w-full pt-0 md:pt-0">
-            {children}
-          </div>
+      <div className="min-h-screen bg-[#F7F0FE] relative">
+        
+        <UserSidebar onShow={showSidebar} setShow={setShowSidebar} />
+        
+        
+        <div className="relative w-full pt-0 md:pt-0">
+          {children}
         </div>
-      </NotificationProvider>
+      </div>
     </SubscriptionGuard>
   );
 }
