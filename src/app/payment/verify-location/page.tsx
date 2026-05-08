@@ -11,23 +11,13 @@ const VerificationClientComponent = () => {
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'success' | 'failed' | 'verifying'>('pending');
   const [message, setMessage] = useState('');
   const [verificationData, setVerificationData] = useState<any>(null);
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
-
-  const addLog = (log: string) => {
-    setDebugLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${log}`]);
-    console.log(log);
-  };
 
   useEffect(() => {
-    addLog('🔥🔥🔥 LOCATION PAYMENT VERIFICATION START 🔥🔥🔥');
-    
     // Get the raw URL and decode it to handle double encoding
     const rawUrl = window.location.href;
-    addLog(`📍 Raw URL: ${rawUrl}`);
     
     // Decode the URL to fix &amp; issues
     const decodedUrl = rawUrl.replace(/&amp;/g, '&');
-    addLog(`📍 Decoded URL: ${decodedUrl}`);
     
     // Parse the decoded URL
     const urlObj = new URL(decodedUrl);
@@ -37,23 +27,14 @@ const VerificationClientComponent = () => {
     const transactionId = decodedParams.get('tx_ref') || decodedParams.get('transaction_id') || 
                           searchParams.get('tx_ref') || searchParams.get('transaction_id');
     
-    addLog(`🔍 Status: ${status}`);
-    addLog(`🔍 tx_ref: ${decodedParams.get('tx_ref')}`);
-    addLog(`🔍 transaction_id: ${decodedParams.get('transaction_id')}`);
-    addLog(`🔍 Final Transaction ID: ${transactionId}`);
-    
     if (status === 'success' && transactionId) {
-      addLog('✅ Status is success, proceeding with verification');
       verifyLocationPayment(transactionId);
     } else if (status === 'successful' && transactionId) {
-      addLog('✅ Status is successful (alternate), proceeding with verification');
       verifyLocationPayment(transactionId);
     } else if (status === 'cancelled') {
-      addLog('❌ Payment was cancelled');
       setVerificationStatus('failed');
       setMessage('Payment was cancelled. Please try again.');
     } else {
-      addLog(`❌ Invalid verification request - Status: ${status}, TxID: ${transactionId}`);
       setVerificationStatus('failed');
       setMessage('Invalid payment verification request.');
     }
@@ -63,38 +44,25 @@ const VerificationClientComponent = () => {
     setVerificationStatus('verifying');
     setMessage('Verifying your payment...');
     
-    addLog('🔥 Calling LocationPaymentService.verifyPayment()');
-    addLog(`🔍 Transaction ID: ${transactionId}`);
-    
     try {
       const response = await LocationPaymentService.verifyPayment({ transactionId });
       
-      addLog('✅ Response received from service');
-      addLog(`✅ Response: ${JSON.stringify(response)}`);
-      
       if (response.success) {
-        addLog('✅✅✅ PAYMENT VERIFICATION SUCCESSFUL!');
         setVerificationStatus('success');
         setVerificationData(response.data);
         setMessage('Location verification payment successful! Your profile will be updated to pending verification status.');
         
         setTimeout(() => {
-          addLog('🔄 Redirecting to verification-badge page...');
           router.push('/admin/subscription/verification-badge');
         }, 3000);
       } else {
-        addLog('❌❌❌ PAYMENT VERIFICATION FAILED');
-        addLog(`❌ Response: ${JSON.stringify(response)}`);
         setVerificationStatus('failed');
         setMessage(response.data?.message || 'Payment verification failed. Please contact support.');
       }
     } catch (error: any) {
-      addLog('❌❌❌ VERIFICATION ERROR CAUGHT');
-      addLog(`❌ Error: ${error.message}`);
       setVerificationStatus('failed');
       
       if (error.message?.includes('Authentication')) {
-        addLog('❌ Authentication error detected');
         setMessage('Please log in to verify your payment. Redirecting to login...');
         setTimeout(() => {
           localStorage.setItem('redirectAfterLogin', window.location.href);
@@ -209,23 +177,7 @@ const VerificationClientComponent = () => {
           </p>
         )}
 
-        {/* Debug Logs Panel */}
-        {debugLogs.length > 0 && (
-          <div className="mt-6 bg-gray-900 text-green-400 p-4 rounded-lg max-h-96 overflow-y-auto font-mono text-xs">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-white font-bold">Debug Logs</h3>
-              <button 
-                onClick={() => setDebugLogs([])} 
-                className="text-red-400 hover:text-red-300 text-xs"
-              >
-                Clear
-              </button>
-            </div>
-            {debugLogs.map((log, index) => (
-              <div key={index} className="mb-1">{log}</div>
-            ))}
-          </div>
-        )}
+
       </div>
     </div>
   );

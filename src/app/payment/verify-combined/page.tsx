@@ -11,21 +11,11 @@ const CombinedPaymentVerificationComponent = () => {
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'success' | 'failed' | 'verifying'>('pending');
   const [message, setMessage] = useState('');
   const [verificationData, setVerificationData] = useState<any>(null);
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
-
-  const addLog = (log: string) => {
-    setDebugLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${log}`]);
-    console.log(log);
-  };
 
   useEffect(() => {
-    addLog('🔥🔥🔥 COMBINED PAYMENT VERIFICATION START 🔥🔥🔥');
-    
     const rawUrl = window.location.href;
-    addLog(`📍 Raw URL: ${rawUrl}`);
     
     const decodedUrl = rawUrl.replace(/&amp;/g, '&');
-    addLog(`📍 Decoded URL: ${decodedUrl}`);
     
     const urlObj = new URL(decodedUrl);
     const decodedParams = new URLSearchParams(urlObj.search);
@@ -33,18 +23,12 @@ const CombinedPaymentVerificationComponent = () => {
     const status = decodedParams.get('status') || searchParams.get('status');
     const txRef = decodedParams.get('tx_ref') || searchParams.get('tx_ref');
     
-    addLog(`🔍 Status: ${status}`);
-    addLog(`🔍 tx_ref: ${txRef}`);
-    
     if ((status === 'success' || status === 'successful') && txRef) {
-      addLog('✅ Valid payment, proceeding with verification');
       verifyPayment(txRef);
     } else if (status === 'cancelled') {
-      addLog('❌ Payment was cancelled');
       setVerificationStatus('failed');
       setMessage('Payment was cancelled. Please try again.');
     } else {
-      addLog(`❌ Invalid request - Status: ${status}, tx_ref: ${txRef}`);
       setVerificationStatus('failed');
       setMessage('Invalid payment verification request.');
     }
@@ -54,39 +38,26 @@ const CombinedPaymentVerificationComponent = () => {
     setVerificationStatus('verifying');
     setMessage('Verifying your payment...');
     
-    addLog('🔥 Calling CombinedPaymentService.verifyCombinedPayment()');
-    addLog(`🔍 tx_ref: ${txRef}`);
-    
     try {
       const service = new CombinedPaymentService();
       const response = await service.verifyCombinedPayment({ transactionId: txRef });
       
-      addLog('✅ Response received');
-      addLog(`✅ Response: ${JSON.stringify(response)}`);
-      
       if (response.success) {
-        addLog('✅✅✅ COMBINED PAYMENT VERIFICATION SUCCESSFUL!');
         setVerificationStatus('success');
         setVerificationData(response.data);
         setMessage('Payment successful! Subscription activated and locations are pending admin verification.');
         
         setTimeout(() => {
-          addLog('🔄 Redirecting to admin dashboard...');
           router.push('/admin');
         }, 3000);
       } else {
-        addLog('❌❌❌ COMBINED PAYMENT VERIFICATION FAILED');
-        addLog(`❌ Response: ${JSON.stringify(response)}`);
         setVerificationStatus('failed');
         setMessage(response.error || 'Payment verification failed. Please contact support.');
       }
     } catch (error: any) {
-      addLog('❌❌❌ VERIFICATION ERROR CAUGHT');
-      addLog(`❌ Error: ${error.message}`);
       setVerificationStatus('failed');
       
       if (error.message?.includes('Authentication')) {
-        addLog('❌ Authentication error detected');
         setMessage('Please log in to verify your payment. Redirecting to login...');
         setTimeout(() => {
           localStorage.setItem('redirectAfterLogin', window.location.href);
@@ -197,23 +168,7 @@ const CombinedPaymentVerificationComponent = () => {
           </p>
         )}
 
-        {/* Debug Logs Panel */}
-        {debugLogs.length > 0 && (
-          <div className="mt-6 bg-gray-900 text-green-400 p-4 rounded-lg max-h-96 overflow-y-auto font-mono text-xs">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-white font-bold">Debug Logs</h3>
-              <button 
-                onClick={() => setDebugLogs([])} 
-                className="text-red-400 hover:text-red-300 text-xs"
-              >
-                Clear
-              </button>
-            </div>
-            {debugLogs.map((log, index) => (
-              <div key={index} className="mb-1">{log}</div>
-            ))}
-          </div>
-        )}
+
       </div>
     </div>
   );

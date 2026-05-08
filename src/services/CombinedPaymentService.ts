@@ -104,17 +104,13 @@ class CombinedPaymentService {
    */
   async initializeCombinedPayment(request: CombinedPaymentRequest): Promise<CombinedPaymentResponse> {
     try {
-      console.log('🚀 Initializing combined payment:', request);
-      
       const response = await this.httpService.postData<CombinedPaymentResponse>(
         request,
         '/api/payment/combined/initialize'
       );
       
-      console.log('✅ Combined payment initialization response:', response);
       return response;
     } catch (error: any) {
-      console.error('❌ Error initializing combined payment:', error);
       return {
         success: false,
         error: error.message || 'Failed to initialize combined payment'
@@ -126,17 +122,13 @@ class CombinedPaymentService {
    
   async verifyCombinedPayment(request: CombinedPaymentVerificationRequest): Promise<CombinedPaymentVerificationResponse> {
     try {
-      console.log('🔍 Verifying combined payment:', request);
-      
       const response = await this.httpService.postData<CombinedPaymentVerificationResponse>(
         { tx_ref: request.transactionId },
         '/api/payment/combined/verify'
       );
       
-      console.log('✅ Combined payment verification response:', response);
       return response;
     } catch (error: any) {
-      console.error('❌ Error verifying combined payment:', error);
       return {
         success: false,
         error: error.message || 'Failed to verify combined payment'
@@ -177,17 +169,13 @@ class CombinedPaymentService {
     error?: string;
   }> {
     try {
-      console.log('💰 Getting combined pricing for:', { packageId, duration, locations });
-      
       const response = await this.httpService.postData<any>(
         { packageId, duration, locations },
         '/api/payment/combined/pricing'
       );
       
-      console.log('✅ Combined pricing response:', response);
       return response;
     } catch (error: any) {
-      console.error('❌ Error getting combined pricing:', error);
       return {
         success: false,
         error: error.message || 'Failed to get combined pricing'

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { NotificationService, AdminNotification, NotificationResponse } from '@/services/NotificationService';
+import { useAuthContext } from '@/AuthContext';
 
 interface NotificationContextType {
   notifications: AdminNotification[];
@@ -38,6 +39,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const [totalNotifications, setTotalNotifications] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
+  
+  const { user } = useAuthContext();
+  const isAdminUser = user?.isAdmin || false;
 
   // Fetch unread count
   const fetchUnreadCount = useCallback(async () => {
@@ -47,9 +51,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         setUnreadCount(result.data.unreadCount);
       }
     } catch (error) {
-      console.error('Error fetching unread count:', error);
+      // Only log errors for admin users, since non-admins will get 403
+      if (isAdminUser) {
+        console.error('Error fetching unread count:', error);
+      }
     }
-  }, []);
+  }, [isAdminUser]);
 
   // Fetch notifications
   const fetchNotifications = useCallback(async (page: number = 1, unreadOnly: boolean = false) => {
@@ -64,11 +71,14 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         setTotalPages(result.data.pagination.totalPages);
       }
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      // Only log errors for admin users, since non-admins will get 403
+      if (isAdminUser) {
+        console.error('Error fetching notifications:', error);
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAdminUser]);
 
   // Mark notification as read
   const markAsRead = useCallback(async (notificationId: string): Promise<boolean> => {
@@ -91,10 +101,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       
       return false;
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      // Only log errors for admin users, since non-admins will get 403
+      if (isAdminUser) {
+        console.error('Error marking notification as read:', error);
+      }
       return false;
     }
-  }, [fetchUnreadCount]);
+  }, [fetchUnreadCount, isAdminUser]);
 
   // Mark all as read
   const markAllAsRead = useCallback(async (): Promise<boolean> => {
@@ -115,30 +128,37 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       
       return false;
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
+      // Only log errors for admin users, since non-admins will get 403
+      if (isAdminUser) {
+        console.error('Error marking all notifications as read:', error);
+      }
       return false;
     }
-  }, [fetchUnreadCount]);
+  }, [fetchUnreadCount, isAdminUser]);
 
   // Refresh notifications (re-fetch current page)
   const refreshNotifications = useCallback(async () => {
     await fetchNotifications(currentPage);
-  }, [currentPage, fetchNotifications]);
+  }, [currentPage, fetchNotifications, isAdminUser]);
 
-  // Initial fetch
+  // Initial fetch - only for admin users
   useEffect(() => {
-    fetchUnreadCount();
-    fetchNotifications(1);
-  }, [fetchUnreadCount, fetchNotifications]);
-
-  // Poll for unread count every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
+    if (isAdminUser) {
       fetchUnreadCount();
-    }, 30000); // 30 seconds
+      fetchNotifications(1);
+    }
+  }, [fetchUnreadCount, fetchNotifications, isAdminUser]);
 
-    return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
+  // Poll for unread count every 30 seconds - only for admin users
+  useEffect(() => {
+    if (isAdminUser) {
+      const interval = setInterval(() => {
+        fetchUnreadCount();
+      }, 30000); // 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [fetchUnreadCount, isAdminUser]);
 
   const value: NotificationContextType = {
     notifications,

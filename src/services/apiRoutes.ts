@@ -1,14 +1,4 @@
-console.log('apiRoutes: File initialization started');
-console.log('apiRoutes: Module loading started');
-console.log('apiRoutes: Module loading started');
-console.log('apiRoutes: File initialization started');
-console.log('apiRoutes: Module initialization started');
-console.log('apiRoutes: File loading started');
-console.log('apiRoutes: Module loading started');
-console.log('apiRoutes: File execution started');
-console.log('apiRoutes: Module execution started');
-console.log('apiRoutes: Starting file execution');
-console.log('apiRoutes: Initializing routes object');
+
 
 export const routes = {
   // User profile routes
@@ -228,4 +218,3 @@ deleteService: (id: string) => `/api/services/${id}`,
 };
 
 // Log gallery routes for debugging
-console.log('apiRoutes: Gallery routes defined:', routes.gallery);

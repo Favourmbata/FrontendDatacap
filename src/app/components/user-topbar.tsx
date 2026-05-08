@@ -7,26 +7,22 @@ import { Search, Bell, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import { useProfile } from '@/api/hooks/useProfile';
 import { useRouter } from 'next/navigation';
-import { useNotificationContext } from '@/contexts/NotificationContext';
 // Assuming these are defined in your project
 import { LogoutModal } from './logoutModal';
-import { NotificationPanel } from './notificationModal';
 
 export const UserTopBar = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
   const { profile, error } = useProfile();
-  const { unreadCount, fetchUnreadCount } = useNotificationContext();
   const router = useRouter();
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (error) {
-      console.error('Profile loading error:', error);
+      // Profile loading error
     }
     if (profile) {
-      console.log('Profile loaded successfully:', profile);
+      // Profile loaded successfully
     }
   }, [error, profile]);
 
@@ -74,14 +70,6 @@ export const UserTopBar = () => {
         onCancel={handleCancelLogout}
       />
 
-      <NotificationPanel
-        isOpen={showNotifications}
-        onClose={() => {
-          setShowNotifications(false);
-          fetchUnreadCount();
-        }}
-      />
-
       {/* Top navigation bar 
           - Mobile (default): relative flow, full width, padding
           - Desktop (md:): absolute positioning preserved 
@@ -100,22 +88,6 @@ export const UserTopBar = () => {
             />
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Notification */}
-            <button
-              className="bg-[#FBFAFC] flex items-center justify-center hover:bg-gray-100 w-[40px] h-[40px] rounded-full border border-[#E4D8F3] relative"
-              onClick={() => setShowNotifications(!showNotifications)}
-            >
-              <Bell className="w-5 h-5 text-gray-600" />
-              {unreadCount > 0 && (
-                <span
-                  className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium"
-                  style={{ fontSize: '10px' }}
-                >
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-            </button>
 
             {/* Avatar and Dropdown */}
             <div className="relative" ref={dropdownRef}>
@@ -175,7 +147,7 @@ export const UserTopBar = () => {
             </div>
           </div>
         </div>
-      </div>
+    
     </>
   );
 };

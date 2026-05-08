@@ -17,8 +17,7 @@ const PaymentVerificationClient = () => {
         const transactionId = searchParams.get('tx_ref') || searchParams.get('transaction_id');
         const paymentStatus = searchParams.get('status');
 
-        console.log('🔍 Subscription Payment Verification');
-        console.log('🔍 Extracted tx_ref from URL:', transactionId);
+
 
         if (!transactionId) {
           setStatus('error');
@@ -32,7 +31,7 @@ const PaymentVerificationClient = () => {
           return;
         }
 
-        console.log('🔍 Verifying subscription payment with tx_ref:', transactionId);
+
 
         // Verify subscription payment with backend
         const response = await PaymentService.verifyPayment({
@@ -57,7 +56,6 @@ const PaymentVerificationClient = () => {
           setMessage(response.message || 'Payment verification failed');
         }
       } catch (error) {
-        console.error('Error verifying payment:', error);
         setStatus('error');
         
         // Check if it's an authentication error

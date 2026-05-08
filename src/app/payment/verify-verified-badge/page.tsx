@@ -10,35 +10,21 @@ const VerifiedBadgeVerificationComponent = () => {
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'success' | 'failed' | 'verifying'>('pending');
   const [message, setMessage] = useState('');
   const [verificationData, setVerificationData] = useState<any>(null);
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
-
-  const addLog = (log: string) => {
-    setDebugLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${log}`]);
-    console.log(log);
-  };
 
   useEffect(() => {
     const verifyPayment = async () => {
-      addLog('🔥🔥🔥 VERIFIED BADGE PAYMENT VERIFICATION START 🔥🔥🔥');
-      
       // Extract tx_ref from URL
       const urlParams = new URLSearchParams(window.location.search);
       const txRef = urlParams.get('tx_ref');
       const status = urlParams.get('status');
       
-      addLog(`📍 Full URL: ${window.location.href}`);
-      addLog(`🔍 Status: ${status}`);
-      addLog(`🔍 tx_ref: ${txRef}`);
-      
       if (!txRef) {
-        addLog('❌ No transaction reference found');
         setVerificationStatus('failed');
         setMessage('No transaction reference found');
         return;
       }
       
       if (status !== 'successful' && status !== 'success') {
-        addLog(`❌ Payment status is not successful: ${status}`);
         setVerificationStatus('failed');
         setMessage('Payment was not successful');
         return;
@@ -46,40 +32,9 @@ const VerifiedBadgeVerificationComponent = () => {
       
       setVerificationStatus('verifying');
       setMessage('Verifying your payment...');
-      addLog('🔥 Calling backend verification endpoint');
       
       try {
         const token = localStorage.getItem('token');
-        
-        // 🔍 COMPREHENSIVE TOKEN DEBUGGING
-        addLog('\n🔍 ===== TOKEN DEBUG START =====');
-        addLog(`Token exists: ${!!token}`);
-        addLog(`Token length: ${token?.length}`);
-        if (token) {
-          addLog(`Token preview: ${token.substring(0, 50)}...`);
-          
-          // Decode JWT to see payload
-          try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            addLog('📦 Token Payload:');
-            addLog(`  - User ID: ${payload.userId || payload.id || payload._id}`);
-            addLog(`  - Organization ID: ${payload.organizationId}`);
-            addLog(`  - Has organizationId: ${!!payload.organizationId}`);
-            addLog(`  - Token expires: ${new Date(payload.exp * 1000).toLocaleString()}`);
-            addLog(`  - Full payload: ${JSON.stringify(payload, null, 2)}`);
-            
-            if (!payload.organizationId) {
-              addLog('⚠️⚠️⚠️ WARNING: Token does NOT contain organizationId!');
-              addLog('⚠️ User needs to LOG OUT and LOG BACK IN to get a fresh token!');
-            }
-          } catch (e: any) {
-            addLog(`❌ Failed to decode token: ${e.message}`);
-          }
-        } else {
-          addLog('❌ NO TOKEN FOUND IN LOCALSTORAGE!');
-          addLog('❌ User needs to log in!');
-        }
-        addLog('===== TOKEN DEBUG END =====\n');
         
         if (!token) {
           setVerificationStatus('failed');
@@ -92,8 +47,6 @@ const VerifiedBadgeVerificationComponent = () => {
         }
         
         const requestBody = { tx_ref: txRef };
-        addLog(`📤 Request body: ${JSON.stringify(requestBody)}`);
-        addLog(`📤 Authorization header: Bearer ${token.substring(0, 20)}...`);
         
         const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}/api/payment/verified-badge/verify`, {
           method: 'POST',
@@ -104,35 +57,24 @@ const VerifiedBadgeVerificationComponent = () => {
           body: JSON.stringify(requestBody)
         });
         
-        addLog(`📡 Response status: ${response.status}`);
-        
         const result = await response.json();
-        addLog(`✅ Response: ${JSON.stringify(result)}`);
         
         if (result.success) {
-          addLog('✅✅✅ PAYMENT VERIFICATION SUCCESSFUL!');
           setVerificationStatus('success');
           setVerificationData(result.data);
           setMessage('Payment successful! Your locations are now pending admin verification.');
           
           setTimeout(() => {
-            addLog('🔄 Redirecting to verification-badge page...');
             router.push('/admin/subscription/verification-badge');
           }, 3000);
         } else {
-          addLog('❌❌❌ PAYMENT VERIFICATION FAILED');
-          addLog(`❌ Error: ${result.message}`);
           setVerificationStatus('failed');
           setMessage(result.message || 'Payment verification failed. Please contact support.');
         }
       } catch (error: any) {
-        addLog('❌❌❌ VERIFICATION ERROR CAUGHT');
-        addLog(`❌ Error: ${error.message}`);
-        console.error('Payment verification failed:', error);
         setVerificationStatus('failed');
         
         if (error.message?.includes('Authentication')) {
-          addLog('❌ Authentication error detected');
           setMessage('Please log in to verify your payment. Redirecting to login...');
           setTimeout(() => {
             localStorage.setItem('redirectAfterLogin', window.location.href);
@@ -242,23 +184,7 @@ const VerifiedBadgeVerificationComponent = () => {
           </p>
         )}
 
-        {/* Debug Logs Panel */}
-        {debugLogs.length > 0 && (
-          <div className="mt-6 bg-gray-900 text-green-400 p-4 rounded-lg max-h-96 overflow-y-auto font-mono text-xs">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-white font-bold">Debug Logs</h3>
-              <button 
-                onClick={() => setDebugLogs([])} 
-                className="text-red-400 hover:text-red-300 text-xs"
-              >
-                Clear
-              </button>
-            </div>
-            {debugLogs.map((log, index) => (
-              <div key={index} className="mb-1">{log}</div>
-            ))}
-          </div>
-        )}
+
       </div>
     </div>
   );

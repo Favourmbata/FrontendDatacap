@@ -68,12 +68,8 @@ export class NotificationService {
     unreadOnly: boolean = false
   ): Promise<{ success: boolean; data?: NotificationResponse; message?: string }> {
     try {
-      console.log('NotificationService: Fetching notifications', { page, limit, unreadOnly });
-      
       const url = `/api/admin/notifications?page=${page}&limit=${limit}&unreadOnly=${unreadOnly}`;
       const response = await this.httpService.getData<{ success: boolean; data: NotificationResponse }>(url);
-
-      console.log('NotificationService: Notifications response:', response);
 
       if (response.success) {
         return {
@@ -87,7 +83,6 @@ export class NotificationService {
         message: 'Failed to fetch notifications'
       };
     } catch (error: any) {
-      console.error('NotificationService: Error fetching notifications:', error);
       return {
         success: false,
         message: error.message || 'An unexpected error occurred'
@@ -100,13 +95,9 @@ export class NotificationService {
    */
   static async getUnreadCount(): Promise<{ success: boolean; data?: UnreadCountResponse; message?: string }> {
     try {
-      console.log('NotificationService: Fetching unread count');
-      
       const response = await this.httpService.getData<{ success: boolean; data: UnreadCountResponse }>(
         '/api/admin/notifications/unread-count'
       );
-
-      console.log('NotificationService: Unread count response:', response);
 
       if (response.success) {
         return {
@@ -120,7 +111,6 @@ export class NotificationService {
         message: 'Failed to fetch unread count'
       };
     } catch (error: any) {
-      console.error('NotificationService: Error fetching unread count:', error);
       return {
         success: false,
         message: error.message || 'An unexpected error occurred'
@@ -135,8 +125,6 @@ export class NotificationService {
     notificationId: string
   ): Promise<{ success: boolean; data?: any; message?: string }> {
     try {
-      console.log('NotificationService: Marking notification as read:', notificationId);
-      
       const url = `${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}/api/admin/notifications/${notificationId}/read`;
       const response = await fetch(url, {
         method: 'PUT',
@@ -147,7 +135,6 @@ export class NotificationService {
       });
 
       const result = await response.json();
-      console.log('NotificationService: Mark as read response:', result);
 
       if (result.success) {
         return {
@@ -161,7 +148,6 @@ export class NotificationService {
         message: 'Failed to mark notification as read'
       };
     } catch (error: any) {
-      console.error('NotificationService: Error marking notification as read:', error);
       return {
         success: false,
         message: error.message || 'An unexpected error occurred'
@@ -174,8 +160,6 @@ export class NotificationService {
    */
   static async markAllAsRead(): Promise<{ success: boolean; data?: any; message?: string }> {
     try {
-      console.log('NotificationService: Marking all notifications as read');
-      
       const url = `${process.env.NEXT_PUBLIC_BACKEND_API || 'https://datacapture-backend.onrender.com'}/api/admin/notifications/read-all`;
       const response = await fetch(url, {
         method: 'PUT',
@@ -186,7 +170,6 @@ export class NotificationService {
       });
 
       const result = await response.json();
-      console.log('NotificationService: Mark all as read response:', result);
 
       if (result.success) {
         return {
@@ -200,7 +183,6 @@ export class NotificationService {
         message: 'Failed to mark all notifications as read'
       };
     } catch (error: any) {
-      console.error('NotificationService: Error marking all notifications as read:', error);
       return {
         success: false,
         message: error.message || 'An unexpected error occurred'
