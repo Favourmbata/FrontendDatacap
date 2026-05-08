@@ -24,7 +24,6 @@ import BookingService, {
   LocationOption,
   BookingLocation,
 } from "@/services/BookingService";
-import { routes } from "@/services/apiRoutes";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -125,7 +124,9 @@ const BookAppointmentPage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const organizationId = searchParams.get("organizationId") || "";
+  // Strip platform unique code suffix (e.g. "ORG123-009-048" → "ORG123")
+  const rawOrganizationId = searchParams.get("organizationId") || "";
+  const organizationId = rawOrganizationId.replace(/-\d{3}-\d{3}$/, "");
   const serviceId = searchParams.get("serviceId") || "";
 
   // ── Service & loading ──
@@ -164,7 +165,7 @@ const BookAppointmentPage = () => {
     newAddress?: LocationOption;
     whatsappLocation?: LocationOption;
   } | null>(null);
-  const [locationValidating, setLocationValidating] = useState(false);
+  const [locationValidating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
 
   // ── Sub-services & pricing ──
@@ -194,10 +195,11 @@ const BookAppointmentPage = () => {
           hasAvailability: true, imageUrl: "", hasSubServices: false, subServices: [] };
       } else {
         svc = { id: serviceId || data.product?.id || data.id || "",
-          name: data.name || "Service", description: data.description || "",
-          price: data.price || data.actualAmount || 0, duration: data.duration || 60,
-          hasAvailability: true, imageUrl: data.imageUrl || "",
-          hasSubServices: data.hasSubServices || false, subServices: data.subServices || [] };
+          name: data.product?.name || data.name || "Service", description: data.product?.description || data.description || "",
+          price: data.product?.pricing?.discountedPrice || data.product?.pricing?.originalPrice || data.price || data.actualAmount || 0,
+          duration: data.product?.duration || data.duration || 60,
+          hasAvailability: true, imageUrl: data.product?.images?.main || data.imageUrl || "",
+          hasSubServices: data.product?.hasSubServices || data.hasSubServices || false, subServices: data.product?.subServices || data.subServices || [] };
       }
       setService(svc);
     } catch { setError("Failed to load service details"); }
@@ -325,31 +327,18 @@ const BookAppointmentPage = () => {
   };
 
   // ─── Location validation ───────────────────────────────────────────────────
-  const validateAndProceedToSubServices = async () => {
+  const validateAndProceedToSubServices = () => {
     setLocationError(null);
-    setLocationValidating(true);
-    try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      const res = await fetch(routes.adminBooking.validateLocation, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}` },
-        body: JSON.stringify({
-          locationType,
-          address: newAddress || undefined,
-          whatsappLocationUrl: whatsappLink || undefined,
-          customerEmail: guests[0]?.email,
-          organizationId,
-          serviceId: service?.id,
-        }),
-      });
-      const data = await res.json();
-      if (!data.success || !data.data?.valid) throw new Error(data.message || "Location validation failed");
-      setStep(4);
-    } catch (e: any) {
-      setLocationError(e.message || "Location validation failed. Please check your input.");
-    } finally {
-      setLocationValidating(false);
+    // Basic client-side validation for inputs that require user entry
+    if (locationType === "new_address" && !newAddress.trim()) {
+      setLocationError("Please enter an address.");
+      return;
     }
+    if (locationType === "whatsapp_location" && !whatsappLink.trim()) {
+      setLocationError("Please enter a WhatsApp location URL.");
+      return;
+    }
+    setStep(4);
   };
 
   // ─── Submit / Initiate Payment ─────────────────────────────────────────────
@@ -687,8 +676,8 @@ const BookAppointmentPage = () => {
                   )}
                 </div>
                 <div style={S.sectionLast}>
-                  <button style={S.btn(locationValidating)} disabled={locationValidating} onClick={validateAndProceedToSubServices}>
-                    {locationValidating ? <><Loader2 size={16} style={{ animation:"spin 1s linear infinite" }}/> Validating...</> : "Next: Add-ons"}
+                  <button style={S.btn(false)} onClick={validateAndProceedToSubServices}>
+                    Next: Add-ons
                   </button>
                 </div>
               </>

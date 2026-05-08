@@ -179,7 +179,7 @@ deleteService: (id: string) => `/api/services/${id}`,
     organizationUsers: '/api/admin/booking/organization-users',
     serviceProviders: '/api/admin/booking/service-providers',
     locationOptions: '/api/admin/booking/location-options',
-    validateLocation: '/api/admin/booking/validate-location',
+    validateLocation: 'https://datacapture-backend.onrender.com/api/admin/booking/validate-location',
     createBooking: '/api/admin/booking/create',
   },
   

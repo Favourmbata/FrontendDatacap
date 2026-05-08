@@ -11,6 +11,7 @@ export interface SubService {
 export interface ExtendedPublicProductDetails {
   product: {
     id: string;
+    organizationId: string;
     name: string;
     title: string;
     itemType: 'product' | 'service';

@@ -6,32 +6,12 @@ import { Search, MapPin, CheckCircle, Tag, AlertCircle, Package, Layers } from '
 import { useRouter } from 'next/navigation';
 
 import type { PublicProduct, PublicProductDetails } from '@/types/publicProduct';
+import type { ExtendedPublicProductDetails, SubService } from '@/types/BodyCare';
 import { PublicProductService } from '@/services/publicProductService.ts';
 import ProductDetailsView from '@/modules/user/body-care/ProductDetailsView';
 import SubServiceView from '@/modules/user/body-care/SubServiceView';
 import ProductCard from '@/modules/user/body-care/ProductCard';
 
-
-// Define types for sub-services
-interface SubService {
-  name: string;
-  description: string;
-  subPlatformUniqueCode: string;
-  uploadPicture: string;
-  price: number;
-}
-
-interface ExtendedPublicProductDetails extends PublicProductDetails {
-  product: PublicProductDetails['product'] & {
-    totalAvailableServiceProviders?: number;
-    hasSubServices?: boolean;
-    subServiceCount?: number;
-    subServices?: SubService[];
-    availability?: {
-      type: string;
-    };
-  };
-}
 
 const BodyCarePage = () => {
   const router = useRouter();
@@ -200,7 +180,7 @@ const BodyCarePage = () => {
       description: subService.description,
       price: subService.price,
       upfrontPayment: product.product.pricing.upfrontPaymentAmount,
-      organizationId: product.product.productInfo.platformUniqueCode,
+      organizationId: product.product.organizationId,
       organizationName: product.serviceProvider.producer,
       upfrontPercentage: product.product.pricing.upfrontPaymentPercentage || 10,
       itemType: 'service',
@@ -212,7 +192,7 @@ const BodyCarePage = () => {
       name: product.product.name,
       price: product.product.pricing.discountedPrice,
       upfrontPayment: product.product.pricing.upfrontPaymentAmount,
-      organizationId: product.product.productInfo.platformUniqueCode,
+      organizationId: product.product.organizationId,
       organizationName: product.serviceProvider.producer,
       upfrontPercentage: product.product.pricing.upfrontPaymentPercentage || 10,
       itemType: product.product.itemType,
@@ -233,7 +213,8 @@ const BodyCarePage = () => {
     localStorage.setItem('appointmentProduct', JSON.stringify(appointmentData));
     
     // Pass organizationId and serviceId as URL params
-    const organizationId = product.product.productInfo.platformUniqueCode;
+    // Strip platform unique code suffix if present (e.g. "ORG123-009-048" → "ORG123")
+    const organizationId = (product.product.organizationId || "").replace(/-\d{3}-\d{3}$/, "");
     // Use parent service ID for availability endpoints.
     // Sub-service ID is only used in payment payload and /sub-services fetch.
     const serviceId = product.product.id;
