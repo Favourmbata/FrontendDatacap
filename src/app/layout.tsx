@@ -62,6 +62,7 @@ import { AuthProvider } from "@/AuthContext";
 import TanstackProvider from "../../providers/TankstackProvider";
 import { Toaster } from "./components/ui/toaster";
 import "./globals.css";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 
 export const metadata: Metadata = {
   title: "Data Capturing",
@@ -81,8 +82,10 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <TanstackProvider>
-            <main>{children}</main>
-            <Toaster />
+            <NotificationProvider>
+              <main>{children}</main>
+              <Toaster />
+            </NotificationProvider>
           </TanstackProvider>
         </AuthProvider>
         <script

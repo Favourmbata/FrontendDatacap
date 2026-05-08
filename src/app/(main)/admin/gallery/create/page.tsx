@@ -1,8 +1,4 @@
-﻿
-
-
-
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -10,95 +6,26 @@ import { ArrowLeft, Upload, Image as ImageIcon, Video, Calendar, DollarSign, Tag
 
 import { GalleryService } from '@/services/GalleryService';
 import { useAuthContext } from '@/AuthContext';
+import ServiceFields from '@/app/components/gallery/ServiceFields';
+import MediaUpload from '@/app/components/gallery/MediaUpload';
+import PricingSection from '@/app/components/gallery/PricingSection';
+import { 
+  SubService, 
+  TimeWindow, 
+  DayAvailability, 
+  AvailabilityPeriod, 
+  BookingAvailability, 
+  FormData, 
+  Industry, 
+  Category, 
+  PlatformCommission, 
+  PlatformCodePreview,
+  DayName
+} from '@/types/gallery';
 
-interface SubService {
-  name: string;
-  description: string;
-  price: number;
-}
 
-interface TimeWindow {
-  startTime: string;
-  endTime: string;
-}
 
-interface DayAvailability {
-  dayOfWeek: number;
-  isAvailable: boolean;
-  timeWindows: TimeWindow[];
-}
-
-interface AvailabilityPeriod {
-  type: 'unlimited' | 'dateRange' | 'rollingWeeks';
-  startDate?: string;
-  endDate?: string;
-  weeksAhead?: number;
-}
-
-interface BookingAvailability {
-  daysAvailable: DayAvailability[];
-  slotDurationMinutes: number;
-  concurrentProviders: number;
-  availabilityPeriod: AvailabilityPeriod;
-  timezone: string;
-}
-
-interface FormData {
-  name: string; 
-  description: string;
-  industryId: string;
-  categoryId: string;
-  category: string;
-  itemType: 'product' | 'service';
-  sku: string;
-  upc: string;
-  platformUniqueCode: string;
-  totalAvailableQuantity: number;
-  priceInNaira: number;
-  discountPercentage: number;
-  upfrontPaymentPercentage: number;
-  platformChargePercentage: number;
-  platformCommissionId?: string;
-  startDate: string;
-  startTime: string;
-  endDate: string;
-  endTime: string;
-  visibilityToPublic: boolean;
-  notes: string;
-  locationIndex: number;
-  // Service-specific fields
-  producer: string;
-  totalAvailableServiceProviders: number;
-  hasSubServices: boolean;
-  subServices: SubService[];
-  bookingAvailability: BookingAvailability;
-}
-
-interface Industry {
-  value: string;
-  label: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-}
-
-interface PlatformCommission {
-  id: string;
-  commissionName: string;
-  commissionRate: number;
-  industryId: string;
-  categoryId: string;
-}
-
-interface PlatformCodePreview {
-  platformUniqueCode: string;
-  orgProductNumber: string;
-  globalProductNumber: string;
-}
-
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAY_NAMES: DayName[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const CreateGalleryItemPage = () => {
   const router = useRouter();
@@ -312,8 +239,7 @@ useEffect(() => {
     fetchCategories();
   }, [token, formData.industryId]);
 
-  // Fetch platform commission when category is selected
- // Fetch platform commission when category is selected - USING ADMIN ENDPOINT
+  // Fetch platform commission when category is selected - USING ADMIN ENDPOINT
 useEffect(() => {
   const fetchPlatformCommission = async () => {
     if (!token || !formData.categoryId) {
@@ -418,11 +344,9 @@ useEffect(() => {
       newErrors.itemType = 'Item type is required';
     }
 
-   
+    // Remove producer validation for services
     if (formData.itemType === 'service') {
-      if (!formData.producer.trim()) {
-        newErrors.producer = 'Producer/service provider name is required';
-      }
+      // Producer field removed - no validation needed
       if (formData.totalAvailableServiceProviders < 1) {
         newErrors.totalAvailableServiceProviders = 'At least 1 service provider is required';
       }
@@ -522,8 +446,8 @@ useEffect(() => {
         categoryId: formData.categoryId,
         industryId: formData.industryId,
         itemType: formData.itemType,
-        sku: formData.sku || undefined,
-        upc: formData.upc || undefined,
+        sku: formData.itemType === 'product' ? (formData.sku || undefined) : undefined,
+        upc: formData.itemType === 'product' ? (formData.upc || undefined) : undefined,
         platformUniqueCode: formData.platformUniqueCode || undefined,
         totalAvailableQuantity: Number(formData.totalAvailableQuantity) || 0,
         priceInDollars: Number(formData.priceInNaira) || 0,
@@ -541,7 +465,7 @@ useEffect(() => {
 
   
       if (formData.itemType === 'service') {
-        galleryData.producer = formData.producer;
+        // Producer field removed - not included in submission
         galleryData.totalAvailableServiceProviders = Number(formData.totalAvailableServiceProviders);
         galleryData.hasSubServices = formData.hasSubServices;
         
@@ -584,7 +508,6 @@ useEffect(() => {
         };
         
         console.log('Service-specific data being sent:', {
-          producer: galleryData.producer,
           totalAvailableServiceProviders: galleryData.totalAvailableServiceProviders,
           hasSubServices: galleryData.hasSubServices,
           subServices: galleryData.subServices,
@@ -927,7 +850,17 @@ useEffect(() => {
             <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
-                onClick={() => setFormData(prev => ({ ...prev, itemType: 'product' }))}
+                onClick={() => {
+                  setFormData(prev => ({ ...prev, itemType: 'product' }));
+                  // Clear service-specific fields when switching to product
+                  setFormData(prev => ({
+                    ...prev,
+                    producer: '',
+                    totalAvailableServiceProviders: 1,
+                    hasSubServices: false,
+                    subServices: []
+                  }));
+                }}
                 className={`flex items-center justify-center gap-2 p-3 border rounded-lg transition-colors ${
                   formData.itemType === 'product'
                     ? 'bg-purple-50 border-purple-500 text-purple-700'
@@ -939,7 +872,15 @@ useEffect(() => {
               </button>
               <button
                 type="button"
-                onClick={() => setFormData(prev => ({ ...prev, itemType: 'service' }))}
+                onClick={() => {
+                  setFormData(prev => ({ ...prev, itemType: 'service' }));
+                  // Clear product-specific fields when switching to service
+                  setFormData(prev => ({
+                    ...prev,
+                    sku: '',
+                    upc: ''
+                  }));
+                }}
                 className={`flex items-center justify-center gap-2 p-3 border rounded-lg transition-colors ${
                   formData.itemType === 'service'
                     ? 'bg-purple-50 border-purple-500 text-purple-700'
@@ -955,366 +896,56 @@ useEffect(() => {
             )}
           </div>
 
-       
-          {formData.itemType === 'service' && (
-            <>
-             
-              <div className="mb-6">
+          {/* SKU and UPC - Only show for products */}
+          {formData.itemType === 'product' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Service Provider/Producer <span className="text-red-500">*</span>
+                  SKU
                 </label>
                 <input
                   type="text"
-                  value={formData.producer}
-                  onChange={(e) => setFormData(prev => ({ ...prev, producer: e.target.value }))}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                    errors.producer ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="e.g., Elite Beauty Salon"
+                  value={formData.sku}
+                  onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Stock Keeping Unit"
                 />
-                {errors.producer && (
-                  <p className="mt-1 text-sm text-red-600">{errors.producer}</p>
-                )}
               </div>
-
-              <div className="mb-6">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Total Service Providers <span className="text-red-500">*</span>
+                  UPC
+                </label>
+                <input
+                  type="text"
+                  value={formData.upc}
+                  onChange={(e) => setFormData(prev => ({ ...prev, upc: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Universal Product Code"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Quantity
                 </label>
                 <input
                   type="number"
-                  value={formData.totalAvailableServiceProviders || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, totalAvailableServiceProviders: e.target.value ? Number(e.target.value) : 1 }))}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                    errors.totalAvailableServiceProviders ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  min="1"
-                  placeholder="1"
+                  value={formData.totalAvailableQuantity || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, totalAvailableQuantity: e.target.value ? Number(e.target.value) : 0 }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  min="0"
+                  placeholder="0"
                 />
-                {errors.totalAvailableServiceProviders && (
-                  <p className="mt-1 text-sm text-red-600">{errors.totalAvailableServiceProviders}</p>
-                )}
               </div>
+            </div>
+          )}
 
-            
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center justify-between mb-4">
-                  <label className="text-sm font-medium text-gray-700">
-                    Has Sub-Services
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ 
-                      ...prev, 
-                      hasSubServices: !prev.hasSubServices,
-                      subServices: !prev.hasSubServices ? [] : prev.subServices
-                    }))}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      formData.hasSubServices ? 'bg-purple-600' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        formData.hasSubServices ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-
-            
-                {formData.hasSubServices && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-medium text-gray-700">Sub-Services</h4>
-                      <button
-                        type="button"
-                        onClick={() => setFormData(prev => ({
-                          ...prev,
-                          subServices: [...prev.subServices, { name: '', description: '', price: 0 }]
-                        }))}
-                        className="flex items-center gap-1 px-3 py-1 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Add Sub-Service
-                      </button>
-                    </div>
-                    {errors.subServices && (
-                      <p className="text-sm text-red-600">{errors.subServices}</p>
-                    )}
-                    
-                    {formData.subServices.map((subService, index) => (
-                      <div key={index} className="p-4 bg-white border border-gray-200 rounded-lg">
-                        <div className="flex items-center justify-between mb-3">
-                          <h5 className="text-sm font-medium text-gray-800">Sub-Service {index + 1}</h5>
-                          <button
-                            type="button"
-                            onClick={() => setFormData(prev => ({
-                              ...prev,
-                              subServices: prev.subServices.filter((_, i) => i !== index)
-                            }))}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="space-y-3">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Name <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={subService.name}
-                              onChange={(e) => setFormData(prev => ({
-                                ...prev,
-                                subServices: prev.subServices.map((s, i) => 
-                                  i === index ? { ...s, name: e.target.value } : s
-                                )
-                              }))}
-                              className={`w-full px-3 py-2 border rounded-lg text-sm ${
-                                errors[`subService_${index}_name`] ? 'border-red-500' : 'border-gray-300'
-                              }`}
-                              placeholder="Sub-service name"
-                            />
-                            {errors[`subService_${index}_name`] && (
-                              <p className="mt-1 text-xs text-red-600">{errors[`subService_${index}_name`]}</p>
-                            )}
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Description
-                            </label>
-                            <textarea
-                              value={subService.description}
-                              onChange={(e) => setFormData(prev => ({
-                                ...prev,
-                                subServices: prev.subServices.map((s, i) => 
-                                  i === index ? { ...s, description: e.target.value } : s
-                                )
-                              }))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                              rows={2}
-                              placeholder="Sub-service description"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Price <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="number"
-                              value={subService.price || ''}
-                              onChange={(e) => setFormData(prev => ({
-                                ...prev,
-                                subServices: prev.subServices.map((s, i) => 
-                                  i === index ? { ...s, price: e.target.value ? Number(e.target.value) : 0 } : s
-                                )
-                              }))}
-                              className={`w-full px-3 py-2 border rounded-lg text-sm ${
-                                errors[`subService_${index}_price`] ? 'border-red-500' : 'border-gray-300'
-                              }`}
-                              min="0"
-                              placeholder="0"
-                            />
-                            {errors[`subService_${index}_price`] && (
-                              <p className="mt-1 text-xs text-red-600">{errors[`subService_${index}_price`]}</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {formData.subServices.length === 0 && (
-                      <p className="text-sm text-gray-500 text-center py-4">No sub-services added yet</p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h3 className="text-lg font-medium text-blue-800 mb-4">Booking Availability</h3>
-                
-           
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-blue-800 mb-2">
-                    Days Available
-                  </label>
-                  <div className="space-y-2">
-                    {formData.bookingAvailability.daysAvailable.map((day, index) => (
-                      <div key={index} className="flex items-center gap-3 bg-white p-2 rounded">
-                        <input
-                          type="checkbox"
-                          checked={day.isAvailable}
-                          onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            bookingAvailability: {
-                              ...prev.bookingAvailability,
-                              daysAvailable: prev.bookingAvailability.daysAvailable.map((d, i) =>
-                                i === index ? { ...d, isAvailable: e.target.checked } : d
-                              )
-                            }
-                          }))}
-                          className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                        />
-                        <span className="text-sm text-gray-700 w-24">{DAY_NAMES[day.dayOfWeek]}</span>
-                        {day.isAvailable && (
-                          <div className="flex items-center gap-2 flex-1">
-                            <input
-                              type="time"
-                              value={day.timeWindows[0]?.startTime || '09:00'}
-                              onChange={(e) => setFormData(prev => ({
-                                ...prev,
-                                bookingAvailability: {
-                                  ...prev.bookingAvailability,
-                                  daysAvailable: prev.bookingAvailability.daysAvailable.map((d, i) =>
-                                    i === index ? { ...d, timeWindows: [{ ...d.timeWindows[0], startTime: e.target.value }] } : d
-                                  )
-                                }
-                              }))}
-                              className="px-2 py-1 border border-gray-300 rounded text-sm"
-                            />
-                            <span className="text-gray-500">to</span>
-                            <input
-                              type="time"
-                              value={day.timeWindows[0]?.endTime || '17:00'}
-                              onChange={(e) => setFormData(prev => ({
-                                ...prev,
-                                bookingAvailability: {
-                                  ...prev.bookingAvailability,
-                                  daysAvailable: prev.bookingAvailability.daysAvailable.map((d, i) =>
-                                    i === index ? { ...d, timeWindows: [{ ...d.timeWindows[0], endTime: e.target.value }] } : d
-                                  )
-                                }
-                              }))}
-                              className="px-2 py-1 border border-gray-300 rounded text-sm"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Slot Duration */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-blue-800 mb-2">
-                    Slot Duration (minutes)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.bookingAvailability.slotDurationMinutes || ''}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      bookingAvailability: {
-                        ...prev.bookingAvailability,
-                        slotDurationMinutes: e.target.value ? Number(e.target.value) : 60
-                      }
-                    }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    min="15"
-                    max="480"
-                    placeholder="60"
-                  />
-                  <p className="text-xs text-blue-600 mt-1">15-480 minutes per booking slot</p>
-                </div>
-
-                {/* Concurrent Providers */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-blue-800 mb-2">
-                    Concurrent Providers
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.bookingAvailability.concurrentProviders || ''}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      bookingAvailability: {
-                        ...prev.bookingAvailability,
-                        concurrentProviders: e.target.value ? Number(e.target.value) : 1
-                      }
-                    }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    min="1"
-                    max="100"
-                    placeholder="1"
-                  />
-                  <p className="text-xs text-blue-600 mt-1">How many providers can book the same slot (1-100)</p>
-                </div>
-
-                {/* Availability Period Type */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-blue-800 mb-2">
-                    Availability Period Type
-                  </label>
-                  <select
-                    value={formData.bookingAvailability.availabilityPeriod.type}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      bookingAvailability: {
-                        ...prev.bookingAvailability,
-                        availabilityPeriod: {
-                          type: e.target.value as 'unlimited' | 'dateRange' | 'rollingWeeks',
-                          weeksAhead: e.target.value === 'rollingWeeks' ? 6 : undefined,
-                          startDate: e.target.value === 'dateRange' ? formData.startDate : undefined,
-                          endDate: e.target.value === 'dateRange' ? formData.endDate : undefined
-                        }
-                      }
-                    }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  >
-                    <option value="unlimited">Unlimited</option>
-                    <option value="dateRange">Date Range</option>
-                    <option value="rollingWeeks">Rolling Weeks</option>
-                  </select>
-                </div>
-
-                {/* Rolling Weeks */}
-                {formData.bookingAvailability.availabilityPeriod.type === 'rollingWeeks' && (
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-blue-800 mb-2">
-                      Weeks Ahead
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.bookingAvailability.availabilityPeriod.weeksAhead || ''}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        bookingAvailability: {
-                          ...prev.bookingAvailability,
-                          availabilityPeriod: {
-                            ...prev.bookingAvailability.availabilityPeriod,
-                            weeksAhead: e.target.value ? Number(e.target.value) : 6
-                          }
-                        }
-                      }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      min="1"
-                      max="52"
-                      placeholder="6"
-                    />
-                  </div>
-                )}
-
-                {/* Timezone */}
-                <div>
-                  <label className="block text-sm font-medium text-blue-800 mb-2">
-                    Timezone
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.bookingAvailability.timezone}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      bookingAvailability: {
-                        ...prev.bookingAvailability,
-                        timezone: e.target.value
-                      }
-                    }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    placeholder="Africa/Lagos"
-                  />
-                </div>
-              </div>
-            </>
+          {/* Service Provider Fields - Total Service Providers only (Producer removed) */}
+          {formData.itemType === 'service' && (
+            <ServiceFields 
+              formData={formData} 
+              setFormData={setFormData} 
+              errors={errors} 
+            />
           )}
 
           {/* Description */}
@@ -1336,180 +967,19 @@ useEffect(() => {
             )}
           </div>
 
-          {/* Identification Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                SKU
-              </label>
-              <input
-                type="text"
-                value={formData.sku}
-                onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Stock Keeping Unit"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                UPC
-              </label>
-              <input
-                type="text"
-                value={formData.upc}
-                onChange={(e) => setFormData(prev => ({ ...prev, upc: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Universal Product Code"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quantity
-              </label>
-              <input
-                type="number"
-                value={formData.totalAvailableQuantity || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, totalAvailableQuantity: e.target.value ? Number(e.target.value) : 0 }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                min="0"
-                placeholder="0"
-              />
-            </div>
-          </div>
-
+          {/* Identification Fields - Only for products (SKU, UPC, Quantity already moved) */}
           {/* Pricing Information - NGN Currency */}
-          <div className="bg-gray-50 p-4 rounded-lg mb-6">
-            <h3 className="text-lg font-medium text-gray-800 mb-4">Pricing Information (NGN)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Price <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium"></span>
-                  <input
-                    type="number"
-                    value={formData.priceInNaira || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, priceInNaira: e.target.value ? Number(e.target.value) : 0 }))}
-                    className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                      errors.priceInNaira ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    min="0"
-                    step="1"
-                    placeholder="0"
-                  />
-                </div>
-                {errors.priceInNaira && (
-                  <p className="mt-1 text-sm text-red-600">{errors.priceInNaira}</p>
-                )}
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Discount (%)
-                </label>
-                <input
-                  type="number"
-                  value={formData.discountPercentage || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, discountPercentage: e.target.value ? Number(e.target.value) : 0 }))}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                    errors.discountPercentage ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  min="0"
-                  max="100"
-                  placeholder="0"
-                />
-                {errors.discountPercentage && (
-                  <p className="mt-1 text-sm text-red-600">{errors.discountPercentage}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Upfront Payment (%)
-                </label>
-                <input
-                  type="number"
-                  value={formData.upfrontPaymentPercentage || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, upfrontPaymentPercentage: e.target.value ? Number(e.target.value) : 0 }))}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                    errors.upfrontPaymentPercentage ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  min="0"
-                  max="100"
-                  placeholder="0 (Optional)"
-                />
-                {errors.upfrontPaymentPercentage && (
-                  <p className="mt-1 text-sm text-red-600">{errors.upfrontPaymentPercentage}</p>
-                )}
-                <p className="text-xs text-gray-500 mt-1">Optional</p>
-              </div>
-<div>
-  <label className="block text-sm font-medium text-gray-700 mb-2">
-    Platform Charge
-  </label>
-  <div className="relative">
-    <input
-      type="text"
-      value={commissionLoading ? 'Loading...' : commissionError ? 'N/A' : `${formData.platformChargePercentage}%`}
-      readOnly
-      className={`w-full px-3 py-2 bg-gray-100 border rounded-lg text-gray-700 cursor-not-allowed ${
-        commissionError ? 'border-red-300' : 'border-gray-300'
-      }`}
-    />
-  </div>
-  {commissionLoading && (
-    <p className="text-xs text-gray-500 mt-1">Loading commission rate...</p>
-  )}
-  {commissionError && (
-    <p className="text-xs text-red-600 mt-1">{commissionError}</p>
-  )}
-  {platformCommission && !commissionError && (
-    <p className="text-xs text-gray-500 mt-1">
-      Commission: {platformCommission.commissionName}
-    </p>
-  )}
-  {!formData.categoryId && !commissionLoading && (
-    <p className="text-xs text-amber-600 mt-1">
-      Select a category to view platform commission
-    </p>
-  )}
-</div>
-
-
-            </div>
-            
-            {/* Price Calculation Summary - NGN */}
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-3 bg-purple-50 rounded-lg">
-                <span className="text-sm font-medium text-purple-800">Actual Amount:</span>
-                <span className="ml-2 text-lg font-bold text-purple-600">
-                  {formatNaira(calculateActualAmount())}
-                </span>
-              </div>
-              
-              {formData.upfrontPaymentPercentage > 0 && (
-                <>
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <span className="text-sm font-medium text-blue-800">Upfront Payment:</span>
-                    <span className="ml-2 text-lg font-bold text-blue-600">
-                      {formatNaira(totalCalculation.upfront)}
-                    </span>
-                    <span className="ml-1 text-xs text-blue-600">
-                      ({formData.upfrontPaymentPercentage}%)
-                    </span>
-                  </div>
-                  
-                  <div className="p-3 bg-green-50 rounded-lg">
-                    <span className="text-sm font-medium text-green-800">Remaining:</span>
-                    <span className="ml-2 text-lg font-bold text-green-600">
-                      {formatNaira(totalCalculation.remaining)}
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+          <PricingSection 
+            formData={formData} 
+            setFormData={setFormData} 
+            errors={errors} 
+            commissionLoading={commissionLoading} 
+            commissionError={commissionError} 
+            platformCommission={platformCommission} 
+            calculateActualAmount={calculateActualAmount} 
+            calculateTotalWithUpfront={calculateTotalWithUpfront} 
+            formatNaira={formatNaira} 
+          />
 
           {/* Date and Time - Empty by default */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -1599,117 +1069,17 @@ useEffect(() => {
             />
           </div>
 
-          {/* Media Limits Info */}
-          {mediaLimits && (
-            <div className="mb-4 p-3 bg-blue-50 rounded-lg flex items-start gap-2">
-              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-blue-800">
-                <p className="font-medium">Media Limits</p>
-                <p>Images: {mediaLimits.images.current}/{mediaLimits.images.max} used ({mediaLimits.images.remaining} remaining)</p>
-                <p>Videos: {mediaLimits.videos.current}/{mediaLimits.videos.max} used ({mediaLimits.videos.remaining} remaining)</p>
-                {!mediaLimits.verified && (
-                  <p className="text-xs mt-1">Upgrade to verified badge for more upload slots.</p>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Media Upload */}
-          <div className="bg-gray-50 p-4 rounded-lg mb-6">
-            <h3 className="text-lg font-medium text-gray-800 mb-4">Media Upload</h3>
-            
-            {/* Image Upload */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Images (Max 5MB each, JPEG/PNG/WebP)
-              </label>
-              <div className="flex items-center gap-2">
-                <label className="flex-1 flex items-center justify-center px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-purple-400 transition-colors">
-                  <Upload className="w-5 h-5 text-gray-400 mr-2" />
-                  <span className="text-gray-600">Upload Images</span>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-              {errors.images && (
-                <p className="mt-1 text-sm text-red-600">{errors.images}</p>
-              )}
-              
-              
-              {images.length > 0 && (
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  {images.map((image, index) => (
-                    <div key={index} className="relative">
-                      <img
-                        src={URL.createObjectURL(image)}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-24 object-cover rounded"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
-                      >
-                       
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Video Upload */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Videos (Max 50MB each, MP4/MPEG/MOV/AVI)
-              </label>
-              <div className="flex items-center gap-2">
-                <label className="flex-1 flex items-center justify-center px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-purple-400 transition-colors">
-                  <Video className="w-5 h-5 text-gray-400 mr-2" />
-                  <span className="text-gray-600">Upload Videos</span>
-                  <input
-                    type="file"
-                    multiple
-                    accept="video/mp4,video/mpeg,video/quicktime,video/x-msvideo"
-                    onChange={handleVideoUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-              {errors.videos && (
-                <p className="mt-1 text-sm text-red-600">{errors.videos}</p>
-              )}
-              
-            
-              {videos.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {videos.map((video, index) => (
-                    <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
-                      <div className="flex items-center">
-                        <Video className="w-5 h-5 text-red-500 mr-2" />
-                        <span className="text-sm text-gray-700">{video.name}</span>
-                        <span className="text-xs text-gray-500 ml-2">
-                          ({(video.size / (1024 * 1024)).toFixed(1)} MB)
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeVideo(index)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                       
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <MediaUpload 
+            images={images} 
+            videos={videos} 
+            handleImageUpload={handleImageUpload} 
+            handleVideoUpload={handleVideoUpload} 
+            removeImage={removeImage} 
+            removeVideo={removeVideo} 
+            errors={errors} 
+            mediaLimits={mediaLimits} 
+          />
 
       
           <div className="flex justify-end gap-3">
