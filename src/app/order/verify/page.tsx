@@ -11,34 +11,20 @@ const OrderVerificationComponent = () => {
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'success' | 'failed' | 'verifying'>('pending');
   const [message, setMessage] = useState('');
   const [orderData, setOrderData] = useState<any>(null);
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
-
-  const addLog = (log: string) => {
-    setDebugLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${log}`]);
-    console.log(log);
-  };
 
   useEffect(() => {
     const verifyPayment = async () => {
-      addLog('🔥🔥🔥 ORDER PAYMENT VERIFICATION START 🔥🔥🔥');
-      
       const urlParams = new URLSearchParams(window.location.search);
       const txRef = urlParams.get('tx_ref');
       const status = urlParams.get('status');
       
-      addLog(`📍 Full URL: ${window.location.href}`);
-      addLog(`🔍 Status: ${status}`);
-      addLog(`🔍 tx_ref: ${txRef}`);
-      
       if (!txRef) {
-        addLog('❌ No transaction reference found');
         setVerificationStatus('failed');
         setMessage('No transaction reference found');
         return;
       }
       
       if (status !== 'successful' && status !== 'success') {
-        addLog(`❌ Payment status is not successful: ${status}`);
         setVerificationStatus('failed');
         setMessage(status === 'cancelled' ? 'Payment was cancelled. Please try again.' : 'Payment was not successful');
         return;
@@ -46,16 +32,11 @@ const OrderVerificationComponent = () => {
       
       setVerificationStatus('verifying');
       setMessage('Verifying your payment...');
-      addLog('🔥 Calling OrderService.verifyPayment()');
       
       try {
         const response = await OrderService.verifyPayment({ transactionId: txRef });
         
-        addLog('✅ Response received');
-        addLog(`✅ Response: ${JSON.stringify(response)}`);
-        
         if (response.success) {
-          addLog('✅✅✅ ORDER PAYMENT VERIFICATION SUCCESSFUL!');
           setVerificationStatus('success');
           setOrderData(response.data.order);
           
@@ -72,18 +53,13 @@ const OrderVerificationComponent = () => {
           );
           
           setTimeout(() => {
-            addLog('🔄 Redirecting to orders page...');
             router.push('/user/orders');
           }, 3000);
         } else {
-          addLog('❌❌❌ ORDER PAYMENT VERIFICATION FAILED');
-          addLog(`❌ Error: ${response.message}`);
           setVerificationStatus('failed');
           setMessage(response.message || 'Payment verification failed. Please contact support.');
         }
       } catch (error: any) {
-        addLog('❌❌❌ VERIFICATION ERROR CAUGHT');
-        addLog(`❌ Error: ${error.message}`);
         console.error('Order payment verification failed:', error);
         setVerificationStatus('failed');
         setMessage(error.message || 'An error occurred during payment verification.');
@@ -227,24 +203,6 @@ const OrderVerificationComponent = () => {
           <p className="text-sm text-gray-500 mt-4">
             Please wait while we verify your payment...
           </p>
-        )}
-
-        {/* Debug Logs Panel */}
-        {debugLogs.length > 0 && (
-          <div className="mt-6 bg-gray-900 text-green-400 p-4 rounded-lg max-h-96 overflow-y-auto font-mono text-xs">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-white font-bold">Debug Logs</h3>
-              <button 
-                onClick={() => setDebugLogs([])} 
-                className="text-red-400 hover:text-red-300 text-xs"
-              >
-                Clear
-              </button>
-            </div>
-            {debugLogs.map((log, index) => (
-              <div key={index} className="mb-1">{log}</div>
-            ))}
-          </div>
         )}
       </div>
     </div>
