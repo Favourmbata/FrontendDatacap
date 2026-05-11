@@ -64,6 +64,48 @@ interface DownloadStatsResponse {
     downloadsToday: number;
     downloadsThisWeek: number;
     downloadsThisMonth: number;
+    roleBreakdown: Record<string, number>;
+    message?: string;
+  };
+  message?: string;
+}
+
+export interface DownloadRecord {
+  _id: string;
+  userId: string;
+  email: string;
+  fullName: string;
+  phoneNumber: string;
+  platform: 'android' | 'ios';
+  deviceInfo: string;
+  ipAddress: string;
+  downloadedAt: string;
+  signupSource: string;
+  userRole: string;
+  userStatus: string;
+  isVerified: boolean;
+}
+
+export interface DownloadListFilters {
+  page?: number;
+  limit?: number;
+  platform?: string;
+  role?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+interface DownloadListResponse {
+  success: boolean;
+  data: {
+    downloads: DownloadRecord[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+    message?: string;
   };
   message?: string;
 }
@@ -193,6 +235,23 @@ export class ApkDownloadService {
 
   async getDownloadStats(token: string): Promise<DownloadStatsResponse> {
     return this.request<DownloadStatsResponse>("/api/apk-download/stats", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  async getDownloadList(token: string, filters: DownloadListFilters = {}): Promise<DownloadListResponse> {
+    const params = new URLSearchParams();
+    if (filters.page) params.append('page', String(filters.page));
+    if (filters.limit) params.append('limit', String(filters.limit));
+    if (filters.platform) params.append('platform', filters.platform);
+    if (filters.role) params.append('role', filters.role);
+    if (filters.startDate) params.append('startDate', filters.startDate);
+    if (filters.endDate) params.append('endDate', filters.endDate);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request<DownloadListResponse>(`/api/apk-download/list${query}`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,

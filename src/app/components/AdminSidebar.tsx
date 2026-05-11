@@ -118,12 +118,12 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
       route: '/admin', 
       icon: <Image src="/Dashboard Circle Streamline Core Remix - Free.png" alt="Dashboard" width={24} height={24} className="object-contain" />,
     },
-     { 
-      id: 'mobile-app-stats', 
-      name: 'Mobile App Statistics', 
-      route: '/admin/mobile-app-stats', 
-      icon: <Smartphone className="w-6 h-6" />,
-    },
+    //  { 
+    //   id: 'mobile-app-stats', 
+    //   name: 'Mobile App Statistics', 
+    //   route: '/admin/mobile-app-stats', 
+    //   icon: <Smartphone className="w-6 h-6" />,
+    // },
     { 
       id: 'notifications', 
       name: 'Notifications', 
@@ -191,6 +191,11 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
           id: 'task-management',
           name: 'Task Management',
           route: '/admin/settlement/task-management'
+        },
+        {
+          id: 'provider-settlement',
+          name: 'Provider Settlement',
+          route: '/admin/settlement/provider-settlement'
         },
         {
           id: 'settlement-bank',

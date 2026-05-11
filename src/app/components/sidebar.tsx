@@ -12,6 +12,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { LogoutModal } from './logoutModal';
+import { useAuthContext } from '@/AuthContext';
 
 interface SidebarProps {
   onShow: boolean;
@@ -29,6 +30,7 @@ interface SubMenuItem {
   id: string;
   name: string;
   route: string;
+  hidden?: boolean;
 }
 
 interface MenuItem {
@@ -54,6 +56,8 @@ export const UserSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
   const pathname = usePathname();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
+  const { user } = useAuthContext();
+  const isServiceProvider = user?.role === 'SERVICE_PROVIDER';
   
   // Auto-expand the submenu whose child route is currently active
   useEffect(() => {
@@ -161,7 +165,14 @@ export const UserSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
         {
           id: 'task-management',
           name: 'Task Management',
-          route: '/user/body-care/task-management'
+          route: '/user/body-care/task-management',
+          hidden: !isServiceProvider
+        },
+        {
+          id: 'provider-settlement',
+          name: 'Provider Settlement',
+          route: '/user/body-care/provider-settlement',
+          hidden: !isServiceProvider
         },
         {
           id: 'delivery',
@@ -421,35 +432,37 @@ export const UserSidebar: React.FC<SidebarProps> = ({ onShow, setShow }) => {
                     {expandedMenu === item.id && item.subItems && (
                       <div className="ml-8 mt-2 flex flex-col gap-2 submenu-up" style={{ width: '230px', marginLeft: '40px' }}>
                         {item.subItems.map((subItem: SubMenuItem) => (
-                          <Link href={subItem.route} key={subItem.id}>
-                            <div 
-                              className={`manrope flex items-center rounded-lg cursor-pointer hover:bg-gray-50 transition-all duration-200 ${
-                                isActive(subItem.route) ? 'bg-[#5D2A8B]' : 'bg-gray-100'
-                              }`}
-                              style={{
-                                width: '230px',
-                                height: '45px',
-                                padding: '0 15px',
-                                marginLeft: '10px',
-                                borderRadius: '8px',
-                                margin: '2px 0'
-                              }}
-                            >
-                              <span 
-                                className="manrope whitespace-nowrap overflow-hidden text-ellipsis"
+                          subItem.hidden ? null : (
+                            <Link href={subItem.route} key={subItem.id}>
+                              <div 
+                                className={`manrope flex items-center rounded-lg cursor-pointer hover:bg-gray-50 transition-all duration-200 ${
+                                  isActive(subItem.route) ? 'bg-[#5D2A8B]' : 'bg-gray-100'
+                                }`}
                                 style={{
-                                  fontWeight: 400,
-                                  fontSize: '15px',
-                                  lineHeight: '100%',
-                                  color: isActive(subItem.route) ? '#FFFFFF' : '#6E6E6EB2',
-                                  flex: 1,
-                                  minWidth: 0
+                                  width: '230px',
+                                  height: '45px',
+                                  padding: '0 15px',
+                                  marginLeft: '10px',
+                                  borderRadius: '8px',
+                                  margin: '2px 0'
                                 }}
                               >
-                                {subItem.name}
-                              </span>
-                            </div>
-                          </Link>
+                                <span 
+                                  className="manrope whitespace-nowrap overflow-hidden text-ellipsis"
+                                  style={{
+                                    fontWeight: 400,
+                                    fontSize: '15px',
+                                    lineHeight: '100%',
+                                    color: isActive(subItem.route) ? '#FFFFFF' : '#6E6E6EB2',
+                                    flex: 1,
+                                    minWidth: 0
+                                  }}
+                                >
+                                  {subItem.name}
+                                </span>
+                              </div>
+                            </Link>
+                          )
                         ))}
                       </div>
                     )}
