@@ -538,6 +538,34 @@ export default function DownloadAppModal({ isOpen, onClose }: DownloadAppModalPr
             >
               {loadingPlatform === "ios" ? "Processing..." : "🍎 Sign Up & Download for iOS"}
             </button>
+
+            {/* Download Guide link */}
+            <div className="pt-1 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  handleClose()
+                  setTimeout(() => {
+                    const section = document.getElementById("download-guide")
+                    if (section) {
+                      section.scrollIntoView({ behavior: "smooth", block: "start" })
+                    }
+                  }, 150)
+                }}
+                className="inline-flex items-center gap-1.5 text-[#5D2A8B] hover:underline"
+                style={{
+                  fontFamily: "Manrope, sans-serif",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                <span>📖</span>
+                <span>Not sure how to install? Read the download guide</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>

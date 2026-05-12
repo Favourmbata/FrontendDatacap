@@ -10,6 +10,7 @@ import Audience from "./users/page";
 import Footer from "./footer/page";
 import AnimatedAISection from "./animatedAi-section/page";
 import CallToActionSection from "./capture/page";
+import DownloadGuide from "./download-guide/page";
 
 const HomePage = () => {
   return (
@@ -22,6 +23,9 @@ const HomePage = () => {
           <HowItWorks/>
           <Features/>
           <CallToActionSection/>
+                <div style={{marginBottom: "80px",marginTop: "80px"}}>
+                  <DownloadGuide/>
+                </div>
                 <div style={{marginBottom: "200px",marginTop: "200px"}}>
                   <Audience/>
                   </div>

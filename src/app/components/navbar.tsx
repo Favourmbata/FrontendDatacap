@@ -204,6 +204,33 @@ export default function Navbar() {
                 Download App
               </button>
 
+              {/* Download Guide button */}
+              <Link
+                href="/#download-guide"
+                onClick={(e) => {
+                  e.preventDefault()
+                  const section = document.getElementById('download-guide')
+                  if (section) {
+                    section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }
+                }}
+                className="flex items-center justify-center transition-all duration-200 hover:opacity-90"
+                style={{
+                  height: "40px",
+                  borderRadius: "20px",
+                  border: "1px solid #5D2A8B",
+                  background: "transparent",
+                  color: "#5D2A8B",
+                  padding: "8px 16px",
+                  fontFamily: "Manrope",
+                  fontWeight: 500,
+                  fontSize: "14px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+              Download Guide
+              </Link>
+
               {/* Sign Up dropdown */}
               <div className="relative">
                 <button
