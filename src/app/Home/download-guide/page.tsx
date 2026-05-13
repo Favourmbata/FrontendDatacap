@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 
 type Tab = "android" | "ios";
 
@@ -127,7 +128,14 @@ export default function DownloadGuide() {
                 fontWeight: activeTab === "android" ? 600 : 500,
               }}
             >
-              <span>📱</span> Android
+              <Image
+                src="/Android Icon PNG and SVG Vector Free Download.jpg"
+                alt="Android"
+                width={20}
+                height={20}
+                className="object-contain rounded-sm"
+              />
+              Android
             </button>
             <button
               onClick={() => setActiveTab("ios")}
@@ -139,7 +147,14 @@ export default function DownloadGuide() {
                 fontWeight: activeTab === "ios" ? 600 : 500,
               }}
             >
-              <span>🍎</span> iOS
+              <Image
+                src="/ios.jpg"
+                alt="iOS"
+                width={20}
+                height={20}
+                className="object-contain rounded-sm"
+              />
+              iOS
             </button>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { X, Search, ChevronDown } from "lucide-react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { apkDownloadService } from "@/services/apkDownloadService"
 
@@ -18,6 +19,7 @@ interface Industry {
   name: string
   description?: string
 }
+
 
 export default function DownloadAppModal({ isOpen, onClose }: DownloadAppModalProps) {
   const router = useRouter()
@@ -526,17 +528,31 @@ export default function DownloadAppModal({ isOpen, onClose }: DownloadAppModalPr
               type="button"
               onClick={() => handleSubmit("android")}
               disabled={loading}
-              className="w-full py-3 rounded-xl border-2 border-[#5D2A8B] text-[#5D2A8B] font-medium text-sm hover:bg-[#F4EFFA] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 rounded-xl border-2 border-[#5D2A8B] text-[#5D2A8B] font-medium text-sm hover:bg-[#F4EFFA] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loadingPlatform === "android" ? "Processing..." : "📱 Sign Up & Download for Android"}
+              <Image
+                src="/Android Icon PNG and SVG Vector Free Download.jpg"
+                alt="Android"
+                width={20}
+                height={20}
+                className="object-contain rounded-sm"
+              />
+              {loadingPlatform === "android" ? "Processing..." : "Sign Up & Download for Android"}
             </button>
             <button
               type="button"
               onClick={() => handleSubmit("ios")}
               disabled={loading}
-              className="w-full py-3 rounded-xl bg-[#5D2A8B] text-white font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 rounded-xl bg-[#5D2A8B] text-white font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loadingPlatform === "ios" ? "Processing..." : "🍎 Sign Up & Download for iOS"}
+              <Image
+                src="/ios.jpg"
+                alt="iOS"
+                width={20}
+                height={20}
+                className="object-contain rounded-sm"
+              />
+              {loadingPlatform === "ios" ? "Processing..." : "Sign Up & Download for iOS"}
             </button>
 
             {/* Download Guide link */}
