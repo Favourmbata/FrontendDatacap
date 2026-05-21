@@ -904,10 +904,10 @@ const LocationStep: React.FC<LocationStepProps> = ({
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      {/* LGA Field - Searchable Dropdown */}
+                      {/* LGA Field - Searchable Dropdown with Manual Input */}
                       <div className="relative">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          LGA (Local Government Area) - Optional
+                          LGA (Local Government Area) <span className="text-red-500">*</span>
                         </label>
                         
                         {!location.state ? (
@@ -941,7 +941,7 @@ const LocationStep: React.FC<LocationStepProps> = ({
                                     {location.lga ? (
                                       <span>{location.lga}</span>
                                     ) : (
-                                      <span className="text-gray-500">Select LGA...</span>
+                                      <span className="text-gray-500">Select LGA or enter manually below...</span>
                                     )}
                                   </div>
                                   <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${locationDropdownStates[index]?.lgaDropdownOpen ? 'transform rotate-180' : ''}`} />
@@ -1010,8 +1010,28 @@ const LocationStep: React.FC<LocationStepProps> = ({
                                   </div>
                                 )}
                               </div>
+                              
+                              {/* Manual input for LGA */}
+                              <div>
+                                <input
+                                  type="text"
+                                  value={location.lga || ''}
+                                  onChange={(e) => {
+                                    const newLocations = [...locations];
+                                    newLocations[index].lga = e.target.value;
+                                    setLocations(newLocations);
+                                    
+                                    // Load cities when LGA is manually entered
+                                    if (e.target.value.trim()) {
+                                      loadCitiesForLocationFn(index, location.country, location.state, e.target.value);
+                                    }
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                  placeholder="Or enter LGA manually"
+                                />
+                              </div>
                               <p className="text-sm text-gray-500 mt-2">
-                                This field is optional. Select LGA if it exists for this location.
+                                Select from dropdown or enter your LGA manually if not listed.
                               </p>
                             </div>
                           </>
@@ -1130,7 +1150,7 @@ const LocationStep: React.FC<LocationStepProps> = ({
                       {/* City Region Field - Searchable Dropdown */}
                       <div className="relative">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          City Region with Fee - Optional
+                          City Region with Fee <span className="text-red-500">*</span>
                         </label>
                         
                         {!location.city ? (
@@ -1234,7 +1254,7 @@ const LocationStep: React.FC<LocationStepProps> = ({
                                 </div>
                                 
                                 <p className="text-sm text-gray-500 mt-2">
-                                  {locationDropdownStates[index]?.loadingCityRegions ? 'Loading city regions...' : 'This field is optional. Select or enter region within the city.'}
+                                  {locationDropdownStates[index]?.loadingCityRegions ? 'Loading city regions...' : 'Select a city region to see the verification fee.'}
                                 </p>
                               </div>
                             </div>
@@ -1467,8 +1487,26 @@ const LocationStep: React.FC<LocationStepProps> = ({
                         return;
                       }
                       
+                      if (!locationToSend.lga?.trim()) {
+                        setLocationError('LGA is required');
+                        setLocationSubmitting(false);
+                        return;
+                      }
+                      
                       if (!locationToSend.city?.trim()) {
                         setLocationError('City is required');
+                        setLocationSubmitting(false);
+                        return;
+                      }
+                      
+                      if (!locationToSend.cityRegion?.trim()) {
+                        setLocationError('City region is required');
+                        setLocationSubmitting(false);
+                        return;
+                      }
+                      
+                      if (!locationToSend.cityRegionFee || locationToSend.cityRegionFee <= 0) {
+                        setLocationError('City region fee is required. Please select a city region with a valid fee.');
                         setLocationSubmitting(false);
                         return;
                       }

@@ -1318,20 +1318,17 @@ const SubscriptionPage: React.FC = () => {
             const selectedPackage = packages.find(p => p.id === firstPackageId);
             if (!selectedPackage) return undefined;
             
-            // Calculate with discount
+            // Calculate original price (without discount)
             const servicesForDuration = selectedPackage?.services?.filter(service => service.duration === billingCycle) || [];
             const totalCost = servicesForDuration.reduce((sum, service) => sum + (service.price || 0), 0);
-            const discountPercentage = selectedPackage?.discountPercentage || 0;
-            const discountAmount = discountPercentage > 0 ? (totalCost * discountPercentage / 100) : 0;
-            const packageAmount = totalCost - discountAmount;
             
-            console.log(`📦 Selected package amount for ${billingCycle}:`, packageAmount);
+            console.log(`📦 Selected package original amount for ${billingCycle}:`, totalCost);
             console.log(`📦 Services for ${billingCycle}:`, servicesForDuration);
             
             return {
               packageName: selectedPackage.packageName,
               billingCycle: billingCycle,
-              amount: packageAmount
+              amount: totalCost
             };
           })()}
           // Pass main page functions
