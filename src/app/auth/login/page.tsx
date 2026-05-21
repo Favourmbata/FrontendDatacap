@@ -360,9 +360,9 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="mb-8">
           <Image 
-            width={40} 
-            height={35} 
-            src="/Group 1.png" 
+            width={100} 
+            height={80} 
+            src="/assets/vetra.png" 
             alt="Company Logo" 
             className="object-contain" 
           />
@@ -513,9 +513,9 @@ export default function LoginPage() {
         }}
       >
         <Image 
-          width={55} 
-          height={48} 
-          src="/Group 1.png" 
+          width={100} 
+          height={80} 
+          src="/assets/vetra.png" 
           alt="Company Logo" 
           className="object-contain" 
         />

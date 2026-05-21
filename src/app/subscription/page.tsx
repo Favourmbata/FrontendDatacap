@@ -483,34 +483,35 @@ const SubscriptionPage: React.FC = () => {
     const originalMonthlyPrice = servicesByDuration.monthly.reduce((sum, service) => sum + (service.price || 0), 0);
     const originalQuarterlyPrice = servicesByDuration.quarterly.reduce((sum, service) => sum + (service.price || 0), 0);
     const originalYearlyPrice = servicesByDuration.yearly.reduce((sum, service) => sum + (service.price || 0), 0);
-    
-    // Apply discount to get final prices for packages with promo codes
-    const discountPercentage = pkg.discountPercentage || 0;
+
+    // Check for user-applied promo codes
+    const appliedPromo = appliedPromoCodes[pkg._id];
+    const promoValidation = promoValidationStates[pkg._id];
+    const hasUserPromo = appliedPromo && promoValidation?.isValid;
+
+    // Only apply discount when user has entered and validated a promo code
+    const discountPercentage = (hasUserPromo ? appliedPromo.discount : 0) || 0;
     const monthlyDiscount = discountPercentage > 0 ? (originalMonthlyPrice * discountPercentage / 100) : 0;
     const quarterlyDiscount = discountPercentage > 0 ? (originalQuarterlyPrice * discountPercentage / 100) : 0;
     const yearlyDiscount = discountPercentage > 0 ? (originalYearlyPrice * discountPercentage / 100) : 0;
-    
+
     const finalMonthlyPrice = originalMonthlyPrice - monthlyDiscount;
     const finalQuarterlyPrice = originalQuarterlyPrice - quarterlyDiscount;
     const finalYearlyPrice = originalYearlyPrice - yearlyDiscount;
-    
-    // Check for user-applied promo codes
-    const appliedPromo = appliedPromoCodes[pkg._id];
-    const hasUserPromo = appliedPromo && pkg.promoCode && pkg.promoCode.toLowerCase() === appliedPromo.code.toLowerCase();
-    
+
     return {
       id: pkg._id,
       packageName: pkg.title,
       description: pkg.description,
-      // Display discounted prices
+      // Show original prices by default; discounted only after valid promo applied
       monthlyPrice: finalMonthlyPrice,
       quarterlyPrice: finalQuarterlyPrice,
       yearlyPrice: finalYearlyPrice,
-      // Store original prices for comparison
+      // Store original prices for strikethrough display
       originalMonthlyPrice: originalMonthlyPrice,
       originalQuarterlyPrice: originalQuarterlyPrice,
       originalYearlyPrice: originalYearlyPrice,
-      hasApiDiscount: discountPercentage > 0,
+      hasApiDiscount: (pkg.discountPercentage || 0) > 0,
       hasUserPromo: hasUserPromo,
       features: pkg.features || [],
       services: pkg.services?.map(service => ({
@@ -713,13 +714,7 @@ const SubscriptionPage: React.FC = () => {
         packageAmount = totalCost - discountAmount;
       }
       
-      // console.log(`💰 Package calculation for ${subscriptionDuration}:`);
-      // console.log(`   - Total cost (before discount): ₦${totalCost.toLocaleString()}`);
-      // console.log(`   - Discount (${discountPercentage}%): ₦${discountAmount.toLocaleString()}`);
-      // console.log(`   - Final amount: ₦${packageAmount.toLocaleString()}`);
-      // console.log(`💰 Services for ${subscriptionDuration}:`, servicesForDuration);
-
-      // Get validated promo code info
+     
       const paymentAppliedPromo = appliedPromoCodes[firstPackageId];
       const paymentPromoValidation = promoValidationStates[firstPackageId];
 
@@ -793,19 +788,13 @@ const SubscriptionPage: React.FC = () => {
           })
         };
 
-        console.log('🚀 Combined payment request:', combinedPaymentRequest);
-        console.log('💰 CRITICAL - Package Amount being sent:', packageAmount);
-        console.log('📍 CRITICAL - Location Total:', locationTotal);
-        console.log('💵 CRITICAL - Expected Total on Flutterwave:', packageAmount + locationTotal);
+     
 
         const response = await combinedPaymentService.initializeCombinedPayment(combinedPaymentRequest);
         
         if (response.success && response.data) {
           setPaymentInitializationError(null);
-          console.log('✅ Combined payment initialized successfully');
-          console.log('💰 Total amount:', response.data.totalAmount);
-          console.log('📦 Package amount:', response.data.packageAmount);
-          console.log('📍 Location amount:', response.data.locationAmount);
+        
           
           // Redirect to payment gateway
           window.location.href = response.data.paymentLink;
@@ -835,9 +824,7 @@ const SubscriptionPage: React.FC = () => {
           })
         };
         
-        console.log('🚀 Package payment request:', paymentRequest);
-        console.log('💰 CRITICAL - Package Amount being sent:', packageAmount);
-        console.log('💵 CRITICAL - Expected Total on Flutterwave:', packageAmount);
+      
         const response = await PaymentService.initializePayment(paymentRequest);
         
         if (response.success) {
