@@ -32,7 +32,6 @@ const AdminDashboard = () => {
     icon: string | React.ReactNode;
   }
   
-  // Mock data for current measurement (for the top nav)
   const currentMeasurement = {
     chest: '95 cm',
     waist: '82 cm',
@@ -40,23 +39,17 @@ const AdminDashboard = () => {
     legs: '88 cm'
   };
 
-
-
-  // Fetch dashboard statistics
+  // Fixed useEffect – no infinite loading
   useEffect(() => {
+    let isMounted = true;
+
     const fetchDashboardStats = async () => {
-      // Don't make API call if we're already loading (prevents multiple calls)
-      if (loading) return;
-      
       setLoading(true);
-      
       try {
-        // First check if user has active subscription
         if (user?.id) {
           const hasSubscription = await UserSubscriptionService.hasActiveSubscription(user.id);
           if (!hasSubscription) {
-            // Let SubscriptionGuard handle the redirection
-            setLoading(false);
+            if (isMounted) setLoading(false);
             return;
           }
         }
@@ -64,7 +57,7 @@ const AdminDashboard = () => {
         const measurementService = new AdminMeasurementService();
         const response = await measurementService.getDashboardStats();
         
-        if (response.success && response.data) {
+        if (isMounted && response.success && response.data) {
           setStats({
             totalUsers: response.data.totalUsers || 0,
             activeUsers: response.data.activeUsers || 0,
@@ -75,21 +68,16 @@ const AdminDashboard = () => {
             oneTimeCodesUsed: response.data.oneTimeCodesUsed || 0,
             organizationId: response.data.organizationId || ''
           });
-        } else {
-          console.error('Dashboard stats API returned unsuccessful response:', response);
-          // Don't show toast for subscription-related errors as SubscriptionGuard handles redirection
-          if (!response.data?.message?.includes('subscription')) {
-            toast({ 
-              title: 'Error', 
-              description: response.data?.message || 'Failed to fetch dashboard statistics',
-              variant: 'destructive'
-            });
-          }
+        } else if (isMounted && !response.data?.message?.includes('subscription')) {
+          toast({ 
+            title: 'Error', 
+            description: response.data?.message || 'Failed to fetch dashboard statistics',
+            variant: 'destructive'
+          });
         }
       } catch (error: any) {
         console.error('Error fetching dashboard stats:', error);
-        // Don't show toast for subscription-related errors as SubscriptionGuard handles redirection
-        if (!error.message?.includes('subscription') && !error.message?.includes('Active subscription required')) {
+        if (isMounted && !error.message?.includes('subscription')) {
           toast({ 
             title: 'Error', 
             description: error.message || 'Failed to fetch dashboard statistics',
@@ -97,63 +85,20 @@ const AdminDashboard = () => {
           });
         }
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchDashboardStats();
+    return () => { isMounted = false; };
   }, [user?.id]);
 
-  const handleCreateNew = (type: string) => {
-    // Navigate to respective creation pages
-    switch(type) {
-      case 'body':
-        router.push('/admin/body-measurement/create');
-        break;
-      case 'object':
-        router.push('/admin/object-dimension/create');
-        break;
-      case 'questionnaire':
-        router.push('/admin/questionaire/create');
-        break;
-      default:
-        break;
-    }
-  };
-
-  // Stats cards data using real API data
   const statCards: StatCard[] = [
-    { 
-      name: 'Total Users', 
-      value: stats.totalUsers?.toLocaleString() || '0',
-      bgColor: '#F4EFFA',
-      icon: <User className="w-5 h-5" />
-    },
-    { 
-      name: 'Active Users', 
-      value: stats.activeUsers?.toLocaleString() || '0',
-      bgColor: '#FBF8EF',
-      icon: <Users className="w-5 h-5" />
-    },
-    { 
-      name: 'Total Measurements', 
-      value: stats.totalMeasurements?.toLocaleString() || '0',
-      bgColor: '#FCEEEE',
-      icon: <BarChart3 className="w-5 h-5" />
-    },
-    { 
-      name: 'Pending Users', 
-      value: stats.pendingUsers?.toLocaleString() || '0',
-      bgColor: '#E8F4F8',
-      icon: <UserCheck className="w-5 h-5" />
-    },
-    { 
-      name: 'Archived Users', 
-      value: stats.archivedUsers?.toLocaleString() || '0',
-      bgColor: '#F0F4E8',
-      icon: <Archive className="w-5 h-5" />
-    },
-   
+    { name: 'Total Users', value: stats.totalUsers?.toLocaleString() || '0', bgColor: '#F4EFFA', icon: <User className="w-5 h-5" /> },
+    { name: 'Active Users', value: stats.activeUsers?.toLocaleString() || '0', bgColor: '#FBF8EF', icon: <Users className="w-5 h-5" /> },
+    { name: 'Total Measurements', value: stats.totalMeasurements?.toLocaleString() || '0', bgColor: '#FCEEEE', icon: <BarChart3 className="w-5 h-5" /> },
+    { name: 'Pending Users', value: stats.pendingUsers?.toLocaleString() || '0', bgColor: '#E8F4F8', icon: <UserCheck className="w-5 h-5" /> },
+    { name: 'Archived Users', value: stats.archivedUsers?.toLocaleString() || '0', bgColor: '#F0F4E8', icon: <Archive className="w-5 h-5" /> },
   ];
 
   return (
@@ -163,13 +108,12 @@ const AdminDashboard = () => {
         .manrope { font-family: 'Manrope', sans-serif; }
       `}</style>
 
-      {/* Measurement Top Nav */}
+   
       <MeasurementTopNav 
         title="Current system metrics"
         measurements={currentMeasurement}
       />
 
-      {/* Overview Section - Responsive */}
       <div className="px-4 pt-4 md:pt-0 md:absolute md:w-[958px] md:top-[271px] md:left-[401px]">
         <div className="flex items-center justify-between mb-4">
           <h2 className="manrope text-xl md:text-2xl font-semibold text-gray-800">Overview</h2>
@@ -181,49 +125,28 @@ const AdminDashboard = () => {
           )}
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-[20px]">
           {statCards.map((stat, index) => (
-            <div 
-              key={index} 
-              className="relative w-full h-[146px] rounded-[20px] p-6"
-              style={{ background: stat.bgColor }}
-            >
+            <div key={index} className="relative w-full h-[146px] rounded-[20px] p-6" style={{ background: stat.bgColor }}>
               <div className="flex flex-col gap-3">
                 <span className="manrope text-sm md:text-base font-normal leading-tight" style={{ color: '#6E6E6EB2' }}>
                   {stat.name}
                 </span>
                 <span className="manrope text-2xl font-medium leading-tight text-[#1A1A1A]">
-                  {loading ? (
-                    <div className="h-6 w-16 bg-gray-200 rounded animate-pulse"></div>
-                  ) : (
-                    stat.value
-                  )}
+                  {loading ? <div className="h-6 w-16 bg-gray-200 rounded animate-pulse"></div> : stat.value}
                 </span>
               </div>
-
-              {/* Card Icon - Handle both Image and Lucide icons */}
               <div className="absolute top-4 right-4 w-[30px] h-[30px] rounded-full flex items-center justify-center" style={{ background: '#FFFFFF80' }}>
                 {typeof stat.icon === 'string' ? (
-                  <Image 
-                    src={stat.icon} 
-                    alt={stat.name} 
-                    width={20} 
-                    height={20}
-                    className="object-contain"
-                  />
+                  <Image src={stat.icon} alt={stat.name} width={20} height={20} className="object-contain" />
                 ) : (
-                  <div className="text-[#5D2A8B]">
-                    {stat.icon}
-                  </div>
+                  <div className="text-[#5D2A8B]">{stat.icon}</div>
                 )}
               </div>
             </div>
           ))}
         </div>
       </div>
-
-
     </div>
   );
 };

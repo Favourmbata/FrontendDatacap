@@ -1282,11 +1282,11 @@ const LocationStep: React.FC<LocationStepProps> = ({
                     
                     {/* Location Pricing Display */}
                     {location.cityRegionFee && (
-                      <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="mb-4 p-4 bg-green-50 border border-20 rounded-lg">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h5 className="font-medium text-green-900">Location Verification Fee</h5>
-                            <p className="text-sm text-green-700">
+                            <h5 className="font-medium text-[#5d2a8b]">Location Verification Fee</h5>
+                            <p className="text-sm text-[#5d2a8b]">
                               {location.pricingSource || (location.cityRegion 
                                 ? `City Region: ${location.cityRegion}` 
                                 : 'Calculated based on location hierarchy'
@@ -1294,10 +1294,10 @@ const LocationStep: React.FC<LocationStepProps> = ({
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-2xl font-bold text-green-900">
+                            <p className="text-2xl font-bold text-[#5d2a8b]">
                               ₦{location.cityRegionFee.toLocaleString('en-NG')}
                             </p>
-                            <p className="text-xs text-green-600">Verification fee</p>
+                            <p className="text-xs text-[#5d2a8b]">Verification fee</p>
                           </div>
                         </div>
                       </div>
@@ -1439,14 +1439,14 @@ const LocationStep: React.FC<LocationStepProps> = ({
                     setLocationError(null);
                     
                     try {
-                      // Basic validation
+                      
                       if (locations.length === 0) {
                         setLocationError('Please add at least one location');
                         setLocationSubmitting(false);
                         return;
                       }
                       
-                      // Check if unverified organization is trying to add more than one location
+                     
                       if (organizationProfile?.verificationStatus === 'unverified' && locations.length > 1) {
                         setLocationError('Unverified organizations can only add one location (headquarters). Please subscribe to verified badge to add more locations.');
                         setLocationSubmitting(false);
@@ -1543,7 +1543,7 @@ const LocationStep: React.FC<LocationStepProps> = ({
                   className={`px-6 py-3 rounded-lg font-semibold text-white transition-colors ${
                     locationSubmitting 
                       ? 'bg-gray-400 cursor-not-allowed' 
-                      : 'bg-purple-600 hover:bg-purple-700'
+                      : 'bg-[#5d2a8b] hover:bg-[#5d2a8b]'
                   }`}
                 >
                   {locationSubmitting ? (

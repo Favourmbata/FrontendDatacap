@@ -980,16 +980,13 @@ const SubscriptionPage: React.FC = () => {
         * { font-family: 'Manrope', sans-serif; }
       `}</style>
 
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div className="flex items-center">
-            <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">
-              DC
-            </div>
-          </div>
-          <span className="text-gray-500 text-sm">Subscription Required</span>
-        </div>
-      </header>
+     <header className="bg-white shadow-sm">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+
+    <img src="/assets/vetra.png" alt="Vetra" className="h-12 w-auto" />
+    
+  </div>
+</header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-10 flex items-center justify-center">
@@ -1005,7 +1002,7 @@ const SubscriptionPage: React.FC = () => {
             <div className="w-16 h-0.5 bg-gray-300"></div>
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-                currentStep === 'profile' ? "bg-purple-600 text-white" : "bg-gray-300 text-gray-600"
+                currentStep === 'profile' ? "bg-[#5d2a8b] text-white" : "bg-gray-300 text-gray-600"
               }`}
             >
               2
@@ -1014,7 +1011,7 @@ const SubscriptionPage: React.FC = () => {
             <div className="w-16 h-0.5 bg-gray-300"></div>
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-                currentStep === 'locations' ? "bg-purple-600 text-white" : "bg-gray-300 text-gray-600"
+                currentStep === 'locations' ? "bg-[#5d2a8b] text-white" : "bg-gray-300 text-gray-600"
               } ${organizationProfile.isPublicProfile ? '' : 'opacity-50'}`}
             >
               3
@@ -1023,7 +1020,7 @@ const SubscriptionPage: React.FC = () => {
             <div className={`w-16 h-0.5 bg-gray-300 ${organizationProfile.isPublicProfile ? '' : 'opacity-50'}`}></div>
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-                currentStep === 'location-payment' ? "bg-purple-600 text-white" : "bg-gray-300 text-gray-600"
+                currentStep === 'location-payment' ? "bg-[#5d2a8b] text-white" : "bg-gray-300 text-gray-600"
               } ${(organizationProfile.isPublicProfile && organizationProfile.verificationStatus === 'verified') ? '' : 'opacity-50'}`}
             >
               4
@@ -1032,7 +1029,7 @@ const SubscriptionPage: React.FC = () => {
             <div className={`w-16 h-0.5 bg-gray-300 ${(organizationProfile.isPublicProfile && organizationProfile.verificationStatus === 'verified') ? '' : 'opacity-50'}`}></div>
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-                currentStep === 'payment' ? "bg-purple-600 text-white" : "bg-gray-300 text-gray-600"
+                currentStep === 'payment' ? "bg-[#5d2a8b] text-white" : "bg-gray-300 text-gray-600"
               }`}
             >
               5
