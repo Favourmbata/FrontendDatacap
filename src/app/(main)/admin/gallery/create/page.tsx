@@ -409,159 +409,297 @@ useEffect(() => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+
+  
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
     
-    if (!validateForm()) return;
+  //   if (!validateForm()) return;
     
-    if (!token) {
-      setErrors({ general: 'Authentication required' });
-      return;
-    }
+  //   if (!token) {
+  //     setErrors({ general: 'Authentication required' });
+  //     return;
+  //   }
 
    
+  //   const limits = await checkMediaLimits();
+  //   if (limits && images.length > limits.images.remaining) {
+  //     setErrors({ images: `You only have ${limits.images.remaining} image slots available` });
+  //     return;
+  //   }
+  //   if (limits && videos.length > limits.videos.remaining) {
+  //     setErrors({ videos: `You only have ${limits.videos.remaining} video slots available` });
+  //     return;
+  //   }
+
+  //   setLoading(true);
+  //   setErrors({});
+
+  //   try {
+  //     console.log('Create page: Creating gallery item with data:', formData);
+      
+  
+  //     const selectedCategory = categories.find(c => c.id === formData.categoryId);
+      
+  //     const galleryData: any = {
+  //       name: formData.name,
+  //       description: formData.description.trim(),
+  //       category: selectedCategory?.name || formData.category,
+  //       categoryId: formData.categoryId,
+  //       industryId: formData.industryId,
+  //       itemType: formData.itemType,
+  //       sku: formData.itemType === 'product' ? (formData.sku || undefined) : undefined,
+  //       upc: formData.itemType === 'product' ? (formData.upc || undefined) : undefined,
+  //       platformUniqueCode: formData.platformUniqueCode || undefined,
+  //       totalAvailableQuantity: Number(formData.totalAvailableQuantity) || 0,
+  //       priceInDollars: Number(formData.priceInNaira) || 0,
+  //       discountPercentage: Number(formData.discountPercentage) || 0,
+  //       upfrontPaymentPercentage: Number(formData.upfrontPaymentPercentage) || 0,
+  //       platformChargePercentage: formData.platformChargePercentage,
+  //       startDate: formData.startDate,
+  //       startTime: formData.startTime,
+  //       endDate: formData.endDate,
+  //       endTime: formData.endTime,
+  //       visibilityToPublic: formData.visibilityToPublic,
+  //       notes: formData.notes || undefined,
+  //       locationIndex: formData.locationIndex >= 0 ? Number(formData.locationIndex) : 0
+  //     };
+
+  
+  //     if (formData.itemType === 'service') {
+  //       // Producer field removed - not included in submission
+  //       galleryData.totalAvailableServiceProviders = Number(formData.totalAvailableServiceProviders);
+  //       galleryData.hasSubServices = formData.hasSubServices;
+        
+  //       if (formData.hasSubServices && formData.subServices.length > 0) {
+  //         galleryData.subServiceCount = formData.subServices.length;
+  //         galleryData.subServices = formData.subServices.map(sub => ({
+  //           name: sub.name,
+  //           description: sub.description,
+  //           price: Number(sub.price)
+  //         }));
+  //       }
+
+  //       // Add availability for services (simple date range)
+  //       galleryData.availability = {
+  //         type: formData.bookingAvailability.availabilityPeriod.type === 'dateRange' ? 'dateRange' : 'unlimited',
+  //         startDate: formData.startDate,
+  //         startTime: formData.startTime || '00:00',
+  //         endDate: formData.endDate,
+  //         endTime: formData.endTime || '23:59'
+  //       };
+
+  //       // Add booking availability for services (detailed booking config)
+  //       galleryData.bookingAvailability = {
+  //         daysAvailable: formData.bookingAvailability.daysAvailable,
+  //         slotDurationMinutes: Number(formData.bookingAvailability.slotDurationMinutes),
+  //         concurrentProviders: Number(formData.bookingAvailability.concurrentProviders),
+  //         availabilityPeriod: {
+  //           type: formData.bookingAvailability.availabilityPeriod.type,
+            
+  //           ...(formData.bookingAvailability.availabilityPeriod.type === 'dateRange' && {
+  //             startDate: formData.startDate,
+  //             endDate: formData.endDate
+  //           }),
+            
+  //           ...(formData.bookingAvailability.availabilityPeriod.type === 'rollingWeeks' && {
+  //             weeksAhead: formData.bookingAvailability.availabilityPeriod.weeksAhead || 6
+  //           })
+  //         },
+  //         timezone: formData.bookingAvailability.timezone
+  //       };
+        
+  //       console.log('Service-specific data being sent:', {
+  //         totalAvailableServiceProviders: galleryData.totalAvailableServiceProviders,
+  //         hasSubServices: galleryData.hasSubServices,
+  //         subServices: galleryData.subServices,
+  //         availability: galleryData.availability,
+  //         bookingAvailability: galleryData.bookingAvailability
+  //       });
+  //     }
+      
+  //     const result = await GalleryService.createGalleryItem(token, galleryData);
+
+  //     if (result.success && result.data?.galleryItem?._id) {
+  //       const galleryItemId = result.data.galleryItem._id;
+        
+      
+  //       if (images.length > 0) {
+  //         console.log('Create page: Uploading', images.length, 'images');
+  //         for (let i = 0; i < images.length; i++) {
+         
+  //           const isMainImage = i === 0;
+  //           console.log(`Create page: Uploading image ${i + 1}/${images.length}, isMain: ${isMainImage}`);
+  //           const uploadResult = await GalleryService.uploadImage(token, galleryItemId, images[i], isMainImage);
+  //           if (!uploadResult.success) {
+  //             console.error(`Failed to upload image ${i + 1}:`, uploadResult.message);
+  //           }
+  //         }
+  //       }
+
+       
+  //       if (videos.length > 0) {
+  //         console.log('Create page: Uploading', videos.length, 'videos');
+  //         for (let i = 0; i < videos.length; i++) {
+  //           console.log(`Create page: Uploading video ${i + 1}/${videos.length}`);
+  //           const uploadResult = await GalleryService.uploadVideo(token, galleryItemId, videos[i]);
+  //           if (!uploadResult.success) {
+  //             console.error(`Failed to upload video ${i + 1}:`, uploadResult.message);
+  //           }
+  //         }
+  //       }
+
+  //       setSuccess(true);
+  //       setTimeout(() => {
+  //         router.push('/admin/gallery');
+  //       }, 2000);
+  //     } else {
+  //       setErrors({ general: result.message || 'Failed to create gallery item' });
+  //     }
+  //   } catch (error: any) {
+  //     console.error('Error creating gallery item:', error);
+  //     setErrors({ general: error.message || 'An unexpected error occurred' });
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+
+
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  // 1. Basic validation
+  if (!validateForm()) return;
+
+  if (!token) {
+    setErrors({ general: 'Authentication required' });
+    return;
+  }
+
+  // 2. 🔥 Show loading IMMEDIATELY – button becomes disabled & spinner appears
+  setLoading(true);
+  setErrors({});
+
+  try {
+    // 3. Check media limits (still async, but user sees feedback now)
     const limits = await checkMediaLimits();
     if (limits && images.length > limits.images.remaining) {
       setErrors({ images: `You only have ${limits.images.remaining} image slots available` });
+      setLoading(false);
       return;
     }
     if (limits && videos.length > limits.videos.remaining) {
       setErrors({ videos: `You only have ${limits.videos.remaining} video slots available` });
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
-    setErrors({});
+    // 4. Prepare gallery data
+    const selectedCategory = categories.find(c => c.id === formData.categoryId);
 
-    try {
-      console.log('Create page: Creating gallery item with data:', formData);
-      
-  
-      const selectedCategory = categories.find(c => c.id === formData.categoryId);
-      
-      const galleryData: any = {
-        name: formData.name,
-        description: formData.description.trim(),
-        category: selectedCategory?.name || formData.category,
-        categoryId: formData.categoryId,
-        industryId: formData.industryId,
-        itemType: formData.itemType,
-        sku: formData.itemType === 'product' ? (formData.sku || undefined) : undefined,
-        upc: formData.itemType === 'product' ? (formData.upc || undefined) : undefined,
-        platformUniqueCode: formData.platformUniqueCode || undefined,
-        totalAvailableQuantity: Number(formData.totalAvailableQuantity) || 0,
-        priceInDollars: Number(formData.priceInNaira) || 0,
-        discountPercentage: Number(formData.discountPercentage) || 0,
-        upfrontPaymentPercentage: Number(formData.upfrontPaymentPercentage) || 0,
-        platformChargePercentage: formData.platformChargePercentage,
+    const galleryData: any = {
+      name: formData.name,
+      description: formData.description.trim(),
+      category: selectedCategory?.name || formData.category,
+      categoryId: formData.categoryId,
+      industryId: formData.industryId,
+      itemType: formData.itemType,
+      sku: formData.itemType === 'product' ? (formData.sku || undefined) : undefined,
+      upc: formData.itemType === 'product' ? (formData.upc || undefined) : undefined,
+      platformUniqueCode: formData.platformUniqueCode || undefined,
+      totalAvailableQuantity: Number(formData.totalAvailableQuantity) || 0,
+      priceInDollars: Number(formData.priceInNaira) || 0,
+      discountPercentage: Number(formData.discountPercentage) || 0,
+      upfrontPaymentPercentage: Number(formData.upfrontPaymentPercentage) || 0,
+      platformChargePercentage: formData.platformChargePercentage,
+      startDate: formData.startDate,
+      startTime: formData.startTime,
+      endDate: formData.endDate,
+      endTime: formData.endTime,
+      visibilityToPublic: formData.visibilityToPublic,
+      notes: formData.notes || undefined,
+      locationIndex: formData.locationIndex >= 0 ? Number(formData.locationIndex) : 0
+    };
+
+    // 5. Add service‑specific fields if needed
+    if (formData.itemType === 'service') {
+      galleryData.totalAvailableServiceProviders = Number(formData.totalAvailableServiceProviders);
+      galleryData.hasSubServices = formData.hasSubServices;
+
+      if (formData.hasSubServices && formData.subServices.length > 0) {
+        galleryData.subServiceCount = formData.subServices.length;
+        galleryData.subServices = formData.subServices.map(sub => ({
+          name: sub.name,
+          description: sub.description,
+          price: Number(sub.price)
+        }));
+      }
+
+      galleryData.availability = {
+        type: formData.bookingAvailability.availabilityPeriod.type === 'dateRange' ? 'dateRange' : 'unlimited',
         startDate: formData.startDate,
-        startTime: formData.startTime,
+        startTime: formData.startTime || '00:00',
         endDate: formData.endDate,
-        endTime: formData.endTime,
-        visibilityToPublic: formData.visibilityToPublic,
-        notes: formData.notes || undefined,
-        locationIndex: formData.locationIndex >= 0 ? Number(formData.locationIndex) : 0
+        endTime: formData.endTime || '23:59'
       };
 
-  
-      if (formData.itemType === 'service') {
-        // Producer field removed - not included in submission
-        galleryData.totalAvailableServiceProviders = Number(formData.totalAvailableServiceProviders);
-        galleryData.hasSubServices = formData.hasSubServices;
-        
-        if (formData.hasSubServices && formData.subServices.length > 0) {
-          galleryData.subServiceCount = formData.subServices.length;
-          galleryData.subServices = formData.subServices.map(sub => ({
-            name: sub.name,
-            description: sub.description,
-            price: Number(sub.price)
-          }));
+      galleryData.bookingAvailability = {
+        daysAvailable: formData.bookingAvailability.daysAvailable,
+        slotDurationMinutes: Number(formData.bookingAvailability.slotDurationMinutes),
+        concurrentProviders: Number(formData.bookingAvailability.concurrentProviders),
+        availabilityPeriod: {
+          type: formData.bookingAvailability.availabilityPeriod.type,
+          ...(formData.bookingAvailability.availabilityPeriod.type === 'dateRange' && {
+            startDate: formData.startDate,
+            endDate: formData.endDate
+          }),
+          ...(formData.bookingAvailability.availabilityPeriod.type === 'rollingWeeks' && {
+            weeksAhead: formData.bookingAvailability.availabilityPeriod.weeksAhead || 6
+          })
+        },
+        timezone: formData.bookingAvailability.timezone
+      };
+    }
+
+    // 6. Create gallery item
+    const result = await GalleryService.createGalleryItem(token, galleryData);
+
+    if (result.success && result.data?.galleryItem?._id) {
+      const galleryItemId = result.data.galleryItem._id;
+
+      // Upload images
+      if (images.length > 0) {
+        console.log('Uploading', images.length, 'images');
+        for (let i = 0; i < images.length; i++) {
+          const isMainImage = i === 0;
+          await GalleryService.uploadImage(token, galleryItemId, images[i], isMainImage);
         }
-
-        // Add availability for services (simple date range)
-        galleryData.availability = {
-          type: formData.bookingAvailability.availabilityPeriod.type === 'dateRange' ? 'dateRange' : 'unlimited',
-          startDate: formData.startDate,
-          startTime: formData.startTime || '00:00',
-          endDate: formData.endDate,
-          endTime: formData.endTime || '23:59'
-        };
-
-        // Add booking availability for services (detailed booking config)
-        galleryData.bookingAvailability = {
-          daysAvailable: formData.bookingAvailability.daysAvailable,
-          slotDurationMinutes: Number(formData.bookingAvailability.slotDurationMinutes),
-          concurrentProviders: Number(formData.bookingAvailability.concurrentProviders),
-          availabilityPeriod: {
-            type: formData.bookingAvailability.availabilityPeriod.type,
-            
-            ...(formData.bookingAvailability.availabilityPeriod.type === 'dateRange' && {
-              startDate: formData.startDate,
-              endDate: formData.endDate
-            }),
-            
-            ...(formData.bookingAvailability.availabilityPeriod.type === 'rollingWeeks' && {
-              weeksAhead: formData.bookingAvailability.availabilityPeriod.weeksAhead || 6
-            })
-          },
-          timezone: formData.bookingAvailability.timezone
-        };
-        
-        console.log('Service-specific data being sent:', {
-          totalAvailableServiceProviders: galleryData.totalAvailableServiceProviders,
-          hasSubServices: galleryData.hasSubServices,
-          subServices: galleryData.subServices,
-          availability: galleryData.availability,
-          bookingAvailability: galleryData.bookingAvailability
-        });
       }
-      
-      const result = await GalleryService.createGalleryItem(token, galleryData);
 
-      if (result.success && result.data?.galleryItem?._id) {
-        const galleryItemId = result.data.galleryItem._id;
-        
-      
-        if (images.length > 0) {
-          console.log('Create page: Uploading', images.length, 'images');
-          for (let i = 0; i < images.length; i++) {
-         
-            const isMainImage = i === 0;
-            console.log(`Create page: Uploading image ${i + 1}/${images.length}, isMain: ${isMainImage}`);
-            const uploadResult = await GalleryService.uploadImage(token, galleryItemId, images[i], isMainImage);
-            if (!uploadResult.success) {
-              console.error(`Failed to upload image ${i + 1}:`, uploadResult.message);
-            }
-          }
+      // Upload videos
+      if (videos.length > 0) {
+        console.log('Uploading', videos.length, 'videos');
+        for (let i = 0; i < videos.length; i++) {
+          await GalleryService.uploadVideo(token, galleryItemId, videos[i]);
         }
-
-       
-        if (videos.length > 0) {
-          console.log('Create page: Uploading', videos.length, 'videos');
-          for (let i = 0; i < videos.length; i++) {
-            console.log(`Create page: Uploading video ${i + 1}/${videos.length}`);
-            const uploadResult = await GalleryService.uploadVideo(token, galleryItemId, videos[i]);
-            if (!uploadResult.success) {
-              console.error(`Failed to upload video ${i + 1}:`, uploadResult.message);
-            }
-          }
-        }
-
-        setSuccess(true);
-        setTimeout(() => {
-          router.push('/admin/gallery');
-        }, 2000);
-      } else {
-        setErrors({ general: result.message || 'Failed to create gallery item' });
       }
-    } catch (error: any) {
-      console.error('Error creating gallery item:', error);
-      setErrors({ general: error.message || 'An unexpected error occurred' });
-    } finally {
+
+      // Success
+      setSuccess(true);
+      setTimeout(() => {
+        router.push('/admin/gallery');
+      }, 2000);
+    } else {
+      setErrors({ general: result.message || 'Failed to create gallery item' });
       setLoading(false);
     }
-  };
-
+  } catch (error: any) {
+    console.error('Error creating gallery item:', error);
+    setErrors({ general: error.message || 'An unexpected error occurred' });
+    setLoading(false);
+  }
+};
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const limits = await checkMediaLimits();
