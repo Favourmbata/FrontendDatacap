@@ -1372,198 +1372,228 @@ const SubscriptionPage: React.FC = () => {
               </div>
             </div>
             
-            {/* Card Summary Section */}
-            <div className="mb-8 bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">Order Summary</h3>
-                <div className="flex items-center text-sm text-gray-500">
-                  <CheckCircle className="w-4 h-4 mr-1 text-green-500" />
-                  <span>Ready for Payment</span>
-                </div>
+        
+           
+            
+           <div className="mb-8 bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+  <div className="flex items-center justify-between mb-6">
+    <h3 className="text-xl font-semibold text-gray-900">Order Summary</h3>
+    <div className="flex items-center text-sm text-gray-500">
+      <CheckCircle className="w-4 h-4 mr-1 text-green-500" />
+      <span>Ready for Payment</span>
+    </div>
+  </div>
+  
+  {/* Selected Packages Summary */}
+  <div className="mb-6">
+    <h4 className="font-medium text-gray-900 mb-3">Selected Packages</h4>
+    <div className="space-y-3">
+      {Object.entries(selectedPackages).map(([packageId, billingCycle]) => {
+        const pkg = packages.find(p => p.id === packageId);
+        if (!pkg) return null;
+        
+        const userCount = packageUserCounts[packageId] || pkg.maxUsers || 1;
+        
+       
+        const cycleServices = pkg.services.filter(service => service.duration === billingCycle);
+        const totalCost = cycleServices.reduce((sum, service) => sum + (service.price || 0), 0);
+        
+        // DISCOUNT LOGIC IS COMMENTED OUT – WE SHOW ONLY ORIGINAL PRICE
+        // const discountPercentage = pkg.discountPercentage || 0;
+        // const discountAmount = discountPercentage > 0 ? (totalCost * discountPercentage / 100) : 0;
+        // const actualPrice = totalCost - discountAmount;
+        
+        console.log(`📦 Payment summary - ${pkg.packageName} (${billingCycle}): ₦${totalCost.toLocaleString()}`);
+        
+        return (
+          <div key={packageId} className="p-4 bg-gray-50 rounded-lg">
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <h5 className="font-medium text-gray-900">{pkg.packageName}</h5>
+                <p className="text-sm text-gray-600 capitalize font-medium">{billingCycle} Plan</p>
+                <p className="text-sm text-gray-600">{userCount} user{userCount > 1 ? 's' : ''}</p>
               </div>
-              
-              {/* Selected Packages Summary */}
-              <div className="mb-6">
-                <h4 className="font-medium text-gray-900 mb-3">Selected Packages</h4>
-                <div className="space-y-3">
-                  {Object.entries(selectedPackages).map(([packageId, billingCycle]) => {
-                    const pkg = packages.find(p => p.id === packageId);
-                    if (!pkg) return null;
-                    
-                    const userCount = packageUserCounts[packageId] || pkg.maxUsers || 1;
-                    
-                    // Calculate price with discount
-                    const cycleServices = pkg.services.filter(service => service.duration === billingCycle);
-                    const totalCost = cycleServices.reduce((sum, service) => sum + (service.price || 0), 0);
-                    const discountPercentage = pkg.discountPercentage || 0;
-                    const discountAmount = discountPercentage > 0 ? (totalCost * discountPercentage / 100) : 0;
-                    const actualPrice = totalCost - discountAmount;
-                    
-                    console.log(`📦 Payment summary - ${pkg.packageName} (${billingCycle}): ₦${actualPrice.toLocaleString()}`);
-                    
-                    return (
-                      <div key={packageId} className="p-4 bg-gray-50 rounded-lg">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h5 className="font-medium text-gray-900">{pkg.packageName}</h5>
-                            <p className="text-sm text-gray-600 capitalize font-medium">{billingCycle} Plan</p>
-                            <p className="text-sm text-gray-600">{userCount} user{userCount > 1 ? 's' : ''}</p>
-                          </div>
-                          <div className="text-right">
-                            {discountAmount > 0 && (
-                              <p className="text-sm text-gray-500 line-through">₦{Math.round(totalCost).toLocaleString('en-NG')}</p>
-                            )}
-                            <p className="text-xl font-bold text-gray-900">₦{Math.round(actualPrice).toLocaleString('en-NG')}</p>
-                            {discountAmount > 0 && (
-                              <p className="text-xs text-green-600">Save ₦{Math.round(discountAmount).toLocaleString('en-NG')} ({discountPercentage}% off)</p>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Services included in this plan */}
-                        {cycleServices.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <p className="text-xs text-gray-500 mb-2">Services included:</p>
-                            <div className="space-y-1">
-                              {cycleServices.map((service: Service, idx: number) => (
-                                <div key={idx} className="flex justify-between text-xs text-gray-600">
-                                  <span>• {service.name}</span>
-                                  <span>₦{service.price.toLocaleString('en-NG')}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              
-              {/* Profile Summary */}
-              <div className="mb-6">
-                <h4 className="font-medium text-gray-900 mb-3">Organization Profile</h4>
-                <div className="flex items-center p-4 bg-blue-50 rounded-lg">
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">Profile Visibility</p>
-                    <p className="text-sm text-gray-600">
-                      {organizationProfile.isPublicProfile ? 'Public Profile' : 'Private Profile'}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {organizationProfile.businessType === 'registered' ? 'Registered Business' : 'Unregistered Business'}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${organizationProfile.isPublicProfile ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                      {organizationProfile.isPublicProfile ? 'Public' : 'Private'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Locations Summary (if public profile) */}
-              {organizationProfile.isPublicProfile && locations.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="font-medium text-gray-900 mb-3">Location Verification Fees</h4>
-                  <div className="space-y-2">
-                    {locations.map((location, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center">
-                          <MapPin className="w-4 h-4 text-gray-400 mr-2" />
-                          <div>
-                            <p className="font-medium text-gray-900">{location.brandName || `Location ${index + 1}`}</p>
-                            <p className="text-sm text-gray-600">
-                              {location.city}, {location.state}, {location.country}
-                            </p>
-                            {location.pricingSource && (
-                              <p className="text-xs text-gray-500">{location.pricingSource}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          {location.cityRegionFee ? (
-                            <p className="font-semibold text-gray-900">₦{location.cityRegionFee.toLocaleString('en-NG')}</p>
-                          ) : (
-                            <p className="text-sm text-gray-500">Fee pending</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {/* Location Total */}
-                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-blue-900">Location Verification Total:</span>
-                      <span className="font-bold text-blue-900">
-                        ₦{locations.reduce((total, loc) => total + (loc.cityRegionFee || 0), 0).toLocaleString('en-NG')}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Total Summary */}
-              <div className="border-t border-gray-200 pt-4">
-                {/* Show breakdown if we have both package and location costs */}
-                {organizationProfile.isPublicProfile && locations.length > 0 && locations.some(loc => loc.cityRegionFee) ? (
-                  <div className="space-y-3">
-                    {/* Package Subtotal */}
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium text-gray-700">Package Subscription</p>
-                        <p className="text-sm text-gray-500">{Object.keys(selectedPackages).length} package(s)</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-gray-900">
-                          ₦{Math.round(totalAmount - locations.reduce((total, loc) => total + (loc.cityRegionFee || 0), 0)).toLocaleString('en-NG')}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Location Subtotal */}
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium text-gray-700">Location Verification</p>
-                        <p className="text-sm text-gray-500">{locations.length} location(s)</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-gray-900">
-                          ₦{locations.reduce((total, loc) => total + (loc.cityRegionFee || 0), 0).toLocaleString('en-NG')}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Combined Total */}
-                    <div className="border-t border-gray-200 pt-3">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-xl font-bold text-gray-900">Total Amount</p>
-                          <p className="text-sm text-gray-500">Package + Location Verification</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-3xl font-bold text-purple-600">₦{Math.round(totalAmount).toLocaleString('en-NG')}</p>
-                          <p className="text-sm text-green-600">Combined Payment</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* Simple total for package-only payments */
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-lg font-semibold text-gray-900">Total Amount</p>
-                      <p className="text-sm text-gray-500">{Object.keys(selectedPackages).length} package(s)</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-purple-600">₦{Math.round(totalAmount).toLocaleString('en-NG')}</p>
-                    </div>
-                  </div>
-                )}
+              <div className="text-right">
+                {/* Discounted price and strikethrough removed – only original price */}
+                {/* {discountAmount > 0 && (
+                  <p className="text-sm text-gray-500 line-through">₦{Math.round(totalCost).toLocaleString('en-NG')}</p>
+                )} */}
+                <p className="text-xl font-bold text-gray-900">₦{Math.round(totalCost).toLocaleString('en-NG')}</p>
+                {/* {discountAmount > 0 && (
+                  <p className="text-xs text-green-600">Save ₦{Math.round(discountAmount).toLocaleString('en-NG')} ({discountPercentage}% off)</p>
+                )} */}
               </div>
             </div>
             
-           
+            {/* Services included in this plan */}
+            {cycleServices.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <p className="text-xs text-gray-500 mb-2">Services included:</p>
+                <div className="space-y-1">
+                  {cycleServices.map((service: Service, idx: number) => (
+                    <div key={idx} className="flex justify-between text-xs text-gray-600">
+                      <span>• {service.name}</span>
+                      <span>₦{service.price.toLocaleString('en-NG')}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  </div>
+  
+  {/* Profile Summary – unchanged */}
+  <div className="mb-6">
+    <h4 className="font-medium text-gray-900 mb-3">Organization Profile</h4>
+    <div className="flex items-center p-4 bg-blue-50 rounded-lg">
+      <div className="flex-1">
+        <p className="font-medium text-gray-900">Profile Visibility</p>
+        <p className="text-sm text-gray-600">
+          {organizationProfile.isPublicProfile ? 'Public Profile' : 'Private Profile'}
+        </p>
+        <p className="text-sm text-gray-600">
+          {organizationProfile.businessType === 'registered' ? 'Registered Business' : 'Unregistered Business'}
+        </p>
+      </div>
+      <div className="text-right">
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${organizationProfile.isPublicProfile ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+          {organizationProfile.isPublicProfile ? 'Public' : 'Private'}
+        </span>
+      </div>
+    </div>
+  </div>
+  
+  {/* Locations Summary (if public profile) – unchanged */}
+  {organizationProfile.isPublicProfile && locations.length > 0 && (
+    <div className="mb-6">
+      <h4 className="font-medium text-gray-900 mb-3">Location Verification Fees</h4>
+      <div className="space-y-2">
+        {locations.map((location, index) => (
+          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center">
+              <MapPin className="w-4 h-4 text-gray-400 mr-2" />
+              <div>
+                <p className="font-medium text-gray-900">{location.brandName || `Location ${index + 1}`}</p>
+                <p className="text-sm text-gray-600">
+                  {location.city}, {location.state}, {location.country}
+                </p>
+                {location.pricingSource && (
+                  <p className="text-xs text-gray-500">{location.pricingSource}</p>
+                )}
+              </div>
+            </div>
+            <div className="text-right">
+              {location.cityRegionFee ? (
+                <p className="font-semibold text-gray-900">₦{location.cityRegionFee.toLocaleString('en-NG')}</p>
+              ) : (
+                <p className="text-sm text-gray-500">Fee pending</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {/* Location Total */}
+      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex justify-between items-center">
+          <span className="font-medium text-blue-900">Location Verification Total:</span>
+          <span className="font-bold text-blue-900">
+            ₦{locations.reduce((total, loc) => total + (loc.cityRegionFee || 0), 0).toLocaleString('en-NG')}
+          </span>
+        </div>
+      </div>
+    </div>
+  )}
+  
+  {/* Total Summary – update to use original package total */}
+  <div className="border-t border-gray-200 pt-4">
+    {organizationProfile.isPublicProfile && locations.length > 0 && locations.some(loc => loc.cityRegionFee) ? (
+      <div className="space-y-3">
+        {/* Package Subtotal – now using original total (no discount) */}
+        <div className="flex justify-between items-center">
+          <div>
+            <p className="font-medium text-gray-700">Package Subscription</p>
+            <p className="text-sm text-gray-500">{Object.keys(selectedPackages).length} package(s)</p>
+          </div>
+          <div className="text-right">
+            <p className="font-semibold text-gray-900">
+              ₦{Math.round(
+                Object.entries(selectedPackages).reduce((sum, [packageId, billingCycle]) => {
+                  const pkg = packages.find(p => p.id === packageId);
+                  if (!pkg) return sum;
+                  const cycleServices = pkg.services.filter(s => s.duration === billingCycle);
+                  const totalCost = cycleServices.reduce((s, service) => s + (service.price || 0), 0);
+                  return sum + totalCost;
+                }, 0)
+              ).toLocaleString('en-NG')}
+            </p>
+          </div>
+        </div>
+        
+        {/* Location Subtotal */}
+        <div className="flex justify-between items-center">
+          <div>
+            <p className="font-medium text-gray-700">Location Verification</p>
+            <p className="text-sm text-gray-500">{locations.length} location(s)</p>
+          </div>
+          <div className="text-right">
+            <p className="font-semibold text-gray-900">
+              ₦{locations.reduce((total, loc) => total + (loc.cityRegionFee || 0), 0).toLocaleString('en-NG')}
+            </p>
+          </div>
+        </div>
+        
+        {/* Combined Total */}
+        <div className="border-t border-gray-200 pt-3">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-xl font-bold text-gray-900">Total Amount</p>
+              <p className="text-sm text-gray-500">Package + Location Verification</p>
+            </div>
+            <div className="text-right">
+              <p className="text-3xl font-bold text-purple-600">
+                ₦{Math.round(
+                  Object.entries(selectedPackages).reduce((sum, [packageId, billingCycle]) => {
+                    const pkg = packages.find(p => p.id === packageId);
+                    if (!pkg) return sum;
+                    const cycleServices = pkg.services.filter(s => s.duration === billingCycle);
+                    const totalCost = cycleServices.reduce((s, service) => s + (service.price || 0), 0);
+                    return sum + totalCost;
+                  }, 0) + locations.reduce((total, loc) => total + (loc.cityRegionFee || 0), 0)
+                ).toLocaleString('en-NG')}
+              </p>
+              <p className="text-sm text-green-600">Combined Payment</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    ) : (
+      /* Simple total for package-only payments – original price only */
+      <div className="flex justify-between items-center">
+        <div>
+          <p className="text-lg font-semibold text-gray-900">Total Amount</p>
+          <p className="text-sm text-gray-500">{Object.keys(selectedPackages).length} package(s)</p>
+        </div>
+        <div className="text-right">
+          <p className="text-2xl font-bold text-purple-600">
+            ₦{Math.round(
+              Object.entries(selectedPackages).reduce((sum, [packageId, billingCycle]) => {
+                const pkg = packages.find(p => p.id === packageId);
+                if (!pkg) return sum;
+                const cycleServices = pkg.services.filter(s => s.duration === billingCycle);
+                const totalCost = cycleServices.reduce((s, service) => s + (service.price || 0), 0);
+                return sum + totalCost;
+              }, 0)
+            ).toLocaleString('en-NG')}
+          </p>
+        </div>
+      </div>
+    )}
+  </div>
+</div>
 
             {userLimitError && (
               <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
